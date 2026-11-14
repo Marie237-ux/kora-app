@@ -175,7 +175,7 @@ final class DemoStorefront extends Command
                 $blocks[] = $block;
             }
             $cms = app(Cms::class);
-            $titles = ['home' => ['fr' => 'Accueil', 'en' => 'Home'], 'catalogue' => ['fr' => 'Catalogue', 'en' => 'Catalogue']];
+            $titles = ['home' => ['fr' => 'Accueil', 'en' => 'Home'], 'catalogue' => ['fr' => 'Catalogue', 'en' => 'Catalogue'], 'product' => ['fr' => 'Fiche produit', 'en' => 'Product page']];
             $draft = $cms->saveDraft('page', $pageSlug, ['title' => $titles[$pageSlug] ?? ['fr' => $pageSlug, 'en' => $pageSlug], 'content' => ['blocks' => $blocks]], $actor);
             $cms->publish($draft['id'], [], $actor);
         }
@@ -225,7 +225,9 @@ final class DemoStorefront extends Command
             $scenes = HeroScene::query()->where('name', 'like', 'Test %')->orWhere('name', 'like', 'Démo %')->pluck('id');
             DB::table('hero_revisions')->whereIn('hero_scene_id', $scenes)->delete();
             DB::table('hero_scenes')->whereIn('id', $scenes)->delete();
-            foreach (['catalogue_search_tokens', 'catalogue_search_documents', 'embedding_queue', 'offer_embeddings', 'supplier_availability'] as $table) {
+            // Visitors' carts, boards and alerts may hold test products (the demo also runs online): those lines go
+            // with the test set. Orders are never touched — a demo offer that was ordered keeps the refresh from running.
+            foreach (['catalogue_search_tokens', 'catalogue_search_documents', 'embedding_queue', 'offer_embeddings', 'supplier_availability', 'cart_lines', 'board_pins', 'product_alerts'] as $table) {
                 DB::table($table)->whereIn('offer_id', $offers->pluck('id'))->delete();
             }
             DB::table('offers')->whereIn('id', $offers->pluck('id'))->delete();

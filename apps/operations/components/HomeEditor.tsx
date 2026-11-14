@@ -59,7 +59,7 @@ const empty: T = { fr: '', en: '' };
 export function HomeEditor({ locale, user, onDirtyChange }: { locale: Locale; user: User; onDirtyChange?: (d: boolean) => void }) {
   const w = words[locale];
   const api = createApi('', locale);
-  const [pageSlug, setPageSlug] = useState<'home' | 'catalogue'>('home');
+  const [pageSlug, setPageSlug] = useState<'home' | 'catalogue' | 'product'>('home');
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [live, setLive] = useState<number | null>(null);
@@ -132,7 +132,7 @@ export function HomeEditor({ locale, user, onDirtyChange }: { locale: Locale; us
       const draft = await api.request<{ data: { id: string } }>('/api/v1/operations/cms/page/' + pageSlug + '/drafts', {
         method: 'POST',
         headers: { 'Idempotency-Key': crypto.randomUUID() },
-        body: JSON.stringify({ title: pageSlug === 'home' ? { fr: 'Accueil', en: 'Home' } : { fr: 'Catalogue', en: 'Catalogue' }, content: { blocks } }),
+        body: JSON.stringify({ title: pageSlug === 'home' ? { fr: 'Accueil', en: 'Home' } : pageSlug === 'product' ? { fr: 'Fiche produit', en: 'Product page' } : { fr: 'Catalogue', en: 'Catalogue' }, content: { blocks } }),
       });
       setDraftId(draft.data.id);
       if (publish) {
@@ -183,9 +183,10 @@ export function HomeEditor({ locale, user, onDirtyChange }: { locale: Locale; us
           <h1 style={{ fontSize: '2.7rem' }}>{w.title}</h1>
           <label className="field" style={{ maxWidth: 320 }}>
             {locale === 'fr' ? 'Page' : 'Page'}
-            <select value={pageSlug} onChange={(e) => setPageSlug(e.target.value as 'home' | 'catalogue')}>
+            <select value={pageSlug} onChange={(e) => setPageSlug(e.target.value as 'home' | 'catalogue' | 'product')}>
               <option value="home">{locale === 'fr' ? 'Accueil' : 'Home'}</option>
               <option value="catalogue">{locale === 'fr' ? 'Catalogue (image d’en-tête : bannière)' : 'Catalogue (header image: banner)'}</option>
+              <option value="product">{locale === 'fr' ? 'Fiche produit (image d’en-tête : bannière)' : 'Product page (header image: banner)'}</option>
             </select>
           </label>
           <p>{w.intro}</p>

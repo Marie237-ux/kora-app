@@ -2988,6 +2988,21 @@
         },
         "link": "/catalogue"
       }
+    ],
+    "product": [
+      {
+        "type": "banner",
+        "image_file": "images/produit-entete.jpg",
+        "alt": {
+          "fr": "Une cliente souriante avec ses sacs de courses",
+          "en": "A smiling customer with her shopping bags"
+        },
+        "text": {
+          "fr": "Tout savoir avant d’acheter : prix, garantie, livraison et avis de clients vérifiés.",
+          "en": "Everything to know before you buy: price, warranty, delivery and verified customer reviews."
+        },
+        "link": "/catalogue"
+      }
     ]
   }
 }

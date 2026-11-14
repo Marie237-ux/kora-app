@@ -1,96 +1,419 @@
 ---
-import Base from '../../../layouts/Base.astro';
-import { t } from '@kora/ui';
-import { formatXaf } from '@kora/design-tokens';
-import {
-  ApiError,
-  createApi,
-  type Locale,
-  type Offer,
-  type PublicCategory,
-} from '@kora/api-client';
-const locale = Astro.params.locale as Locale;
-if (!['fr', 'en'].includes(locale)) return new Response(null, { status: 404 });
-const copy = t(locale);
+/**
+ * Product page, after three Pinterest references:
+ * - "BR.F" shoe page: soft photo panel left; shop, name, rating, big price, options and add-to-cart right.
+ * - "Nextgen" hoodie page: aisle pill, delivery info pill, four-fact shipping grid, "Rating & Reviews" with the big
+ *   average, the 5→1 bars and review cards, then "You might also like".
+ * - "Velora" hoodie page: trust row under the button, detail tabs next to a large photo, "You may also like · View all".
+ * Phone: photo on top, shop row with a pill button, price + add bar pinned above the tab bar.
+ * Hero: full-width background photo and text from the CMS page "product" (banner block), like the catalogue header.
+ * Everything comes from the catalogue (editable in the back office). Reviews are verified purchases only, from
+ * /api/v1/products/{id}/reviews; nothing is invented when there are none.
+ */
+import Site from '../../../layouts/Site.astro';
+import ProductCard from '../../../components/ProductCard.astro';
+import AddToCart from '../../../components/AddToCart.tsx';
+import { copy, money } from '../../../lib/copy';
+import { colorHex } from '../../../lib/colors';
+import { api, localeOf, safe } from '../../../lib/server';
+import { ApiError, type Offer } from '@kora/api-client';
+
+const locale = localeOf(Astro.params.locale);
+if (!locale) return new Response(null, { status: 404 });
+const c = copy(locale);
+const k = api(locale);
+const home = '/' + locale;
+const fr = locale === 'fr';
+
 let offer: Offer | null = null;
 let failed = false;
-let categories: PublicCategory[] = [];
 try {
-  const api = createApi(import.meta.env.API_INTERNAL_URL || 'http://localhost:8000', locale);
-  const [o, c] = await Promise.all([api.offer(Astro.params.id || ''), api.categories()]);
-  offer = o.data;
-  categories = c.data;
+  offer = (await k.offer(Astro.params.id || '')).data;
 } catch (e) {
   if (e instanceof ApiError && e.status === 404) return new Response(null, { status: 404 });
   failed = true;
 }
-const category = categories.find((c) => c.slug === offer?.category);
-const labels =
-  locale === 'fr'
-    ? { features: 'Caractéristiques', yes: 'Oui', no: 'Non', minimum: 'Quantité minimale' }
-    : { features: 'Specifications', yes: 'Yes', no: 'No', minimum: 'Minimum quantity' };
+
+type Review = { id: string; author: string; verified_purchase: boolean; rating: number; title: string | null; body: string; photos: string[]; reply: string | null; created_at: string };
+type Reviews = { summary: { count: number; average: number | null; ratings: Record<string, number> }; reviews: Review[] };
+type Zone = { id: string; name: string; districts: string[] };
+type CmsPage = { data: { page: { blocks: { type: string; media_id?: string; text?: Partial<Record<'fr' | 'en', string>> }[] } | null; media: Record<string, string> } };
+const noReviews: Reviews = { summary: { count: 0, average: null, ratings: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } }, reviews: [] };
+const emptyList = { data: [] as Offer[], meta: { page: 1, last_page: 1, total: 0, demo: false } };
+const [categories, related, reviewsRes, zonesRes, cms] = await Promise.all([
+  safe(k.categories(), { data: [] }),
+  offer ? safe(k.catalogue('?category=' + encodeURIComponent(offer.category) + '&sort=best_selling&per_page=12'), emptyList) : Promise.resolve({ value: emptyList, failed: false }),
+  offer ? safe(k.request<{ data: Reviews }>('/api/v1/products/' + offer.product_id + '/reviews'), { data: noReviews }) : Promise.resolve({ value: { data: noReviews }, failed: false }),
+  safe(k.request<{ data: Zone[] }>('/api/v1/delivery/zones'), { data: [] }),
+  safe(k.request<CmsPage>('/api/v1/content/pages/product'), { data: { page: null, media: {} } } as CmsPage),
+]);
+const heroBlock = cms.value.data.page?.blocks.find((b) => b.type === 'banner');
+const heroImage = heroBlock?.media_id ? cms.value.data.media[heroBlock.media_id] ?? null : null;
+const aisle = categories.value.data.find((x) => x.slug === offer?.category);
+const names = Object.fromEntries(categories.value.data.map((x) => [x.slug, x.name]));
+const similar = related.value.data.filter((o) => o.id !== offer?.id).slice(0, 4);
+const reviews = reviewsRes.value.data;
+const districts = [...new Set(zonesRes.value.data.flatMap((z) => z.districts ?? []))];
+
+const was = offer?.compare_at_price && offer.compare_at_price > offer.price.amount ? offer.compare_at_price : null;
+const off = was && offer ? Math.round((1 - offer.price.amount / was) * 100) : 0;
+const saved = was && offer ? was - offer.price.amount : 0;
+
+// The aisle's typed characteristics, in the aisle's order, with readable labels.
+const specs = offer && aisle
+  ? aisle.attributes
+      .filter((def) => offer!.attributes[def.key] !== undefined && offer!.attributes[def.key] !== null && offer!.attributes[def.key] !== '')
+      .map((def) => {
+        const value = offer!.attributes[def.key];
+        const label =
+          typeof value === 'boolean'
+            ? value ? c.yes : c.no
+            : def.type === 'choice'
+              ? def.options.find((o) => o.value === value)?.label ?? String(value)
+              : String(value);
+        return { key: def.key, name: def.label, value: String(value), label: label + (def.unit ? ' ' + def.unit : '') };
+      })
+  : [];
+const colour = specs.find((s) => s.key === 'couleur');
+const shopPlace = offer ? [offer.shop.district, offer.shop.city].filter(Boolean).join(', ') : '';
+const shopHref = offer ? home + '/shops/' + offer.shop.slug : '';
+const avg = reviews.summary.average;
+const fmtAvg = (n: number) => n.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const date = (iso: string) => new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(iso));
+const maxBar = Math.max(1, ...Object.values(reviews.summary.ratings).map(Number));
+const stars = (n: number) => [1, 2, 3, 4, 5].map((i) => (n >= i ? 'star-full' : n >= i - 0.5 ? 'star-half' : 'star-off'));
+
+const L = fr
+  ? {
+      reviewsCount: (n: number) => (n === 0 ? 'Aucun avis vérifié' : n === 1 ? '1 avis vérifié' : n + ' avis vérifiés'),
+      deliveryPill: 'Livraison dans Douala · frais calculés selon votre quartier, avant le paiement',
+      bulkLink: 'Acheter en gros ou pour une entreprise ?',
+      bulkCta: 'Voir les conditions',
+      trust: [['Livraison suivie', 'De la boutique à votre porte'], ['Garantie boutique', 'Suivie par KORA'], ['Après-vente', 'Dossier depuis votre compte']],
+      tabs: { details: 'Détails', specs: 'Caractéristiques', warranty: 'Garantie & après-vente', delivery: 'Livraison', bulk: 'Au détail ou en gros' },
+      inShort: 'En bref',
+      aisle: 'Rayon',
+      shop: 'Vendu par',
+      location: 'Boutique située à',
+      warrantyLen: 'Garantie',
+      warrantyNone: 'Aucune garantie indiquée par la boutique pour ce produit.',
+      warrantyHow: 'Comment s’en servir',
+      warrantySteps: [
+        'Gardez votre facture : elle reste disponible dans votre compte, rubrique commandes.',
+        'En cas de problème, ouvrez un dossier après-vente depuis votre compte, avec une description et des photos.',
+        'KORA suit le dossier avec la boutique : diagnostic, réparation, échange ou remboursement selon les conditions de la garantie.',
+        'Vous suivez chaque étape du dossier et échangez avec l’équipe dans la messagerie.',
+      ],
+      facts: [
+        ['Zone', 'Douala'],
+        ['Frais', 'Selon votre quartier, affichés avant le paiement'],
+        ['Créneau', 'Vous choisissez votre créneau à la commande'],
+        ['Suivi', 'Suivi en direct jusqu’à votre porte'],
+      ],
+      districts: 'Quartiers desservis',
+      retail: 'Au détail',
+      retailText: (min: number, price: string) => 'Prix affiché : ' + price + ' l’unité, dès ' + min + (min > 1 ? ' pièces' : ' pièce') + '. Ajoutez au panier et payez en ligne.',
+      bulk: 'En gros / entreprise',
+      bulkText: 'Pour une grande quantité ou un achat d’entreprise, demandez un devis depuis l’espace professionnel de votre compte : un prix selon la quantité, envoyé par écrit, que vous acceptez avant de payer par le parcours habituel.',
+      bulkGo: 'Espace professionnel',
+      minimum: 'Quantité minimale',
+      outOf: '/5',
+      verified: 'Achat vérifié',
+      reply: 'Réponse de KORA',
+      reviewsNote: 'Seuls les clients qui ont reçu ce produit peuvent laisser un avis. Un avis n’est jamais retiré parce qu’il est négatif.',
+      youMayLike: 'Vous aimerez aussi',
+      save: (n: string) => 'Vous économisez ' + n,
+    }
+  : {
+      reviewsCount: (n: number) => (n === 0 ? 'No verified reviews' : n === 1 ? '1 verified review' : n + ' verified reviews'),
+      deliveryPill: 'Delivery in Douala · fee based on your district, shown before payment',
+      bulkLink: 'Buying in bulk or for a company?',
+      bulkCta: 'See the terms',
+      trust: [['Tracked delivery', 'From the shop to your door'], ['Shop warranty', 'Followed up by KORA'], ['After-sales', 'Case from your account']],
+      tabs: { details: 'Details', specs: 'Specifications', warranty: 'Warranty & after-sales', delivery: 'Delivery', bulk: 'Retail or bulk' },
+      inShort: 'At a glance',
+      aisle: 'Aisle',
+      shop: 'Sold by',
+      location: 'Shop located in',
+      warrantyLen: 'Warranty',
+      warrantyNone: 'The shop gives no warranty for this product.',
+      warrantyHow: 'How to use it',
+      warrantySteps: [
+        'Keep your invoice: it stays available in your account, under orders.',
+        'If something goes wrong, open an after-sales case from your account with a description and photos.',
+        'KORA follows the case with the shop: diagnosis, repair, exchange or refund according to the warranty terms.',
+        'You follow every step of the case and talk with the team in the messages.',
+      ],
+      facts: [
+        ['Area', 'Douala'],
+        ['Fee', 'Based on your district, shown before payment'],
+        ['Slot', 'You choose your delivery slot when ordering'],
+        ['Tracking', 'Live tracking to your door'],
+      ],
+      districts: 'Districts served',
+      retail: 'Retail',
+      retailText: (min: number, price: string) => 'Listed price: ' + price + ' each, from ' + min + (min > 1 ? ' pieces' : ' piece') + '. Add to cart and pay online.',
+      bulk: 'Bulk / business',
+      bulkText: 'For a large quantity or a business purchase, ask for a quote from the professional space of your account: a price based on quantity, sent in writing, which you accept before paying through the usual checkout.',
+      bulkGo: 'Professional space',
+      minimum: 'Minimum quantity',
+      outOf: '/5',
+      verified: 'Verified purchase',
+      reply: 'Reply from KORA',
+      reviewsNote: 'Only customers who received this product can leave a review. A review is never removed for being negative.',
+      youMayLike: 'You may also like',
+      save: (n: string) => 'You save ' + n,
+    };
 ---
 
-<Base locale={locale} title={offer?.name || copy.product}>
-  <a class="button-link" href={'/' + locale + '/catalogue'}>
-    ← {copy.backCatalogue}
-  </a>
-  {failed ? (
-    <p class="error">{copy.dataUnavailable}</p>
+<Site locale={locale} title={offer?.name ?? c.product} description={offer?.description ?? undefined} active="catalogue">
+  {failed || !offer ? (
+    <section class="wrap pdp-fail">
+      <p class="notice error" role="alert">{c.dataUnavailable} <a href={Astro.url.pathname}>{c.retry}</a></p>
+    </section>
   ) : (
-    offer && (
-      <article class="product-detail">
-        <div class="visual">
-          {offer.image ? (
-            <img src={offer.image} alt={offer.name} width="600" height="500" />
-          ) : (
-            <p class="muted">{copy.noImage}</p>
-          )}
+    <>
+      <section class={'cat-hero pdp-hero' + (heroImage ? ' has-photo' : '')}>
+        {heroImage && <img class="cat-photo" src={heroImage} alt="" decoding="async" />}
+        <div class="wrap cat-hero-inner">
+          <div class="cat-hero-text">
+            <nav class="crumbs" aria-label={c.breadcrumb}>
+              <a href={home}>{c.home}</a><span aria-hidden="true">/</span>
+              <a href={home + '/catalogue'}>{c.catalogue}</a>
+              {aisle && (<><span aria-hidden="true">/</span><a href={home + '/catalogue?category=' + aisle.slug}>{aisle.name}</a></>)}
+              <span aria-hidden="true">/</span><span aria-current="page">{offer.name}</span>
+            </nav>
+            <p class="pdp-hero-title">{aisle?.name ?? c.catalogue}</p>
+            {heroBlock?.text?.[locale] && <p>{heroBlock.text[locale]}</p>}
+          </div>
         </div>
-        <div>
-          <p class="eyebrow">{offer.category}</p>
-          <h1>{offer.name}</h1>
-          <p>
-            {copy.soldBy} <a href={'/' + locale + '/shops/' + offer.shop.slug}>{offer.shop.name}</a>
-          </p>
-          <p class="hero-price">{formatXaf(offer.price.amount, locale)}</p>
-          <p class="badge">{copy[offer.availability]}</p>
-          <p class="muted">{offer.description}</p>
-          <h2 style="font-size:1.4rem">{copy.warranty}</h2>
-          <p>{offer.warranty}</p>
-          <p>
-            {labels.minimum}: {offer.minimum_quantity} · SKU: {offer.sku}
-          </p>
-          {category && Object.keys(offer.attributes).length > 0 && (
-            <>
-              <h2 style="font-size:1.4rem">{labels.features}</h2>
-              <dl class="attribute-list">
-                {category.attributes
-                  .filter((def) => offer!.attributes[def.key] !== undefined)
-                  .map((def) => {
-                    const value = offer!.attributes[def.key];
-                    return (
-                      <>
-                        <dt>{def.label}</dt>
-                        <dd>
-                          {typeof value === 'boolean'
-                            ? value
-                              ? labels.yes
-                              : labels.no
-                            : def.type === 'choice'
-                              ? (def.options.find((o) => o.value === value)?.label ?? String(value))
-                              : String(value)}
-                          {def.unit ? ' ' + def.unit : ''}
-                        </dd>
-                      </>
-                    );
-                  })}
+      </section>
+
+      <section class="wrap pdp">
+
+        <div class="pdp-grid">
+          <div class="pdp-media">
+            <div class="pdp-photo">
+              {offer.image ? <img src={offer.image} alt={offer.name} decoding="async" fetchpriority="high" /> : <p class="muted">{c.noImage}</p>}
+              {off > 0 && <span class="pdp-off">−{off} %</span>}
+            </div>
+          </div>
+
+          <div class="pdp-info">
+            <div class="pdp-shop">
+              <a class="pdp-shop-id" href={shopHref}>
+                <span class="pdp-avatar" aria-hidden="true">{offer.shop.name.slice(0, 1)}</span>
+                <span><strong>{offer.shop.name}</strong><small>{shopPlace || c.officialShop}</small></span>
+              </a>
+              <a class="pdp-shop-go" href={shopHref}>{c.visitShop}</a>
+            </div>
+
+            {aisle && <a class="pdp-aisle" href={home + '/catalogue?category=' + aisle.slug}>{aisle.name}</a>}
+            <h1>{offer.name}</h1>
+            <a class="pdp-rating" href="#avis">
+              <span class="stars" aria-hidden="true">{stars(avg ?? 0).map((s) => <i class={s}></i>)}</span>
+              {avg !== null && <strong>{fmtAvg(avg)}</strong>}
+              <span>{L.reviewsCount(reviews.summary.count)}</span>
+            </a>
+
+            <div class="pdp-prices">
+              <strong>{money(offer.price.amount, locale)}</strong>
+              {was && <s><span class="sr-only">{c.wasPrice}</span>{money(was, locale)}</s>}
+              {off > 0 && <em>−{off} %</em>}
+            </div>
+            {saved > 0 && <p class="pdp-save">{L.save(money(saved, locale))}</p>}
+            <p class={'pdp-stock ' + offer.availability}><i aria-hidden="true"></i>{c[offer.availability]}</p>
+
+            <p class="pdp-pill">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg>
+              {L.deliveryPill}
+            </p>
+
+            {colour && (
+              <div class="pdp-option">
+                <p>{colour.name} <span>· {colour.label}</span></p>
+                <span class="pdp-swatch" title={colour.label}><i style={'background:' + (colorHex[colour.value] ?? '#ccc')}></i></span>
+              </div>
+            )}
+
+            <div class="pdp-buy">
+              <AddToCart
+                client:load
+                variant="full"
+                locale={locale}
+                offerId={offer.id}
+                name={offer.name}
+                minimum={offer.minimum_quantity}
+                disabled={offer.availability === 'unavailable'}
+              />
+              {offer.minimum_quantity > 1 && <p class="pdp-min">{L.minimum} : {offer.minimum_quantity}</p>}
+              <a class="pdp-bulk-link" href="#infos" data-tab-open="bulk">{L.bulkLink} <span>{L.bulkCta} →</span></a>
+            </div>
+
+            <ul class="pdp-trust">
+              {L.trust.map(([title, text], i) => (
+                <li>
+                  {i === 0 && <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7" /><circle cx="7" cy="17.5" r="1.6" /><circle cx="17" cy="17.5" r="1.6" /></svg>}
+                  {i === 1 && <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z" /><path d="m9 12 2 2 4-4" /></svg>}
+                  {i === 2 && <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3" /><path d="M18 3v4h-4M6 21v-4h4" /></svg>}
+                  <span><strong>{title}</strong>{text}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="wrap pdp-tabs" id="infos">
+        <div class="pdp-tablist" role="tablist">
+          {Object.entries(L.tabs).map(([key, label], i) => (
+            <button type="button" role="tab" id={'tab-' + key} aria-controls={'panel-' + key} aria-selected={i === 0 ? 'true' : 'false'} data-tab={key}>{label}</button>
+          ))}
+        </div>
+        <div class="pdp-tabgrid">
+          <div class="pdp-panels">
+            <div class="pdp-panel" role="tabpanel" id="panel-details" aria-labelledby="tab-details">
+              <p class="pdp-lead">{offer.description}</p>
+              {specs.length > 0 && (
+                <>
+                  <h3>{L.inShort}</h3>
+                  <ul class="pdp-bullets">
+                    {specs.slice(0, 6).map((s) => <li><span>{s.name}</span><strong>{s.label}</strong></li>)}
+                  </ul>
+                </>
+              )}
+            </div>
+            <div class="pdp-panel" role="tabpanel" id="panel-specs" aria-labelledby="tab-specs" hidden>
+              <dl class="pdp-specs">
+                {specs.map((s) => (<div><dt>{s.name}</dt><dd>{s.label}</dd></div>))}
+                {aisle && <div><dt>{L.aisle}</dt><dd>{aisle.name}</dd></div>}
+                <div><dt>{L.shop}</dt><dd><a href={shopHref}>{offer.shop.name}</a></dd></div>
+                {shopPlace && <div><dt>{L.location}</dt><dd>{shopPlace}</dd></div>}
+                <div><dt>{L.warrantyLen}</dt><dd>{offer.warranty || '—'}</dd></div>
+                <div><dt>{L.minimum}</dt><dd>{offer.minimum_quantity}</dd></div>
+                <div><dt>{c.reference}</dt><dd>{offer.sku}</dd></div>
               </dl>
-            </>
+            </div>
+            <div class="pdp-panel" role="tabpanel" id="panel-warranty" aria-labelledby="tab-warranty" hidden>
+              <div class="pdp-warranty">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z" /><path d="m9 12 2 2 4-4" /></svg>
+                <span><small>{L.warrantyLen} · {offer.shop.name}</small><strong>{offer.warranty || L.warrantyNone}</strong></span>
+              </div>
+              <h3>{L.warrantyHow}</h3>
+              <ol class="pdp-steps">{L.warrantySteps.map((s) => <li>{s}</li>)}</ol>
+            </div>
+            <div class="pdp-panel" role="tabpanel" id="panel-delivery" aria-labelledby="tab-delivery" hidden>
+              <div class="pdp-facts">
+                {L.facts.map(([title, text], i) => (
+                  <div>
+                    <span class="pdp-fact-ico" aria-hidden="true">
+                      {i === 0 && <svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>}
+                      {i === 1 && <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /></svg>}
+                      {i === 2 && <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M8 3v4M16 3v4M4 10h16" /></svg>}
+                      {i === 3 && <svg viewBox="0 0 24 24"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7" /><circle cx="7" cy="17.5" r="1.6" /><circle cx="17" cy="17.5" r="1.6" /></svg>}
+                    </span>
+                    <span><small>{title}</small><strong>{text}</strong></span>
+                  </div>
+                ))}
+              </div>
+              {districts.length > 0 && (
+                <>
+                  <h3>{L.districts}</h3>
+                  <p class="pdp-districts">{districts.map((d) => <span>{d}</span>)}</p>
+                </>
+              )}
+            </div>
+            <div class="pdp-panel" role="tabpanel" id="panel-bulk" aria-labelledby="tab-bulk" hidden>
+              <div class="pdp-modes">
+                <div>
+                  <h3>{L.retail}</h3>
+                  <p>{L.retailText(offer.minimum_quantity, money(offer.price.amount, locale))}</p>
+                </div>
+                <div>
+                  <h3>{L.bulk}</h3>
+                  <p>{L.bulkText}</p>
+                  <a class="pdp-mode-go" href={home + '/account'}>{L.bulkGo} →</a>
+                </div>
+              </div>
+            </div>
+          </div>
+          {offer.image && (
+            <div class="pdp-zoom" aria-hidden="true"><img src={offer.image} alt="" loading="lazy" decoding="async" /></div>
           )}
-          <p class="notice">{copy.development}</p>
         </div>
-      </article>
-    )
+      </section>
+
+      <section class="wrap pdp-reviews" id="avis">
+        <h2>{c.reviewsTitle}</h2>
+        <div class="pdp-reviews-grid">
+          <div class="pdp-score">
+            <p class={'pdp-avg' + (avg === null ? ' none' : '')}><strong>{avg !== null ? fmtAvg(avg) : '–'}</strong><span>{L.outOf}</span></p>
+            <p class="pdp-count">{L.reviewsCount(reviews.summary.count)}</p>
+            <ul class="pdp-bars">
+              {[5, 4, 3, 2, 1].map((n) => {
+                const v = Number(reviews.summary.ratings[String(n)] ?? 0);
+                return (
+                  <li><span class="pdp-bar-star">{n}</span><span class="pdp-bar-track"><i style={'width:' + (v / maxBar) * 100 + '%'}></i></span><span class="pdp-bar-n">{v}</span></li>
+                );
+              })}
+            </ul>
+          </div>
+          <div class="pdp-review-list">
+            {reviews.reviews.length === 0 ? (
+              <div class="pdp-review-empty">
+                <span class="stars" aria-hidden="true">{stars(0).map((s) => <i class={s}></i>)}</span>
+                <p>{c.reviewsEmpty}</p>
+              </div>
+            ) : (
+              reviews.reviews.slice(0, 6).map((r) => (
+                <article class="pdp-review">
+                  <header>
+                    <span class="stars" role="img" aria-label={r.rating + ' / 5'}>{stars(r.rating).map((s) => <i class={s}></i>)}</span>
+                    <time datetime={r.created_at}>{date(r.created_at)}</time>
+                  </header>
+                  {r.title && <h3>{r.title}</h3>}
+                  <p>{r.body}</p>
+                  {r.photos.length > 0 && <div class="pdp-review-photos">{r.photos.map((p) => <img src={p} alt="" loading="lazy" />)}</div>}
+                  <footer><strong>{r.author}</strong>{r.verified_purchase && <span>✓ {L.verified}</span>}</footer>
+                  {r.reply && <p class="pdp-review-reply"><strong>{L.reply}</strong>{r.reply}</p>}
+                </article>
+              ))
+            )}
+          </div>
+        </div>
+        <p class="pdp-reviews-note">{L.reviewsNote}</p>
+      </section>
+
+      {similar.length > 0 && (
+        <section class="wrap pdp-similar">
+          <div class="pdp-similar-head">
+            <h2>{L.youMayLike}</h2>
+            {aisle && <a href={home + '/catalogue?category=' + aisle.slug}>{c.seeAll} →</a>}
+          </div>
+          <div class="cat-grid pdp-similar-grid">
+            {similar.map((o) => <ProductCard offer={o as any} locale={locale} categoryName={names[o.category]} />)}
+          </div>
+        </section>
+      )}
+
+      <div class="pdp-bar">
+        <span><small>{c.price}</small><strong>{money(offer.price.amount, locale)}</strong></span>
+        <AddToCart client:visible variant="pill" locale={locale} offerId={offer.id} name={offer.name} minimum={offer.minimum_quantity} disabled={offer.availability === 'unavailable'} />
+      </div>
+    </>
   )}
-</Base>
+
+  <script>
+    // Detail tabs (no reload): click a tab, or a link with data-tab-open, to show its panel.
+    function show(key: string) {
+      document.querySelectorAll<HTMLButtonElement>('.pdp-tablist [role=tab]').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === key)));
+      document.querySelectorAll<HTMLElement>('.pdp-panel').forEach((p) => (p.hidden = p.id !== 'panel-' + key));
+    }
+    document.addEventListener('click', (e) => {
+      const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tab], [data-tab-open]');
+      if (!el) return;
+      show(el.dataset.tab ?? el.dataset.tabOpen ?? 'details');
+      if (el.dataset.tab) el.scrollIntoView({ block: 'nearest', inline: 'center' });
+    });
+  </script>
+</Site>
