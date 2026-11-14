@@ -4,7 +4,7 @@ services:
     name: kora-api
     runtime: docker
     dockerContext: ./services/api
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: Dockerfile
     envVars:
       - key: APP_ENV
         value: production
