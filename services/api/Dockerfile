@@ -21,7 +21,7 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 
 # Copy application files
-COPY . .
+COPY ./services/api /var/www/html
 
 # Install dependencies
 RUN composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
@@ -31,7 +31,7 @@ RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/storage
 
 # Expose port
-EXPOSE 9000
+EXPOSE 80
 
-# Start PHP-FPM
-CMD ["php-fpm"]
+# Start Laravel server
+CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=80"]

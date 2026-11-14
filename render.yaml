@@ -3,8 +3,9 @@ services:
   - type: web
     name: kora-api
     runtime: docker
-    dockerContext: ./services/api
-    dockerfilePath: Dockerfile
+    dockerContext: .
+    dockerfilePath: ./services/api/Dockerfile
+    plan: free
     envVars:
       - key: APP_ENV
         value: production
@@ -45,6 +46,7 @@ services:
   - type: web
     name: kora-frontend
     runtime: node
+    plan: free
     buildCommand: cd apps/storefront && npm install && npm run build
     startCommand: cd apps/storefront && node ./dist/server/entry.mjs
     envVars:
