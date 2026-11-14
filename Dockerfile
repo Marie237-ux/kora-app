@@ -24,5 +24,7 @@ RUN composer install --no-interaction --prefer-dist --optimize-autoloader --no-d
 ENV LOG_CHANNEL=stderr \
     PHP_CLI_SERVER_WORKERS=4
 
-# Render gives the port in $PORT. Migrations run on every start (they are idempotent).
-CMD ["sh", "-c", "php artisan migrate --force && php artisan config:cache && php artisan serve --host=0.0.0.0 --port=${PORT:-10000}"]
+# Render gives the port in $PORT and the public address in $RENDER_EXTERNAL_URL. Migrations run on every start.
+# With KORA_DEMO_SEED=true the demo catalogue (shops, products, images, CMS pages) is reloaded on each start:
+# free Render instances lose their files when they restart, so images are re-created from the repository.
+CMD ["sh", "-c", "export APP_URL=${RENDER_EXTERNAL_URL:-$APP_URL}; php artisan migrate --force && php artisan config:cache && if [ \"$KORA_DEMO_SEED\" = true ]; then php artisan kora:demo-storefront database/demo/storefront.json --fresh || true; fi; php artisan serve --host=0.0.0.0 --port=${PORT:-10000}"]

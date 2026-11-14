@@ -957,3 +957,32 @@ h1, h2, h3 { margin: 0; line-height: 1.05; }
 .ffor + .fgroup { border-top: 0; }
 .fpills a small { margin-left: 6px; font-size: 0.74rem; color: var(--muted); }
 .fpills a[aria-current='true'] small { color: inherit; opacity: 0.6; }
+
+/* ---------- Phone filters: sticky "Filters + sort" bar, the panel opens as a bottom sheet over the products ---------- */
+.cat-ftoggle, .cat-mcount, .fclose { display: none; }
+@media (max-width: 760px) {
+  .cat-filters { position: fixed; inset: 0; z-index: 80; display: none; background: rgba(10, 10, 10, 0.42); animation: fade-in 200ms var(--ease); }
+  .cat-filters:has(> details[open]) { display: block; }
+  html:has(.cat-filters > details[open]) { overflow: hidden; }
+  .cat-filters > details[open] { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; max-height: 88dvh; border: 0; border-radius: 24px 24px 0 0; box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.2); animation: sheet-up 340ms var(--ease); }
+  .cat-filters > details > summary { position: relative; padding: 22px 20px 14px; font-size: 1.05rem; border-bottom: 1px solid var(--line); }
+  .cat-filters > details > summary::before { content: ''; position: absolute; top: 8px; left: 50%; width: 36px; height: 4px; margin-left: -18px; border-radius: 4px; background: var(--line-strong); }
+  .cat-filters > details > summary::after { display: none; }
+  .fclose { display: grid; place-items: center; width: 32px; height: 32px; margin-left: auto; border-radius: 50%; background: var(--band-2); }
+  .fclose::before { content: '\00d7'; font-size: 1.3rem; font-weight: 400; line-height: 1; }
+  .fclear + .fclose { margin-left: 12px; }
+  .cat-form { flex: 1; min-height: 0; max-height: none; padding: 4px 20px 16px; -webkit-mask-image: none; mask-image: none; }
+  .fapply { display: block; padding: 12px 20px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--bg); }
+
+  .cat-bar { position: sticky; top: var(--head-h, 64px); z-index: 20; margin: 0 -16px 8px; padding: 10px 16px; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(14px); }
+  .cat-bar > p { display: none; }
+  .cat-bar-tools { width: 100%; gap: 8px; }
+  .cat-select > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .cat-ftoggle { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--ink); color: var(--bg); font: inherit; font-size: 0.86rem; font-weight: 600; cursor: pointer; }
+  .cat-ftoggle svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+  .cat-ftoggle .cat-count { background: var(--accent-fill); color: #fff; }
+  .cat-mcount { display: block; margin: 4px 0 14px; color: var(--muted); font-size: 0.9rem; }
+  .cat-mcount strong { color: var(--ink); }
+  .cat-body { padding-top: 12px; }
+}
+@keyframes sheet-up { from { transform: translateY(100%); } }

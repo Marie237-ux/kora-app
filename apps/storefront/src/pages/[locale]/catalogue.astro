@@ -127,11 +127,12 @@ for (const ch of chars) for (const v of ch.selected) active.push({ label: ch.lab
 
   <section class="wrap cat-body" data-cat>
     <aside class="cat-filters" aria-label={c.filters}>
-      <details open>
+      <details open data-key="panel">
         <summary>
           <span>{c.filters}</span>
           {active.length > 0 && <span class="cat-count">{active.length}</span>}
           {active.length > 0 && <a class="fclear" href={home + '/catalogue'}>{c.clearAll}</a>}
+          <span class="fclose" aria-hidden="true"></span>
         </summary>
         <form id="cat-form" class="cat-form" action={home + '/catalogue'} method="get">
           {category && <input type="hidden" name="category" value={category} />}
@@ -209,6 +210,10 @@ for (const ch of chars) for (const v of ch.selected) active.push({ label: ch.lab
       <div class="cat-bar">
         <p><strong>{meta.total}</strong> {meta.total > 1 ? c.productsCount : c.productOne}</p>
         <div class="cat-bar-tools">
+          <button type="button" class="cat-ftoggle" data-open-filters aria-controls="cat-form">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></svg>
+            {c.filters}{active.length > 0 && <span class="cat-count">{active.length}</span>}
+          </button>
           <label class="cat-select"><span>{c.perPage}</span>
             <select name="per" form="cat-form" data-auto>
               {['12', '24', '48'].map((n) => <option value={n} selected={per === n}>{n}</option>)}
@@ -224,6 +229,7 @@ for (const ch of chars) for (const v of ch.selected) active.push({ label: ch.lab
           </label>
         </div>
       </div>
+      <p class="cat-mcount"><strong>{meta.total}</strong> {meta.total > 1 ? c.productsCount : c.productOne}</p>
       {active.length > 0 && (
         <div class="cat-active">
           {active.map((f) => <a href={f.href} aria-label={c.removeFilter + ' ' + f.label}>{f.label}<span aria-hidden="true">×</span></a>)}
@@ -271,6 +277,9 @@ for (const ch of chars) for (const v of ch.selected) active.push({ label: ch.lab
   <script>
     // In-place updates: filters, sort, page size and pagination fetch the new page and swap only the hero text and the
     // catalogue body. The URL follows (back/forward work); filter panel scroll, open groups and focus are kept.
+    const phone = matchMedia('(max-width: 760px)');
+    const panel = () => document.querySelector<HTMLDetailsElement>('.cat-filters > details');
+    const sheetOpen = () => phone.matches && Boolean(panel()?.open);
     const isCatalogue = (u: URL) => u.origin === location.origin && /^\/(fr|en)\/catalogue\/?$/.test(u.pathname);
     let ctrl: AbortController | null = null;
 
@@ -299,7 +308,8 @@ for (const ch of chars) for (const v of ch.selected) active.push({ label: ch.lab
         const form = body.querySelector<HTMLElement>('.cat-form');
         const scroll = form?.scrollTop ?? 0;
         const open = new Map<string, boolean>();
-        body.querySelectorAll<HTMLDetailsElement>('.cat-filters details').forEach((d) => open.set(d.querySelector('summary')?.textContent?.trim().replace(/\d+$/, '') ?? '', d.open));
+        const keyOf = (d: HTMLDetailsElement) => d.dataset.key ?? d.querySelector('summary')?.textContent?.trim().replace(/\d+$/, '') ?? '';
+        body.querySelectorAll<HTMLDetailsElement>('.cat-filters details').forEach((d) => open.set(keyOf(d), d.open));
         const focused = document.activeElement as HTMLInputElement | null;
         const focusKey = focused && body.contains(focused) && focused.name ? [focused.name, focused.value] : null;
         body.replaceWith(nextBody);
@@ -307,7 +317,7 @@ for (const ch of chars) for (const v of ch.selected) active.push({ label: ch.lab
         if (hero && nextHero) hero.replaceWith(nextHero);
         document.title = doc.title;
         nextBody.querySelectorAll<HTMLDetailsElement>('.cat-filters details').forEach((d) => {
-          const key = d.querySelector('summary')?.textContent?.trim().replace(/\d+$/, '') ?? '';
+          const key = keyOf(d);
           if (open.has(key)) d.open = open.get(key)!;
         });
         const nextForm = nextBody.querySelector<HTMLElement>('.cat-form');
@@ -315,7 +325,7 @@ for (const ch of chars) for (const v of ch.selected) active.push({ label: ch.lab
         if (focusKey) nextBody.querySelector<HTMLElement>(`[name="${CSS.escape(focusKey[0])}"][value="${CSS.escape(focusKey[1])}"]`)?.focus({ preventScroll: true });
         if (push) history.pushState({ catalogue: true }, '', target.pathname + target.search);
         const top = document.getElementById('cat-results');
-        if (top && (toResults || top.getBoundingClientRect().top < 0)) top.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+        if (top && !sheetOpen() && (toResults || top.getBoundingClientRect().top < 0)) top.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
         bindSliders();
       } catch (e) {
         if ((e as Error).name !== 'AbortError') location.href = target.href;
@@ -347,11 +357,18 @@ for (const ch of chars) for (const v of ch.selected) active.push({ label: ch.lab
       }
       const show = (e.target as HTMLElement).closest('[data-show-results]');
       if (show) {
-        document.querySelector<HTMLDetailsElement>('.cat-filters > details')?.removeAttribute('open');
-        document.getElementById('cat-results')?.scrollIntoView({ block: 'start' });
+        panel()?.removeAttribute('open');
+        const top = document.getElementById('cat-results');
+        if (top && top.getBoundingClientRect().top < 0) top.scrollIntoView({ block: 'start' });
       }
+      // Phone: the "Filters" button of the sticky bar opens the panel as a bottom sheet; the dimmed backdrop closes it.
+      if ((e.target as HTMLElement).closest('[data-open-filters]')) panel()?.setAttribute('open', '');
+      if (e.target === document.querySelector('.cat-filters') && sheetOpen()) panel()?.removeAttribute('open');
     });
     addEventListener('popstate', () => go(new URL(location.href), false));
+    addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && sheetOpen()) panel()?.removeAttribute('open');
+    });
 
     // Dual price slider: drag to preview, release to apply.
     function bindSliders() {
@@ -380,6 +397,8 @@ for (const ch of chars) for (const v of ch.selected) active.push({ label: ch.lab
       });
     }
     bindSliders();
-    if (matchMedia('(max-width: 760px)').matches) document.querySelector('.cat-filters > details')?.removeAttribute('open');
+    if (phone.matches) panel()?.removeAttribute('open');
+    // Back on a wide screen the panel is a sidebar again, always open.
+    phone.addEventListener('change', () => (phone.matches ? panel()?.removeAttribute('open') : panel()?.setAttribute('open', '')));
   </script>
 </Site>

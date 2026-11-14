@@ -17,7 +17,14 @@ services:
       - key: APP_URL
         value: https://kora-api.onrender.com
       - key: KORA_STOREFRONT_URL
-        value: https://kora-frontend.onrender.com
+        value: https://kora-frontend-ok9a.onrender.com
+      # Online demo: same test catalogue as local, reloaded on each start (test-data banner shown on the site).
+      - key: KORA_DEMO
+        value: "true"
+      - key: KORA_DEMO_REMOTE
+        value: "true"
+      - key: KORA_DEMO_SEED
+        value: "true"
       - key: LOG_CHANNEL
         value: stderr
       - key: DB_CONNECTION
@@ -58,7 +65,7 @@ services:
       - key: API_INTERNAL_URL
         value: https://kora-api.onrender.com
       - key: PUBLIC_SITE_URL
-        value: https://kora-frontend.onrender.com
+        value: https://kora-frontend-ok9a.onrender.com
 
 databases:
   - name: kora-db

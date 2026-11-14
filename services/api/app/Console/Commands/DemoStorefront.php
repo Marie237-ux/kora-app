@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  * Local test data for the storefront: shops, categories, products, offers and home scenes read from a JSON
  * manifest, written as ordinary catalogue rows the back office can edit or delete. Every row belongs to the
  * supplier "Fournisseur démo KORA", so --fresh removes exactly that test set. Refused outside the local
- * environment and unless KORA_DEMO=true. An optional "home" list publishes the CMS home page (blocks whose images
+ * environment (unless KORA_DEMO_REMOTE=true) and unless KORA_DEMO=true. An optional "home" list publishes the CMS home page (blocks whose images
  * reuse the products' media, all replaceable from the back office).
  */
 final class DemoStorefront extends Command
@@ -30,8 +30,9 @@ final class DemoStorefront extends Command
 
     public function handle(MediaLibrary $media): int
     {
-        if (! app()->environment('local') || ! config('kora.demo')) {
-            $this->error('Refused: local environment with KORA_DEMO=true only.');
+        // Online demo servers opt in explicitly with KORA_DEMO_REMOTE=true (the site then shows the test-data banner).
+        if (! config('kora.demo') || ! (app()->environment('local') || config('kora.demo_remote'))) {
+            $this->error('Refused: KORA_DEMO=true and a local environment (or KORA_DEMO_REMOTE=true) only.');
 
             return self::FAILURE;
         }

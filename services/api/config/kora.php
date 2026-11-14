@@ -9,6 +9,7 @@ return [
     'payment_attempt_reuse_minutes' => (int) env('KORA_PAYMENT_ATTEMPT_REUSE_MINUTES', 15),
     'storefront_url' => env('KORA_STOREFRONT_URL', 'http://localhost:4321'),
     'demo' => (bool) env('KORA_DEMO', false),
+    'demo_remote' => (bool) env('KORA_DEMO_REMOTE', false),
     'business_timezone' => 'Africa/Douala',
     'media_disk' => env('KORA_MEDIA_DISK', 'local'),
     'document_disk' => env('KORA_DOCUMENT_DISK', 'local'),
