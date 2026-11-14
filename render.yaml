@@ -3,7 +3,7 @@ services:
   - type: web
     name: kora-api
     runtime: docker
-    dockerContext: .
+    dockerContext: ./services/api
     dockerfilePath: Dockerfile
     plan: free
     envVars:
