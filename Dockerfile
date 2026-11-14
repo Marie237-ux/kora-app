@@ -17,18 +17,18 @@ RUN docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Set working directory
-WORKDIR /var/www/html
+# Copy entire project
+COPY . /app
 
-# Copy application files
-COPY services/api /var/www/html
+# Set working directory
+WORKDIR /app/services/api
 
 # Install dependencies
 RUN composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
 
 # Set permissions
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html/storage
+RUN chown -R www-data:www-data /app/services/api \
+    && chmod -R 755 /app/services/api/storage
 
 # Expose port
 EXPOSE 80

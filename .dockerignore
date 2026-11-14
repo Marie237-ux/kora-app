@@ -1,0 +1,16 @@
+node_modules
+.git
+.gitignore
+README.md
+.env
+.env.*
+dist
+.astro
+.cache
+.local
+services/api/storage/*.key
+services/api/database/*.sqlite*
+services/api/bootstrap/cache/*.php
+services/api/storage/framework/
+services/api/storage/logs/
+sauvegarde-avant-nettoyage-2026-10-29.tar.gz
