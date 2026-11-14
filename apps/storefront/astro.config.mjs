@@ -14,7 +14,7 @@ export default defineConfig({
         "default-src 'self'",
         "img-src 'self' data: blob:",
         "font-src 'self'",
-        "connect-src 'self' https://kora-api.onrender.com",
+        "connect-src 'self' https://kora-api-mh76.onrender.com",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",

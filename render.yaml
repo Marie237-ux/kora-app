@@ -15,7 +15,7 @@ services:
       - key: APP_DEBUG
         value: "false"
       - key: APP_URL
-        value: https://kora-api.onrender.com
+        value: https://kora-api-mh76.onrender.com
       - key: KORA_STOREFRONT_URL
         value: https://kora-frontend-ok9a.onrender.com
       # Online demo: same test catalogue as local, reloaded on each start (test-data banner shown on the site).
@@ -63,7 +63,7 @@ services:
       - key: HOST
         value: 0.0.0.0
       - key: API_INTERNAL_URL
-        value: https://kora-api.onrender.com
+        value: https://kora-api-mh76.onrender.com
       - key: PUBLIC_SITE_URL
         value: https://kora-frontend-ok9a.onrender.com
 
