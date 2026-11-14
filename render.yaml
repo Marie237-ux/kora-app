@@ -1,17 +1,17 @@
 services:
-  # Service Laravel (Backend API)
+  # Service Laravel (Backend API) - Docker
   - type: web
     name: kora-api
-    env: php
-    buildCommand: composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
-    startCommand: php artisan serve --host=0.0.0.0 --port=$PORT
+    runtime: docker
+    dockerContext: ./services/api
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: APP_ENV
         value: production
       - key: APP_KEY
         generateValue: true
       - key: APP_DEBUG
-        value: false
+        value: "false"
       - key: APP_URL
         value: https://kora-api.onrender.com
       - key: DB_CONNECTION
@@ -44,7 +44,7 @@ services:
   # Service Astro (Frontend)
   - type: web
     name: kora-frontend
-    env: node
+    runtime: node
     buildCommand: cd apps/storefront && npm install && npm run build
     startCommand: cd apps/storefront && node ./dist/server/entry.mjs
     envVars:
