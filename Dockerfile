@@ -1,38 +1,28 @@
-FROM php:8.3-fpm
+FROM php:8.3-cli
 
-# Install dependencies
-RUN apt-get update && apt-get install -y \
-    git \
-    curl \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev \
-    libpq-dev \
-    zip \
-    unzip \
+# System libraries: PostgreSQL client, image formats for gd (JPEG, PNG, WebP), zip for Composer.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git unzip libzip-dev libpq-dev libonig-dev libxml2-dev \
+    libpng-dev libjpeg62-turbo-dev libwebp-dev libfreetype6-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install PHP extensions
-RUN docker-php-ext-install pdo pdo_pgsql mbstring exif pcntl bcmath gd
+RUN docker-php-ext-configure gd --with-jpeg --with-webp --with-freetype \
+    && docker-php-ext-install -j"$(nproc)" pdo_pgsql mbstring exif pcntl bcmath gd zip
 
-# Install Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Copy entire project
-COPY . /app
+# Works whatever the build context is: the repository root (services/api inside it) or services/api itself.
+COPY . /src
+RUN if [ -f /src/services/api/composer.json ]; then mv /src/services/api /app; else mv /src /app; fi \
+    && rm -rf /src
 
-# Set working directory
-WORKDIR /app/services/api
+WORKDIR /app
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev \
+    && mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache
 
-# Install dependencies
-RUN composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+ENV LOG_CHANNEL=stderr \
+    PHP_CLI_SERVER_WORKERS=4
 
-# Set permissions
-RUN chown -R www-data:www-data /app/services/api \
-    && chmod -R 755 /app/services/api/storage
-
-# Expose port
-EXPOSE 80
-
-# Start Laravel server
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=80"]
+# Render gives the port in $PORT. Migrations run on every start (they are idempotent).
+CMD ["sh", "-c", "php artisan migrate --force && php artisan config:cache && php artisan serve --host=0.0.0.0 --port=${PORT:-10000}"]
