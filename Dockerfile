@@ -24,6 +24,12 @@ RUN composer install --no-interaction --prefer-dist --optimize-autoloader --no-d
 ENV LOG_CHANNEL=stderr \
     PHP_CLI_SERVER_WORKERS=4
 
+# Online demo for now: test catalogue loaded on start, test-data banner on the site.
+# Set these to false (Render > kora-api > Environment) before the real launch.
+ENV KORA_DEMO=true \
+    KORA_DEMO_REMOTE=true \
+    KORA_DEMO_SEED=true
+
 # Render gives the port in $PORT and the public address in $RENDER_EXTERNAL_URL. Migrations run on every start.
 # With KORA_DEMO_SEED=true the demo catalogue (shops, products, images, CMS pages) is reloaded on each start:
 # free Render instances lose their files when they restart, so images are re-created from the repository.
