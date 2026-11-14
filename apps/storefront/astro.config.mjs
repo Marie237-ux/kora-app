@@ -14,7 +14,7 @@ export default defineConfig({
         "default-src 'self'",
         "img-src 'self' data: blob:",
         "font-src 'self'",
-        "connect-src 'self'",
+        "connect-src 'self' https://kora-api.onrender.com",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",
@@ -23,7 +23,7 @@ export default defineConfig({
     },
   },
   server: { 
-    host: 'localhost', 
+    host: '0.0.0.0', 
     port: 4321,
     headers: {
       'Access-Control-Allow-Origin': '*',
