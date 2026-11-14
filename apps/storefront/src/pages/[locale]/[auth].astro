@@ -1,0 +1,24 @@
+---
+import Base from '../../layouts/Base.astro';
+import { AuthPanel, AccountPanel, t } from '@kora/ui';
+import type { Locale } from '@kora/api-client';
+const locale = Astro.params.locale as Locale;
+if (!['fr', 'en'].includes(locale)) return new Response(null, { status: 404 });
+const route = Astro.params.auth || '';
+const modes: Record<string, 'login' | 'register' | 'forgot' | 'reset'> = {
+  login: 'login',
+  register: 'register',
+  'forgot-password': 'forgot',
+  'reset-password': 'reset',
+};
+if (!modes[route] && route !== 'account') return new Response(null, { status: 404 });
+const copy = t(locale);
+---
+
+<Base locale={locale} title={copy.account} privatePage>
+  {route === 'account' ? (
+    <AccountPanel locale={locale} client:load />
+  ) : (
+    <AuthPanel locale={locale} mode={modes[route]} client:load />
+  )}
+</Base>

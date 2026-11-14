@@ -1,0 +1,258 @@
+---
+/**
+ * Home, driven by the CMS "home" page (back office → Contenu → Pages → home):
+ *  - image_text blocks linking to an aisle (/catalogue?category=…) → "Explorer par rayon" tiles (Commerce X layout);
+ *  - product_selection → the selection rail (layout "Featured Products", KORA card from references/4.png);
+ *  - banner blocks → "À la une" (layout "Bueqe 01"): one numbered feature per banner, next one previewed on the right;
+ *  - image_text blocks linking to a shop (/shops/…) → shop tiles (layout "Wellina").
+ * Every image is a media-library asset or a product photo, so all of them can be replaced from the back office.
+ * Without a published home page, the same sections are filled from the catalogue.
+ */
+import Site from '../../layouts/Site.astro';
+import HeroStage from '../../components/HeroStage.tsx';
+import ProductCard from '../../components/ProductCard.astro';
+import Rail from '../../components/Rail.astro';
+import FlashSale from '../../components/FlashSale.astro';
+import { copy, money, tone } from '../../lib/copy';
+import { api, localeOf, safe } from '../../lib/server';
+const locale = localeOf(Astro.params.locale);
+if (!locale) return new Response(null, { status: 404 });
+const c = copy(locale);
+const k = api(locale);
+const home = '/' + locale;
+type Block = { type: string; media_id?: string; title?: Record<string, string>; text?: Record<string, string>; cta?: Record<string, string>; link?: string | null; product_ids?: string[] };
+type Campaign = { name: string; banner: string | null; product_ids: string[]; ends_at: string };
+type CmsPage = { data: { page: { blocks: Block[] } | null; media: Record<string, string>; campaign: Campaign | null } };
+const empty = { data: [], meta: { page: 1, last_page: 1, total: 0, demo: false } };
+const [hero, catalogue, categories, cms] = await Promise.all([
+  safe(k.hero(), { data: [], meta: { demo: false } }),
+  safe(k.catalogue('?sort=name'), empty),
+  safe(k.categories(), { data: [] }),
+  safe(k.request<CmsPage>('/api/v1/content/pages/home'), { data: { page: null, media: {}, campaign: null } } as CmsPage),
+]);
+const offers = catalogue.value.data;
+const names = Object.fromEntries(categories.value.data.map((x) => [x.slug, x.name]));
+const local = (link?: string | null) => (link && link.startsWith('/') && !/^\/(fr|en)(\/|$)/.test(link) ? home + link : link || home + '/catalogue');
+const tr = (v?: Record<string, string>) => (v ? v[locale] || v.fr || '' : '');
+
+type Tile = { title: string; text: string; image: string | null; href: string; tone: string };
+let aisles: Tile[] = [];
+let shopTiles: Tile[] = [];
+let selection = { title: c.selectionTitle, items: [] as typeof offers };
+const banners: { text: string; image: string | null; href: string; kicker: string; cta: string }[] = [];
+
+const blocks = cms.value.data.page?.blocks ?? [];
+const media = cms.value.data.media ?? {};
+if (blocks.length) {
+  for (const b of blocks) {
+    const image = b.media_id ? media[b.media_id] ?? null : null;
+    if (b.type === 'image_text') {
+      const tile = { title: tr(b.title), text: tr(b.text), image, href: local(b.link), tone: tone(b.link ?? '') };
+      if ((b.link ?? '').includes('/shops/')) shopTiles.push(tile);
+      else aisles.push(tile);
+    } else if (b.type === 'product_selection' && !selection.items.length) {
+      const byProduct = new Map(offers.map((o) => [o.product_id, o]));
+      selection = { title: tr(b.title) || c.selectionTitle, items: (b.product_ids ?? []).map((id) => byProduct.get(id)).filter((o): o is (typeof offers)[number] => Boolean(o)) };
+    } else if (b.type === 'banner') {
+      banners.push({ text: tr(b.text), image, href: local(b.link), kicker: tr(b.title) || c.bannerKicker, cta: tr(b.cta) || c.discover });
+    }
+  }
+} else {
+  // Fallback from the catalogue: product photos are still editable on each offer.
+  const count = (slug: string) => offers.filter((o) => o.category === slug).length;
+  aisles = [...categories.value.data].filter((x) => count(x.slug) > 0).sort((a, b) => count(b.slug) - count(a.slug)).slice(0, 4).map((cat) => ({
+    title: cat.name,
+    text: count(cat.slug) + ' ' + c.productsCount,
+    image: offers.find((o) => o.category === cat.slug && o.image)?.image ?? null,
+    href: home + '/catalogue?category=' + cat.slug,
+    tone: tone(cat.slug),
+  }));
+  const seen = new Set<string>();
+  selection.items = offers.filter((o) => o.image && !seen.has(o.category) && seen.add(o.category)).slice(0, 8);
+}
+// Each banner: the first sentence is its title; a link to a product brings its real price and shop.
+const features = banners.map((bn) => {
+  const [title, ...rest] = bn.text.split(/(?<=[.!?])\s+/);
+  const offer = offers.find((o) => bn.href.endsWith('/products/' + o.id)) ?? null;
+  return { ...bn, title, text: rest.join(' '), offer, aisle: offer ? names[offer.category] ?? '' : '' };
+});
+const campaign = cms.value.data.campaign;
+const byProductId = new Map(offers.map((o) => [o.product_id, o]));
+const flashItems = campaign ? campaign.product_ids.map((id) => byProductId.get(id)).filter((o): o is (typeof offers)[number] => Boolean(o)) : [];
+// Shop cover: the shop's best-selling offer (real paid sales over 90 days; without sales, its first product).
+const shopSlugs = shopTiles.map((t) => t.href.split('/shops/')[1] ?? '');
+const bestOf = Object.fromEntries(
+  await Promise.all(
+    shopSlugs.map(async (slug) => [slug, (await safe(k.catalogue('?shop=' + encodeURIComponent(slug) + '&sort=best_selling'), empty)).value.data.find((o) => o.image) ?? null] as const),
+  ),
+);
+const [flashTitle = c.flashKicker, ...flashRest] = (campaign?.banner ?? '').split(/(?<=[.!?])\s+/);
+const flashText = flashRest.join(' ');
+const failed = [hero, catalogue].some((r) => r.failed);
+---
+
+<Site locale={locale} title={c.home} active="home">
+  {failed && (
+    <div class="wrap">
+      <p class="notice error" role="alert" style="margin-top:16px">
+        {c.dataUnavailable} <a href={Astro.url.pathname} style="text-decoration:underline">{c.retry}</a>
+      </p>
+    </div>
+  )}
+  <HeroStage client:load scenes={hero.value.data as any} locale={locale} />
+
+  <section class="band" aria-label={c.trustTitle}>
+    <div class="band-track">
+      {[0, 1, 2].map((copyIndex) => (
+        <ul aria-hidden={copyIndex > 0 ? 'true' : undefined}>
+          {c.bandItems.split('|').map((x) => <li>{x}</li>)}
+        </ul>
+      ))}
+    </div>
+  </section>
+
+
+  {aisles.length > 0 && (
+    <section class="section">
+      <div class="wrap">
+        <header class="sec-head reveal">
+          <h2>{c.categoriesTitle}</h2>
+          <a class="sec-link" href={home + '/catalogue'}>{c.allAisles} →</a>
+        </header>
+        <div class="worlds">
+          {aisles.map((t) => (
+            <a class="world reveal" href={t.href}>
+              <div class="world-text">
+                <h3>{t.title}</h3>
+                <p>{t.text}</p>
+                <span>{c.exploreAisle} →</span>
+              </div>
+              {t.image && <img src={t.image} alt="" loading="lazy" decoding="async" />}
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
+  {selection.items.length > 0 && (
+    <section class="featured sheet">
+      <div class="wrap">
+        <header class="featured-head reveal">
+          <span class="kicker">{c.selectionKicker}</span>
+          <h2>{selection.title}</h2>
+          <p>{c.selectionText}</p>
+        </header>
+        <Rail locale={locale} label={selection.title}>
+          {selection.items.map((o) => (
+            <div role="listitem"><ProductCard offer={o as any} locale={locale} categoryName={names[o.category]} /></div>
+          ))}
+        </Rail>
+        <p class="featured-all"><a class="sec-link" href={home + '/catalogue'}>{c.allProducts} →</a></p>
+      </div>
+    </section>
+  )}
+
+  {features.length > 0 && (
+    <section class="feat-band" aria-label={c.bannerKicker}>
+      <div class="wrap">
+        <div class="feat" data-feat>
+          {features.map((f, i) => {
+            const next = features[(i + 1) % features.length];
+            return (
+              <article class="feat-slide" data-active={i === 0 ? 'true' : 'false'} aria-hidden={i === 0 ? undefined : 'true'}>
+                <div class="feat-main">
+                  <div class="feat-head">
+                    <span class="feat-kicker"><span class="feat-badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" /></svg>{f.kicker}</span>{f.aisle && <em>{f.aisle}</em>}</span>
+                    <h2>{f.title}</h2>
+                    {f.offer && <span class="feat-shop">{c.soldBy} <strong>{f.offer.shop.name}</strong></span>}
+                  </div>
+                  <span class="feat-num" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+                  {f.image && <img class="feat-img" src={f.image} alt="" loading="lazy" decoding="async" />}
+                  <div class="feat-foot">
+                    {f.text && <p>{f.text}</p>}
+                    <div class="feat-buy">
+                      {f.offer && <span class="feat-price">{money(f.offer.price.amount, locale)}</span>}
+                      <a class="feat-cta" href={f.href} tabindex={i === 0 ? undefined : -1}>{f.cta}</a>
+                    </div>
+                  </div>
+                </div>
+                {features.length > 1 && (
+                  <button type="button" class="feat-next" data-next tabindex={i === 0 ? undefined : -1} aria-label={c.next + ' : ' + next.title}>
+                    {next.image && <img src={next.image} alt="" loading="lazy" decoding="async" />}
+                    <span class="feat-next-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>{c.nextFeature}</span>
+                    <span class="feat-next-num" aria-hidden="true">{String(((i + 1) % features.length) + 1).padStart(2, '0')}</span>
+                  </button>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  )}
+  <script>
+    for (const root of document.querySelectorAll<HTMLElement>('[data-feat]')) {
+      const slides = [...root.querySelectorAll<HTMLElement>('.feat-slide')];
+      let current = 0;
+      const show = (n: number) => {
+        current = (n + slides.length) % slides.length;
+        slides.forEach((sl, k) => {
+          const on = k === current;
+          sl.dataset.active = String(on);
+          if (on) sl.removeAttribute('aria-hidden'); else sl.setAttribute('aria-hidden', 'true');
+          sl.querySelectorAll<HTMLElement>('a, button').forEach((el) => (on ? el.removeAttribute('tabindex') : el.setAttribute('tabindex', '-1')));
+        });
+      };
+      root.querySelectorAll('[data-next]').forEach((b) => b.addEventListener('click', () => show(current + 1)));
+    }
+  </script>
+
+  {campaign && flashItems.length > 0 && (
+    <FlashSale locale={locale} name={flashTitle.replace(/[.!]\s*$/, '')} text={flashText} endsAt={campaign.ends_at} items={flashItems} names={names} />
+  )}
+
+  {shopTiles.length > 0 && (
+    <section class="section vendors">
+      <div class="wrap">
+        <header class="sec-head reveal">
+          <div>
+            <span class="kicker">{c.shopsKicker}</span>
+            <h2>{c.shopsTitle}</h2>
+            <p>{c.shopsText}</p>
+          </div>
+          <a class="sec-link" href={home + '/shops'}>{c.allShops} →</a>
+        </header>
+        <div class="vendor-rail"><Rail locale={locale} label={c.shopsTitle}>
+          {shopTiles.map((t) => {
+            const slug = t.href.split('/shops/')[1] ?? '';
+            const items = offers.filter((o) => o.shop.slug === slug && o.image);
+            return (
+              <div role="listitem"><article class="vendor reveal">
+                <a class="vendor-cover" href={t.href} tabindex="-1" aria-hidden="true">
+                  {bestOf[slug]?.image && <img src={bestOf[slug]!.image!} alt="" loading="lazy" decoding="async" />}
+                </a>
+                <div class="vendor-body">
+                  <span class="vendor-avatar" aria-hidden="true">
+                    {t.image ? <img src={t.image} alt="" loading="lazy" decoding="async" /> : t.title.slice(0, 1)}
+                  </span>
+                  <h3>
+                    <a href={t.href}>{t.title}</a>
+                    <span class="vendor-badge" role="img" aria-label={c.verified}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.5 12.3 3.6 3.6 7.4-7.6" /></svg></span>
+                  </h3>
+                  <span class="vendor-handle">@{slug}</span>
+                  <p>{t.text}</p>
+                  <div class="vendor-foot">
+                    <span>{items.length} {c.productsCount}</span>
+                    <a class="vendor-cta" href={t.href}>{c.visitShop} <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9" /></svg></a>
+                  </div>
+                </div>
+              </article></div>
+            );
+          })}
+        </Rail></div>
+      </div>
+    </section>
+  )}
+
+</Site>

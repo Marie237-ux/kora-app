@@ -1,0 +1,71 @@
+---
+/**
+ * Flash sale, after the "Flash sale section" Pinterest board (title + countdown tiles on the left, products on the
+ * right) in KORA colours. Driven by the active CMS campaign of the home page: name, text, end date and products are
+ * set in the back office (Ventes flash); pausing the campaign hides the section. Prices come from each offer's
+ * promotion, never from the campaign text.
+ */
+import ProductCard from './ProductCard.astro';
+import Rail from './Rail.astro';
+import { copy, type Locale } from '../lib/copy';
+interface Props {
+  locale: Locale;
+  name: string;
+  text: string;
+  endsAt: string;
+  items: any[];
+  names: Record<string, string>;
+}
+const { locale, name, text, endsAt, items, names } = Astro.props;
+const c = copy(locale);
+const left = Math.max(0, Math.floor((new Date(endsAt).getTime() - Date.now()) / 1000));
+const parts = [Math.floor(left / 86400), Math.floor((left % 86400) / 3600), Math.floor((left % 3600) / 60), left % 60].map((n) => String(n).padStart(2, '0'));
+const units = [c.days, c.hours, c.minutes, c.seconds];
+---
+
+<section class="flash" aria-labelledby="flash-title">
+  <div class="wrap flash-grid">
+    <div class="flash-head">
+      <span class="flash-tag"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z" /></svg>{c.flashKicker}</span>
+      <h2 id="flash-title">{name}</h2>
+      {text && <p>{text}</p>}
+      <div class="flash-timer" data-ends={endsAt} role="timer" aria-label={c.flashEndsIn}>
+        <span class="flash-timer-label">{c.flashEndsIn}</span>
+        <div class="flash-digits">
+          {parts.map((p, i) => (
+            <span class="flash-unit">
+              <b data-part={i}>{p}</b>
+              <small>{units[i]}</small>
+            </span>
+          ))}
+        </div>
+      </div>
+      <a class="flash-cta" href={'/' + locale + '/catalogue?sort=price_asc'}>{c.flashAll} <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg></a>
+    </div>
+    <div class="flash-items">
+      <Rail locale={locale} label={name}>
+        {items.map((o) => (
+          <div role="listitem"><ProductCard offer={o} locale={locale} categoryName={names[o.category]} /></div>
+        ))}
+      </Rail>
+    </div>
+  </div>
+</section>
+
+<script>
+  for (const t of document.querySelectorAll<HTMLElement>('.flash-timer[data-ends]')) {
+    const end = new Date(t.dataset.ends!).getTime();
+    const cells = [...t.querySelectorAll<HTMLElement>('[data-part]')];
+    const tick = () => {
+      const s = Math.max(0, Math.floor((end - Date.now()) / 1000));
+      [Math.floor(s / 86400), Math.floor((s % 86400) / 3600), Math.floor((s % 3600) / 60), s % 60].forEach((n, i) => {
+        const v = String(n).padStart(2, '0');
+        if (cells[i] && cells[i].textContent !== v) cells[i].textContent = v;
+      });
+      // The sale is over: the section disappears instead of showing an expired offer.
+      if (s === 0) t.closest('.flash')?.remove();
+    };
+    tick();
+    setInterval(tick, 1000);
+  }
+</script>

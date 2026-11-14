@@ -1,0 +1,32 @@
+---
+/** Characteristic filters of the aisle or search in view (colour swatches, chips with real counts). */
+interface Props {
+  chars: { key: string; label: string; unit: string | null; options: { value: string; label: string; count: number }[]; selected: string[] }[];
+  openAll: boolean;
+}
+const { chars, openAll } = Astro.props;
+const colorHex: Record<string, string> = { noir: '#141414', blanc: '#ffffff', gris: '#9a9a96', argent: '#c9ccd1', rouge: '#c8322b', orange: '#ee7a2a', rose: '#f4b8c4', lilas: '#b9a3e3', bleu: '#3a64c8', vert: '#2f8f4e', beige: '#e7d8bf', marron: '#8a5432', dore: '#d4a84b', multicolore: 'conic-gradient(#e2543a,#ffd25a,#2f8f4e,#3a64c8,#b9a3e3,#e2543a)' };
+---
+
+{chars.map((ch, i) => (
+  <details class="fgroup" open={openAll || i < 3 || ch.selected.length > 0}>
+    <summary>{ch.label}{ch.selected.length > 0 && <span class="cat-count">{ch.selected.length}</span>}</summary>
+    {ch.key === 'couleur' ? (
+      <div class="fswatches">
+        {ch.options.map((o) => (
+          <label title={o.label + ' (' + o.count + ')'}>
+            <input type="checkbox" name={'c_' + ch.key} value={o.value} checked={ch.selected.includes(o.value)} data-auto />
+            <i style={'background:' + (colorHex[o.value] ?? '#ccc')}></i>
+            <span>{o.label}</span>
+          </label>
+        ))}
+      </div>
+    ) : (
+      <div class="fchips">
+        {ch.options.map((o) => (
+          <label><input type="checkbox" name={'c_' + ch.key} value={o.value} checked={ch.selected.includes(o.value)} data-auto /><span>{o.label}{ch.unit ? ' ' + ch.unit : ''}<small>{o.count}</small></span></label>
+        ))}
+      </div>
+    )}
+  </details>
+))}

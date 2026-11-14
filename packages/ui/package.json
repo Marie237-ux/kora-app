@@ -1,0 +1,19 @@
+{
+  "name": "@kora/ui",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "peerDependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "dependencies": {
+    "@fontsource/hanken-grotesk": "5.3.0",
+    "@fontsource/young-serif": "5.3.0",
+    "@kora/api-client": "*",
+    "@kora/design-tokens": "*"
+  }
+}

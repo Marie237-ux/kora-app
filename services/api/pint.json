@@ -1,0 +1,10 @@
+{
+    "preset": "laravel",
+    "rules": {
+        "no_multiple_statements_per_line": true,
+        "statement_indentation": true,
+        "array_indentation": true,
+        "method_chaining_indentation": true,
+        "single_line_empty_body": true
+    }
+}

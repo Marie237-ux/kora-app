@@ -1,0 +1,26 @@
+<?php
+
+return [
+    'NOT_DELIVERED' => 'Un dossier SAV s\'ouvre sur un article livré.',
+    'QUANTITY_INVALID' => 'La quantité dépasse les articles livrés ou déjà retournés pour ce dossier.',
+    'IDENTIFIERS_INVALID' => 'Indiquez exactement les numéros de série livrés concernés.',
+    'CASE_CLOSED' => 'Ce dossier est clos.',
+    'CASE_STATE' => 'Cette action n\'est pas possible à l\'étape actuelle du dossier.',
+    'ASSIGNEE_INVALID' => 'Cette personne ne peut pas suivre de dossiers SAV.',
+    'AMOUNT_INVALID' => 'Le montant doit être positif, au plus ce qui a été payé pour ces articles et ce qui reste remboursable.',
+    'RETURN_REQUIRED' => 'Les articles doivent d\'abord être rendus et réceptionnés.',
+    'CONTROL_REQUIRED' => 'Les articles rendus doivent être contrôlés avant de clore le dossier.',
+    'REFUND_NOT_PAID' => 'Le remboursement doit être réellement versé avant de clore le dossier.',
+    'NOTHING_TO_PICK_UP' => 'Tous les articles du dossier sont déjà revenus.',
+    'TRIP_EXISTS' => 'Un déplacement de ce type est déjà en cours pour ce dossier.',
+    'WAREHOUSE_INACTIVE' => 'Le dépôt est inconnu ou inactif.',
+    'EXCHANGE_NOT_DELIVERED' => 'L\'article d\'échange doit d\'abord être remis au client.',
+    'REPAIRER_REQUIRED' => 'Indiquez le fournisseur ou le réparateur.',
+    'REPAIR_STATE' => 'Cette réparation ne permet pas cette action à son étape actuelle.',
+    'REPAIR_SLIP_REQUIRED' => 'Joignez le bon de retour du réparateur.',
+    'DEFECTIVE_ONLY' => 'Seules les unités contrôlées défectueuses de ce retour peuvent repartir au fournisseur.',
+    'DECISION_RECORDED' => 'La réponse du fournisseur est déjà enregistrée.',
+    'REPAIR_USES_REPAIR_FLOW' => 'L’article du client en réparation suit la réparation ; il n’est pas contrôlé pour la revente.',
+    'REPAIR_NOT_RETURNED' => 'L’article réparé doit d’abord être rendu au client.',
+    'REPAIR_NOT_AT_WAREHOUSE' => 'L’article n’est pas dans ce dépôt : enregistrez d’abord son retour de réparation.',
+];

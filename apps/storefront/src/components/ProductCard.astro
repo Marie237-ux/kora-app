@@ -1,0 +1,63 @@
+---
+/**
+ * KORA product card, after the frosted-glass profile card found on Pinterest: glass card with a soft KORA-tinted
+ * gradient, photo with the stock badge, aisle, name (Young Serif), "Vendu par", price, then an action row
+ * (orange pill + glass square).
+ * Photo, price and stock come from the offer (editable in the back office).
+ */
+import AddToCart from './AddToCart.tsx';
+import { copy, money, type Locale } from '../lib/copy';
+interface Props {
+  offer: {
+    id: string;
+    name: string;
+    image: string | null;
+    category: string;
+    availability: 'available' | 'unconfirmed' | 'unavailable';
+    price: { amount: number };
+    compare_at_price?: number | null;
+    shop: { name: string; slug: string };
+    minimum_quantity: number;
+  };
+  locale: Locale;
+  categoryName?: string;
+}
+const { offer, locale, categoryName } = Astro.props;
+const c = copy(locale);
+const href = '/' + locale + '/products/' + offer.id;
+const was = offer.compare_at_price && offer.compare_at_price > offer.price.amount ? offer.compare_at_price : null;
+const off = was ? Math.round((1 - offer.price.amount / was) * 100) : 0;
+---
+
+<article class="kcard">
+  <div class="kcard-media">
+    <a class="kcard-img" href={href} tabindex="-1" aria-hidden="true">
+      {offer.image && <img src={offer.image} alt="" loading="lazy" decoding="async" />}
+    </a>
+    <span class={'kcard-stock' + (offer.availability === 'available' ? '' : offer.availability === 'unavailable' ? ' off' : ' warn')}>{c[offer.availability]}</span>
+    {off > 0 && <span class="kcard-off">−{off} %</span>}
+  </div>
+  <div class="kcard-body">
+    {categoryName && <span class="kcard-cat">{categoryName}</span>}
+    <h3><a href={href}>{offer.name}</a></h3>
+    <p class="kcard-shop">{c.soldBy} <a href={'/' + locale + '/shops/' + offer.shop.slug}>{offer.shop.name}</a></p>
+    <p class="kcard-prices">
+      <strong class="kcard-price">{money(offer.price.amount, locale)}</strong>
+      {was && <s class="kcard-was"><span class="sr-only">{c.wasPrice}</span>{money(was, locale)}</s>}
+    </p>
+    <div class="kcard-actions">
+      <AddToCart
+        client:visible
+        variant="pill"
+        locale={locale}
+        offerId={offer.id}
+        name={offer.name}
+        minimum={offer.minimum_quantity}
+        disabled={offer.availability === 'unavailable'}
+      />
+      <a class="kcard-go" href={href} aria-label={c.view + ' — ' + offer.name}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9" /></svg>
+      </a>
+    </div>
+  </div>
+</article>

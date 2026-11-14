@@ -1,0 +1,60 @@
+services:
+  # Service Laravel (Backend API)
+  - type: web
+    name: kora-api
+    env: php
+    buildCommand: composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+    startCommand: php artisan serve --host=0.0.0.0 --port=$PORT
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_KEY
+        generateValue: true
+      - key: APP_DEBUG
+        value: false
+      - key: APP_URL
+        value: https://kora-api.onrender.com
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        fromDatabase:
+          name: kora-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: kora-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: kora-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: kora-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: kora-db
+          property: password
+    disk:
+      name: data
+      mountPath: /opt/render/project/storage
+      sizeGB: 1
+
+  # Service Astro (Frontend)
+  - type: web
+    name: kora-frontend
+    env: node
+    buildCommand: cd apps/storefront && npm install && npm run build
+    startCommand: cd apps/storefront && node ./dist/server/entry.mjs
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: API_URL
+        value: https://kora-api.onrender.com
+
+# Base de données PostgreSQL
+databases:
+  - name: kora-db
+    databaseName: kora
+    user: kora_user

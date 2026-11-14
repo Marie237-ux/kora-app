@@ -1,0 +1,7 @@
+---
+const accepted = Astro.request.headers.get('accept-language') || 'fr';
+const saved = Astro.cookies.get('kora_locale')?.value;
+const locale =
+  saved === 'fr' || saved === 'en' ? saved : accepted.toLowerCase().startsWith('en') ? 'en' : 'fr';
+return Astro.redirect('/' + locale);
+---

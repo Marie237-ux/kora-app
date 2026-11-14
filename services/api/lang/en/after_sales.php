@@ -1,0 +1,26 @@
+<?php
+
+return [
+    'NOT_DELIVERED' => 'An after-sales case is opened on a delivered item.',
+    'QUANTITY_INVALID' => 'The quantity exceeds the items delivered or already returned for this case.',
+    'IDENTIFIERS_INVALID' => 'State exactly which delivered serial numbers are concerned.',
+    'CASE_CLOSED' => 'This case is closed.',
+    'CASE_STATE' => 'This action is not possible at the case\'s current stage.',
+    'ASSIGNEE_INVALID' => 'This person cannot follow after-sales cases.',
+    'AMOUNT_INVALID' => 'The amount must be positive, at most what was paid for these items and what is still refundable.',
+    'RETURN_REQUIRED' => 'The items must first be handed back and received.',
+    'CONTROL_REQUIRED' => 'Returned items must be controlled before closing the case.',
+    'REFUND_NOT_PAID' => 'The refund must actually be paid before closing the case.',
+    'NOTHING_TO_PICK_UP' => 'Every item of the case is already back.',
+    'TRIP_EXISTS' => 'A trip of this kind is already under way for this case.',
+    'WAREHOUSE_INACTIVE' => 'The warehouse is unknown or inactive.',
+    'EXCHANGE_NOT_DELIVERED' => 'The exchange item must first be handed to the customer.',
+    'REPAIRER_REQUIRED' => 'State the supplier or the repairer.',
+    'REPAIR_STATE' => 'This repair does not allow this action at its current stage.',
+    'REPAIR_SLIP_REQUIRED' => 'Attach the repairer’s return slip.',
+    'DEFECTIVE_ONLY' => 'Only units of this return controlled as defective can go back to the supplier.',
+    'DECISION_RECORDED' => 'The supplier’s answer is already recorded.',
+    'REPAIR_USES_REPAIR_FLOW' => 'The customer’s unit under repair follows the repair; it is not controlled for resale.',
+    'REPAIR_NOT_RETURNED' => 'The repaired item must first be given back to the customer.',
+    'REPAIR_NOT_AT_WAREHOUSE' => 'The item is not at this depot: record its return from repair first.',
+];

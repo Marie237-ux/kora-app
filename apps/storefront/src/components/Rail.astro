@@ -1,0 +1,39 @@
+---
+/** Horizontal rail with previous/next buttons (scroll-snap; the buttons only scroll, nothing is hidden without JS). */
+import { copy, type Locale } from '../lib/copy';
+interface Props {
+  locale: Locale;
+  label: string;
+}
+const { locale, label } = Astro.props;
+const c = copy(locale);
+---
+
+<div class="rail" data-rail>
+  <button type="button" class="rail-btn prev" aria-label={c.previous} data-dir="-1">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+  </button>
+  <div class="rail-track" role="list" aria-label={label}><slot /></div>
+  <button type="button" class="rail-btn next" aria-label={c.next} data-dir="1">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+  </button>
+</div>
+
+<script>
+  for (const rail of document.querySelectorAll<HTMLElement>('[data-rail]')) {
+    const track = rail.querySelector<HTMLElement>('.rail-track')!;
+    const update = () => {
+      rail.dataset.start = String(track.scrollLeft < 8);
+      rail.dataset.end = String(track.scrollLeft + track.clientWidth > track.scrollWidth - 8);
+    };
+    rail.querySelectorAll<HTMLButtonElement>('.rail-btn').forEach((b) =>
+      b.addEventListener('click', () => {
+        const step = (track.firstElementChild as HTMLElement | null)?.getBoundingClientRect().width ?? 300;
+        track.scrollBy({ left: Number(b.dataset.dir) * (step + 20), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      }),
+    );
+    track.addEventListener('scroll', update, { passive: true });
+    addEventListener('resize', update);
+    update();
+  }
+</script>

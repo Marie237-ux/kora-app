@@ -1,0 +1,40 @@
+---
+import Base from '../../../layouts/Base.astro';
+import { t } from '@kora/ui';
+import { createApi, type Locale, type Shop } from '@kora/api-client';
+const locale = Astro.params.locale as Locale;
+if (!['fr', 'en'].includes(locale)) return new Response(null, { status: 404 });
+const copy = t(locale);
+let shops: Shop[] = [];
+let failed = false;
+try {
+  shops = (
+    await createApi(import.meta.env.API_INTERNAL_URL || 'http://localhost:8000', locale).shops()
+  ).data;
+} catch {
+  failed = true;
+}
+---
+
+<Base locale={locale} title={copy.shops}>
+  <section class="section" style="border-top:0">
+    <p class="eyebrow">Douala</p>
+    <h1>{copy.shopsTitle}</h1>
+    {failed ? (
+      <p class="error">{copy.dataUnavailable}</p>
+    ) : shops.length ? (
+      <div class="shop-grid">
+        {shops.map((shop) => (
+          <article class="shop-card">
+            <h2>
+              <a href={'/' + locale + '/shops/' + shop.slug}>{shop.name}</a>
+            </h2>
+            <p>{shop.description}</p>
+          </article>
+        ))}
+      </div>
+    ) : (
+      <p class="empty">{copy.shopsEmpty}</p>
+    )}
+  </section>
+</Base>

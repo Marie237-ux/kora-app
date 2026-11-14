@@ -1,0 +1,70 @@
+---
+import Base from '../../../layouts/Base.astro';
+import ProductCard from '../../../components/ProductCard.astro';
+import { t } from '@kora/ui';
+import { ApiError, createApi, type Locale, type Shop } from '@kora/api-client';
+const locale = Astro.params.locale as Locale;
+if (!['fr', 'en'].includes(locale)) return new Response(null, { status: 404 });
+const api = createApi(import.meta.env.API_INTERNAL_URL || 'http://localhost:8000', locale),
+  copy = t(locale);
+let shop: Shop | undefined;
+let offers: Awaited<ReturnType<typeof api.catalogue>> | null = null;
+let failed = false;
+try {
+  shop = (await api.shop(Astro.params.slug || '')).data;
+  if (shop.slug !== Astro.params.slug)
+    return Astro.redirect(
+      '/' + locale + '/shops/' + encodeURIComponent(shop.slug) + Astro.url.search,
+      301,
+    );
+  const params = new URLSearchParams({
+    shop: shop.slug,
+    page: Astro.url.searchParams.get('page') ?? '1',
+  });
+  offers = await api.catalogue('?' + params);
+} catch (e) {
+  if (e instanceof ApiError && e.status === 404) return new Response(null, { status: 404 });
+  failed = true;
+}
+if (!shop && !failed) return new Response(null, { status: 404 });
+---
+
+<Base locale={locale} title={shop?.name || copy.shops}>
+  <section class="section" style="border-top:0">
+    {failed ? (
+      <p class="error">{copy.dataUnavailable}</p>
+    ) : (
+      <>
+        <p class="eyebrow">{copy.soldBy}</p>
+        <h1>{shop?.name}</h1>
+        <p>{shop?.description}</p>
+        {offers?.data.length ? (
+          <>
+            <div class="product-grid">
+              {offers.data.map((offer) => (
+                <ProductCard offer={offer} locale={locale} />
+              ))}
+            </div>
+            <nav class="row" aria-label={copy.page} style="margin-top:28px">
+              {offers.meta.page > 1 && (
+                <a class="button" href={'?page=' + (offers.meta.page - 1)}>
+                  ←
+                </a>
+              )}
+              <span>
+                {copy.page} {offers.meta.page}/{offers.meta.last_page}
+              </span>
+              {offers.meta.page < offers.meta.last_page && (
+                <a class="button" href={'?page=' + (offers.meta.page + 1)}>
+                  →
+                </a>
+              )}
+            </nav>
+          </>
+        ) : (
+          <p class="empty">{copy.catalogueEmptyHelp}</p>
+        )}
+      </>
+    )}
+  </section>
+</Base>

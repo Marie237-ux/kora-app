@@ -1,0 +1,26 @@
+{
+  "name": "@kora/storefront",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "astro dev --host localhost",
+    "build": "astro build",
+    "check": "astro check"
+  },
+  "dependencies": {
+    "astro": "7.4.4",
+    "@astrojs/react": "7.1.2",
+    "@astrojs/node": "11.1.9",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "@kora/ui": "*",
+    "@kora/design-tokens": "*",
+    "@kora/api-client": "*"
+  },
+  "devDependencies": {
+    "@astrojs/check": "0.9.12",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0"
+  }
+}

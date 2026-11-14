@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="C:\Users\DELL LATITUDE 3310\OneDrive\Bureau\MarieDigitalSolutions\KORA APP\Site Web\services\api\phpunit.pgsql.xml" tests="4" assertions="91" errors="0" failures="0" skipped="0" time="19.101890">
+    <testsuite name="Feature" tests="4" assertions="91" errors="0" failures="0" skipped="0" time="19.101890">
+      <testsuite name="Tests\Feature\PostgresConcurrencyTest" file="C:\Users\DELL LATITUDE 3310\OneDrive\Bureau\MarieDigitalSolutions\KORA APP\Site Web\services\api\tests\Feature\PostgresConcurrencyTest.php" tests="4" assertions="91" errors="0" failures="0" skipped="0" time="19.101890">
+        <testcase name="test_two_processes_contend_for_the_same_stock_without_double_reservation" file="C:\Users\DELL LATITUDE 3310\OneDrive\Bureau\MarieDigitalSolutions\KORA APP\Site Web\services\api\tests\Feature\PostgresConcurrencyTest.php" line="32" class="Tests\Feature\PostgresConcurrencyTest" classname="Tests.Feature.PostgresConcurrencyTest" assertions="26" time="5.221498"/>
+        <testcase name="test_two_verified_payment_attempts_cannot_overallocate_the_same_supplier_debt" file="C:\Users\DELL LATITUDE 3310\OneDrive\Bureau\MarieDigitalSolutions\KORA APP\Site Web\services\api\tests\Feature\PostgresConcurrencyTest.php" line="46" class="Tests\Feature\PostgresConcurrencyTest" classname="Tests.Feature.PostgresConcurrencyTest" assertions="28" time="4.609849"/>
+        <testcase name="test_two_workers_deliver_one_internal_reminder_with_one_atomic_receipt" file="C:\Users\DELL LATITUDE 3310\OneDrive\Bureau\MarieDigitalSolutions\KORA APP\Site Web\services\api\tests\Feature\PostgresConcurrencyTest.php" line="62" class="Tests\Feature\PostgresConcurrencyTest" classname="Tests.Feature.PostgresConcurrencyTest" assertions="28" time="5.446910"/>
+        <testcase name="test_reporting_snapshot_does_not_mix_an_update_committed_halfway" file="C:\Users\DELL LATITUDE 3310\OneDrive\Bureau\MarieDigitalSolutions\KORA APP\Site Web\services\api\tests\Feature\PostgresConcurrencyTest.php" line="77" class="Tests\Feature\PostgresConcurrencyTest" classname="Tests.Feature.PostgresConcurrencyTest" assertions="9" time="3.823634"/>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>

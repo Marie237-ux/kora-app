@@ -1,0 +1,2993 @@
+{
+  "_note": "Jeu de test local pour le site public (php artisan kora:demo-storefront database/demo/storefront.json --fresh). Images : photos produits de test issues de Pinterest, usage local uniquement, à supprimer avant toute mise en ligne.",
+  "categories": [
+    {
+      "slug": "sacs",
+      "name": {
+        "fr": "Sacs",
+        "en": "Bags"
+      },
+      "attributes": [
+        {
+          "key": "couleur",
+          "type": "choice",
+          "label": {
+            "fr": "Couleur",
+            "en": "Colour"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "noir",
+              "label": {
+                "fr": "Noir",
+                "en": "Black"
+              }
+            },
+            {
+              "value": "blanc",
+              "label": {
+                "fr": "Blanc",
+                "en": "White"
+              }
+            },
+            {
+              "value": "gris",
+              "label": {
+                "fr": "Gris",
+                "en": "Grey"
+              }
+            },
+            {
+              "value": "argent",
+              "label": {
+                "fr": "Argent",
+                "en": "Silver"
+              }
+            },
+            {
+              "value": "rouge",
+              "label": {
+                "fr": "Rouge",
+                "en": "Red"
+              }
+            },
+            {
+              "value": "orange",
+              "label": {
+                "fr": "Orange",
+                "en": "Orange"
+              }
+            },
+            {
+              "value": "rose",
+              "label": {
+                "fr": "Rose",
+                "en": "Pink"
+              }
+            },
+            {
+              "value": "lilas",
+              "label": {
+                "fr": "Lilas",
+                "en": "Lilac"
+              }
+            },
+            {
+              "value": "bleu",
+              "label": {
+                "fr": "Bleu",
+                "en": "Blue"
+              }
+            },
+            {
+              "value": "vert",
+              "label": {
+                "fr": "Vert",
+                "en": "Green"
+              }
+            },
+            {
+              "value": "beige",
+              "label": {
+                "fr": "Beige",
+                "en": "Beige"
+              }
+            },
+            {
+              "value": "marron",
+              "label": {
+                "fr": "Marron",
+                "en": "Brown"
+              }
+            },
+            {
+              "value": "dore",
+              "label": {
+                "fr": "Doré",
+                "en": "Gold"
+              }
+            },
+            {
+              "value": "multicolore",
+              "label": {
+                "fr": "Multicolore",
+                "en": "Multicolour"
+              }
+            }
+          ]
+        },
+        {
+          "key": "matiere",
+          "type": "choice",
+          "label": {
+            "fr": "Matière",
+            "en": "Material"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "toile",
+              "label": {
+                "fr": "Toile",
+                "en": "Canvas"
+              }
+            },
+            {
+              "value": "cuir",
+              "label": {
+                "fr": "Cuir",
+                "en": "Leather"
+              }
+            },
+            {
+              "value": "similicuir",
+              "label": {
+                "fr": "Similicuir",
+                "en": "Faux leather"
+              }
+            }
+          ]
+        },
+        {
+          "key": "format",
+          "type": "choice",
+          "label": {
+            "fr": "Format",
+            "en": "Style"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "dos",
+              "label": {
+                "fr": "Sac à dos",
+                "en": "Backpack"
+              }
+            },
+            {
+              "value": "epaule",
+              "label": {
+                "fr": "Épaule",
+                "en": "Shoulder"
+              }
+            },
+            {
+              "value": "main",
+              "label": {
+                "fr": "À main",
+                "en": "Handbag"
+              }
+            }
+          ]
+        },
+        {
+          "key": "taille",
+          "type": "choice",
+          "label": {
+            "fr": "Taille",
+            "en": "Size"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "s",
+              "label": {
+                "fr": "Petit",
+                "en": "Small"
+              }
+            },
+            {
+              "value": "m",
+              "label": {
+                "fr": "Moyen",
+                "en": "Medium"
+              }
+            },
+            {
+              "value": "l",
+              "label": {
+                "fr": "Grand",
+                "en": "Large"
+              }
+            }
+          ]
+        },
+        {
+          "key": "impermeable",
+          "type": "boolean",
+          "label": {
+            "fr": "Imperméable",
+            "en": "Water-resistant"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": []
+        },
+        {
+          "key": "origine",
+          "type": "choice",
+          "label": {
+            "fr": "Fabrication",
+            "en": "Made in"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "cameroun",
+              "label": {
+                "fr": "Cameroun",
+                "en": "Cameroon"
+              }
+            },
+            {
+              "value": "afrique",
+              "label": {
+                "fr": "Afrique",
+                "en": "Africa"
+              }
+            },
+            {
+              "value": "import",
+              "label": {
+                "fr": "Importé",
+                "en": "Imported"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "chaussures",
+      "name": {
+        "fr": "Chaussures",
+        "en": "Shoes"
+      },
+      "attributes": [
+        {
+          "key": "couleur",
+          "type": "choice",
+          "label": {
+            "fr": "Couleur",
+            "en": "Colour"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "noir",
+              "label": {
+                "fr": "Noir",
+                "en": "Black"
+              }
+            },
+            {
+              "value": "blanc",
+              "label": {
+                "fr": "Blanc",
+                "en": "White"
+              }
+            },
+            {
+              "value": "gris",
+              "label": {
+                "fr": "Gris",
+                "en": "Grey"
+              }
+            },
+            {
+              "value": "argent",
+              "label": {
+                "fr": "Argent",
+                "en": "Silver"
+              }
+            },
+            {
+              "value": "rouge",
+              "label": {
+                "fr": "Rouge",
+                "en": "Red"
+              }
+            },
+            {
+              "value": "orange",
+              "label": {
+                "fr": "Orange",
+                "en": "Orange"
+              }
+            },
+            {
+              "value": "rose",
+              "label": {
+                "fr": "Rose",
+                "en": "Pink"
+              }
+            },
+            {
+              "value": "lilas",
+              "label": {
+                "fr": "Lilas",
+                "en": "Lilac"
+              }
+            },
+            {
+              "value": "bleu",
+              "label": {
+                "fr": "Bleu",
+                "en": "Blue"
+              }
+            },
+            {
+              "value": "vert",
+              "label": {
+                "fr": "Vert",
+                "en": "Green"
+              }
+            },
+            {
+              "value": "beige",
+              "label": {
+                "fr": "Beige",
+                "en": "Beige"
+              }
+            },
+            {
+              "value": "marron",
+              "label": {
+                "fr": "Marron",
+                "en": "Brown"
+              }
+            },
+            {
+              "value": "dore",
+              "label": {
+                "fr": "Doré",
+                "en": "Gold"
+              }
+            },
+            {
+              "value": "multicolore",
+              "label": {
+                "fr": "Multicolore",
+                "en": "Multicolour"
+              }
+            }
+          ]
+        },
+        {
+          "key": "pointure",
+          "type": "choice",
+          "label": {
+            "fr": "Pointures",
+            "en": "Sizes"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "36-41",
+              "label": {
+                "fr": "36 à 41",
+                "en": "36 to 41"
+              }
+            },
+            {
+              "value": "38-45",
+              "label": {
+                "fr": "38 à 45",
+                "en": "38 to 45"
+              }
+            },
+            {
+              "value": "36-46",
+              "label": {
+                "fr": "36 à 46",
+                "en": "36 to 46"
+              }
+            }
+          ]
+        },
+        {
+          "key": "usage",
+          "type": "choice",
+          "label": {
+            "fr": "Usage",
+            "en": "Use"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "ville",
+              "label": {
+                "fr": "Ville",
+                "en": "City"
+              }
+            },
+            {
+              "value": "sport",
+              "label": {
+                "fr": "Sport",
+                "en": "Sport"
+              }
+            },
+            {
+              "value": "plage",
+              "label": {
+                "fr": "Plage",
+                "en": "Beach"
+              }
+            }
+          ]
+        },
+        {
+          "key": "genre",
+          "type": "choice",
+          "label": {
+            "fr": "Pour",
+            "en": "For"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "femme",
+              "label": {
+                "fr": "Femme",
+                "en": "Women"
+              }
+            },
+            {
+              "value": "homme",
+              "label": {
+                "fr": "Homme",
+                "en": "Men"
+              }
+            },
+            {
+              "value": "mixte",
+              "label": {
+                "fr": "Mixte",
+                "en": "Unisex"
+              }
+            }
+          ]
+        },
+        {
+          "key": "origine",
+          "type": "choice",
+          "label": {
+            "fr": "Fabrication",
+            "en": "Made in"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "cameroun",
+              "label": {
+                "fr": "Cameroun",
+                "en": "Cameroon"
+              }
+            },
+            {
+              "value": "afrique",
+              "label": {
+                "fr": "Afrique",
+                "en": "Africa"
+              }
+            },
+            {
+              "value": "import",
+              "label": {
+                "fr": "Importé",
+                "en": "Imported"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "informatique",
+      "name": {
+        "fr": "Informatique",
+        "en": "Computers"
+      },
+      "attributes": [
+        {
+          "key": "couleur",
+          "type": "choice",
+          "label": {
+            "fr": "Couleur",
+            "en": "Colour"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "noir",
+              "label": {
+                "fr": "Noir",
+                "en": "Black"
+              }
+            },
+            {
+              "value": "blanc",
+              "label": {
+                "fr": "Blanc",
+                "en": "White"
+              }
+            },
+            {
+              "value": "gris",
+              "label": {
+                "fr": "Gris",
+                "en": "Grey"
+              }
+            },
+            {
+              "value": "argent",
+              "label": {
+                "fr": "Argent",
+                "en": "Silver"
+              }
+            },
+            {
+              "value": "rouge",
+              "label": {
+                "fr": "Rouge",
+                "en": "Red"
+              }
+            },
+            {
+              "value": "orange",
+              "label": {
+                "fr": "Orange",
+                "en": "Orange"
+              }
+            },
+            {
+              "value": "rose",
+              "label": {
+                "fr": "Rose",
+                "en": "Pink"
+              }
+            },
+            {
+              "value": "lilas",
+              "label": {
+                "fr": "Lilas",
+                "en": "Lilac"
+              }
+            },
+            {
+              "value": "bleu",
+              "label": {
+                "fr": "Bleu",
+                "en": "Blue"
+              }
+            },
+            {
+              "value": "vert",
+              "label": {
+                "fr": "Vert",
+                "en": "Green"
+              }
+            },
+            {
+              "value": "beige",
+              "label": {
+                "fr": "Beige",
+                "en": "Beige"
+              }
+            },
+            {
+              "value": "marron",
+              "label": {
+                "fr": "Marron",
+                "en": "Brown"
+              }
+            },
+            {
+              "value": "dore",
+              "label": {
+                "fr": "Doré",
+                "en": "Gold"
+              }
+            },
+            {
+              "value": "multicolore",
+              "label": {
+                "fr": "Multicolore",
+                "en": "Multicolour"
+              }
+            }
+          ]
+        },
+        {
+          "key": "ecran",
+          "type": "choice",
+          "label": {
+            "fr": "Écran",
+            "en": "Screen"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "13",
+              "label": {
+                "fr": "13 pouces",
+                "en": "13 inches"
+              }
+            },
+            {
+              "value": "14",
+              "label": {
+                "fr": "14 pouces",
+                "en": "14 inches"
+              }
+            },
+            {
+              "value": "15",
+              "label": {
+                "fr": "15 pouces",
+                "en": "15 inches"
+              }
+            }
+          ]
+        },
+        {
+          "key": "memoire",
+          "type": "choice",
+          "label": {
+            "fr": "Mémoire",
+            "en": "Memory"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "8",
+              "label": {
+                "fr": "8 Go",
+                "en": "8 GB"
+              }
+            },
+            {
+              "value": "16",
+              "label": {
+                "fr": "16 Go",
+                "en": "16 GB"
+              }
+            }
+          ]
+        },
+        {
+          "key": "stockage",
+          "type": "choice",
+          "label": {
+            "fr": "Stockage",
+            "en": "Storage"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "256",
+              "label": {
+                "fr": "256 Go",
+                "en": "256 GB"
+              }
+            },
+            {
+              "value": "512",
+              "label": {
+                "fr": "512 Go",
+                "en": "512 GB"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "audio",
+      "name": {
+        "fr": "Audio",
+        "en": "Audio"
+      },
+      "attributes": [
+        {
+          "key": "couleur",
+          "type": "choice",
+          "label": {
+            "fr": "Couleur",
+            "en": "Colour"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "noir",
+              "label": {
+                "fr": "Noir",
+                "en": "Black"
+              }
+            },
+            {
+              "value": "blanc",
+              "label": {
+                "fr": "Blanc",
+                "en": "White"
+              }
+            },
+            {
+              "value": "gris",
+              "label": {
+                "fr": "Gris",
+                "en": "Grey"
+              }
+            },
+            {
+              "value": "argent",
+              "label": {
+                "fr": "Argent",
+                "en": "Silver"
+              }
+            },
+            {
+              "value": "rouge",
+              "label": {
+                "fr": "Rouge",
+                "en": "Red"
+              }
+            },
+            {
+              "value": "orange",
+              "label": {
+                "fr": "Orange",
+                "en": "Orange"
+              }
+            },
+            {
+              "value": "rose",
+              "label": {
+                "fr": "Rose",
+                "en": "Pink"
+              }
+            },
+            {
+              "value": "lilas",
+              "label": {
+                "fr": "Lilas",
+                "en": "Lilac"
+              }
+            },
+            {
+              "value": "bleu",
+              "label": {
+                "fr": "Bleu",
+                "en": "Blue"
+              }
+            },
+            {
+              "value": "vert",
+              "label": {
+                "fr": "Vert",
+                "en": "Green"
+              }
+            },
+            {
+              "value": "beige",
+              "label": {
+                "fr": "Beige",
+                "en": "Beige"
+              }
+            },
+            {
+              "value": "marron",
+              "label": {
+                "fr": "Marron",
+                "en": "Brown"
+              }
+            },
+            {
+              "value": "dore",
+              "label": {
+                "fr": "Doré",
+                "en": "Gold"
+              }
+            },
+            {
+              "value": "multicolore",
+              "label": {
+                "fr": "Multicolore",
+                "en": "Multicolour"
+              }
+            }
+          ]
+        },
+        {
+          "key": "type",
+          "type": "choice",
+          "label": {
+            "fr": "Type",
+            "en": "Type"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "casque",
+              "label": {
+                "fr": "Casque",
+                "en": "Headphones"
+              }
+            },
+            {
+              "value": "ecouteurs",
+              "label": {
+                "fr": "Écouteurs",
+                "en": "Earbuds"
+              }
+            },
+            {
+              "value": "enceinte",
+              "label": {
+                "fr": "Enceinte",
+                "en": "Speaker"
+              }
+            }
+          ]
+        },
+        {
+          "key": "autonomie",
+          "type": "choice",
+          "label": {
+            "fr": "Autonomie",
+            "en": "Battery life"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "moins-10",
+              "label": {
+                "fr": "Moins de 10 h",
+                "en": "Under 10 h"
+              }
+            },
+            {
+              "value": "10-30",
+              "label": {
+                "fr": "10 à 30 h",
+                "en": "10 to 30 h"
+              }
+            },
+            {
+              "value": "plus-30",
+              "label": {
+                "fr": "Plus de 30 h",
+                "en": "Over 30 h"
+              }
+            }
+          ]
+        },
+        {
+          "key": "reduction_bruit",
+          "type": "boolean",
+          "label": {
+            "fr": "Réduction de bruit",
+            "en": "Noise cancelling"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": []
+        },
+        {
+          "key": "etanche",
+          "type": "boolean",
+          "label": {
+            "fr": "Étanche",
+            "en": "Waterproof"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": []
+        }
+      ]
+    },
+    {
+      "slug": "montres",
+      "name": {
+        "fr": "Montres",
+        "en": "Watches"
+      },
+      "attributes": [
+        {
+          "key": "couleur",
+          "type": "choice",
+          "label": {
+            "fr": "Couleur",
+            "en": "Colour"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "noir",
+              "label": {
+                "fr": "Noir",
+                "en": "Black"
+              }
+            },
+            {
+              "value": "blanc",
+              "label": {
+                "fr": "Blanc",
+                "en": "White"
+              }
+            },
+            {
+              "value": "gris",
+              "label": {
+                "fr": "Gris",
+                "en": "Grey"
+              }
+            },
+            {
+              "value": "argent",
+              "label": {
+                "fr": "Argent",
+                "en": "Silver"
+              }
+            },
+            {
+              "value": "rouge",
+              "label": {
+                "fr": "Rouge",
+                "en": "Red"
+              }
+            },
+            {
+              "value": "orange",
+              "label": {
+                "fr": "Orange",
+                "en": "Orange"
+              }
+            },
+            {
+              "value": "rose",
+              "label": {
+                "fr": "Rose",
+                "en": "Pink"
+              }
+            },
+            {
+              "value": "lilas",
+              "label": {
+                "fr": "Lilas",
+                "en": "Lilac"
+              }
+            },
+            {
+              "value": "bleu",
+              "label": {
+                "fr": "Bleu",
+                "en": "Blue"
+              }
+            },
+            {
+              "value": "vert",
+              "label": {
+                "fr": "Vert",
+                "en": "Green"
+              }
+            },
+            {
+              "value": "beige",
+              "label": {
+                "fr": "Beige",
+                "en": "Beige"
+              }
+            },
+            {
+              "value": "marron",
+              "label": {
+                "fr": "Marron",
+                "en": "Brown"
+              }
+            },
+            {
+              "value": "dore",
+              "label": {
+                "fr": "Doré",
+                "en": "Gold"
+              }
+            },
+            {
+              "value": "multicolore",
+              "label": {
+                "fr": "Multicolore",
+                "en": "Multicolour"
+              }
+            }
+          ]
+        },
+        {
+          "key": "type",
+          "type": "choice",
+          "label": {
+            "fr": "Type",
+            "en": "Type"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "connectee",
+              "label": {
+                "fr": "Connectée",
+                "en": "Smart"
+              }
+            },
+            {
+              "value": "analogique",
+              "label": {
+                "fr": "Analogique",
+                "en": "Analogue"
+              }
+            }
+          ]
+        },
+        {
+          "key": "bracelet",
+          "type": "choice",
+          "label": {
+            "fr": "Bracelet",
+            "en": "Strap"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "acier",
+              "label": {
+                "fr": "Acier",
+                "en": "Steel"
+              }
+            },
+            {
+              "value": "silicone",
+              "label": {
+                "fr": "Silicone",
+                "en": "Silicone"
+              }
+            },
+            {
+              "value": "cuir",
+              "label": {
+                "fr": "Cuir",
+                "en": "Leather"
+              }
+            }
+          ]
+        },
+        {
+          "key": "genre",
+          "type": "choice",
+          "label": {
+            "fr": "Pour",
+            "en": "For"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "femme",
+              "label": {
+                "fr": "Femme",
+                "en": "Women"
+              }
+            },
+            {
+              "value": "homme",
+              "label": {
+                "fr": "Homme",
+                "en": "Men"
+              }
+            },
+            {
+              "value": "mixte",
+              "label": {
+                "fr": "Mixte",
+                "en": "Unisex"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "electromenager",
+      "name": {
+        "fr": "Électroménager",
+        "en": "Appliances"
+      },
+      "attributes": [
+        {
+          "key": "couleur",
+          "type": "choice",
+          "label": {
+            "fr": "Couleur",
+            "en": "Colour"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "noir",
+              "label": {
+                "fr": "Noir",
+                "en": "Black"
+              }
+            },
+            {
+              "value": "blanc",
+              "label": {
+                "fr": "Blanc",
+                "en": "White"
+              }
+            },
+            {
+              "value": "gris",
+              "label": {
+                "fr": "Gris",
+                "en": "Grey"
+              }
+            },
+            {
+              "value": "argent",
+              "label": {
+                "fr": "Argent",
+                "en": "Silver"
+              }
+            },
+            {
+              "value": "rouge",
+              "label": {
+                "fr": "Rouge",
+                "en": "Red"
+              }
+            },
+            {
+              "value": "orange",
+              "label": {
+                "fr": "Orange",
+                "en": "Orange"
+              }
+            },
+            {
+              "value": "rose",
+              "label": {
+                "fr": "Rose",
+                "en": "Pink"
+              }
+            },
+            {
+              "value": "lilas",
+              "label": {
+                "fr": "Lilas",
+                "en": "Lilac"
+              }
+            },
+            {
+              "value": "bleu",
+              "label": {
+                "fr": "Bleu",
+                "en": "Blue"
+              }
+            },
+            {
+              "value": "vert",
+              "label": {
+                "fr": "Vert",
+                "en": "Green"
+              }
+            },
+            {
+              "value": "beige",
+              "label": {
+                "fr": "Beige",
+                "en": "Beige"
+              }
+            },
+            {
+              "value": "marron",
+              "label": {
+                "fr": "Marron",
+                "en": "Brown"
+              }
+            },
+            {
+              "value": "dore",
+              "label": {
+                "fr": "Doré",
+                "en": "Gold"
+              }
+            },
+            {
+              "value": "multicolore",
+              "label": {
+                "fr": "Multicolore",
+                "en": "Multicolour"
+              }
+            }
+          ]
+        },
+        {
+          "key": "puissance",
+          "type": "choice",
+          "label": {
+            "fr": "Puissance",
+            "en": "Power"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "moins-1000",
+              "label": {
+                "fr": "Moins de 1 000 W",
+                "en": "Under 1,000 W"
+              }
+            },
+            {
+              "value": "plus-1000",
+              "label": {
+                "fr": "1 000 W et plus",
+                "en": "1,000 W and over"
+              }
+            }
+          ]
+        },
+        {
+          "key": "piece",
+          "type": "choice",
+          "label": {
+            "fr": "Pièce",
+            "en": "Room"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "cuisine",
+              "label": {
+                "fr": "Cuisine",
+                "en": "Kitchen"
+              }
+            },
+            {
+              "value": "salon",
+              "label": {
+                "fr": "Salon",
+                "en": "Living room"
+              }
+            },
+            {
+              "value": "chambre",
+              "label": {
+                "fr": "Chambre",
+                "en": "Bedroom"
+              }
+            }
+          ]
+        },
+        {
+          "key": "garantie",
+          "type": "choice",
+          "label": {
+            "fr": "Garantie",
+            "en": "Warranty"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "6",
+              "label": {
+                "fr": "6 mois",
+                "en": "6 months"
+              }
+            },
+            {
+              "value": "12",
+              "label": {
+                "fr": "12 mois",
+                "en": "12 months"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "decoration",
+      "name": {
+        "fr": "Décoration",
+        "en": "Decor"
+      },
+      "attributes": [
+        {
+          "key": "couleur",
+          "type": "choice",
+          "label": {
+            "fr": "Couleur",
+            "en": "Colour"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "noir",
+              "label": {
+                "fr": "Noir",
+                "en": "Black"
+              }
+            },
+            {
+              "value": "blanc",
+              "label": {
+                "fr": "Blanc",
+                "en": "White"
+              }
+            },
+            {
+              "value": "gris",
+              "label": {
+                "fr": "Gris",
+                "en": "Grey"
+              }
+            },
+            {
+              "value": "argent",
+              "label": {
+                "fr": "Argent",
+                "en": "Silver"
+              }
+            },
+            {
+              "value": "rouge",
+              "label": {
+                "fr": "Rouge",
+                "en": "Red"
+              }
+            },
+            {
+              "value": "orange",
+              "label": {
+                "fr": "Orange",
+                "en": "Orange"
+              }
+            },
+            {
+              "value": "rose",
+              "label": {
+                "fr": "Rose",
+                "en": "Pink"
+              }
+            },
+            {
+              "value": "lilas",
+              "label": {
+                "fr": "Lilas",
+                "en": "Lilac"
+              }
+            },
+            {
+              "value": "bleu",
+              "label": {
+                "fr": "Bleu",
+                "en": "Blue"
+              }
+            },
+            {
+              "value": "vert",
+              "label": {
+                "fr": "Vert",
+                "en": "Green"
+              }
+            },
+            {
+              "value": "beige",
+              "label": {
+                "fr": "Beige",
+                "en": "Beige"
+              }
+            },
+            {
+              "value": "marron",
+              "label": {
+                "fr": "Marron",
+                "en": "Brown"
+              }
+            },
+            {
+              "value": "dore",
+              "label": {
+                "fr": "Doré",
+                "en": "Gold"
+              }
+            },
+            {
+              "value": "multicolore",
+              "label": {
+                "fr": "Multicolore",
+                "en": "Multicolour"
+              }
+            }
+          ]
+        },
+        {
+          "key": "matiere",
+          "type": "choice",
+          "label": {
+            "fr": "Matière",
+            "en": "Material"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "ceramique",
+              "label": {
+                "fr": "Céramique",
+                "en": "Ceramic"
+              }
+            },
+            {
+              "value": "laiton",
+              "label": {
+                "fr": "Laiton",
+                "en": "Brass"
+              }
+            },
+            {
+              "value": "bois",
+              "label": {
+                "fr": "Bois",
+                "en": "Wood"
+              }
+            }
+          ]
+        },
+        {
+          "key": "piece",
+          "type": "choice",
+          "label": {
+            "fr": "Pièce",
+            "en": "Room"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "cuisine",
+              "label": {
+                "fr": "Cuisine",
+                "en": "Kitchen"
+              }
+            },
+            {
+              "value": "salon",
+              "label": {
+                "fr": "Salon",
+                "en": "Living room"
+              }
+            },
+            {
+              "value": "chambre",
+              "label": {
+                "fr": "Chambre",
+                "en": "Bedroom"
+              }
+            }
+          ]
+        },
+        {
+          "key": "origine",
+          "type": "choice",
+          "label": {
+            "fr": "Fabrication",
+            "en": "Made in"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "cameroun",
+              "label": {
+                "fr": "Cameroun",
+                "en": "Cameroon"
+              }
+            },
+            {
+              "value": "afrique",
+              "label": {
+                "fr": "Afrique",
+                "en": "Africa"
+              }
+            },
+            {
+              "value": "import",
+              "label": {
+                "fr": "Importé",
+                "en": "Imported"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "parfums",
+      "name": {
+        "fr": "Parfums",
+        "en": "Fragrances"
+      },
+      "attributes": [
+        {
+          "key": "famille",
+          "type": "choice",
+          "label": {
+            "fr": "Famille olfactive",
+            "en": "Scent family"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "ambree",
+              "label": {
+                "fr": "Ambrée",
+                "en": "Amber"
+              }
+            },
+            {
+              "value": "florale",
+              "label": {
+                "fr": "Florale",
+                "en": "Floral"
+              }
+            },
+            {
+              "value": "boisee",
+              "label": {
+                "fr": "Boisée",
+                "en": "Woody"
+              }
+            },
+            {
+              "value": "fraiche",
+              "label": {
+                "fr": "Fraîche",
+                "en": "Fresh"
+              }
+            }
+          ]
+        },
+        {
+          "key": "contenance",
+          "type": "choice",
+          "label": {
+            "fr": "Contenance",
+            "en": "Size"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "50",
+              "label": {
+                "fr": "50 ml",
+                "en": "50 ml"
+              }
+            },
+            {
+              "value": "100",
+              "label": {
+                "fr": "100 ml",
+                "en": "100 ml"
+              }
+            }
+          ]
+        },
+        {
+          "key": "genre",
+          "type": "choice",
+          "label": {
+            "fr": "Pour",
+            "en": "For"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "femme",
+              "label": {
+                "fr": "Femme",
+                "en": "Women"
+              }
+            },
+            {
+              "value": "homme",
+              "label": {
+                "fr": "Homme",
+                "en": "Men"
+              }
+            },
+            {
+              "value": "mixte",
+              "label": {
+                "fr": "Mixte",
+                "en": "Unisex"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "slug": "maquillage",
+      "name": {
+        "fr": "Maquillage",
+        "en": "Makeup"
+      },
+      "attributes": [
+        {
+          "key": "couleur",
+          "type": "choice",
+          "label": {
+            "fr": "Couleur",
+            "en": "Colour"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "noir",
+              "label": {
+                "fr": "Noir",
+                "en": "Black"
+              }
+            },
+            {
+              "value": "blanc",
+              "label": {
+                "fr": "Blanc",
+                "en": "White"
+              }
+            },
+            {
+              "value": "gris",
+              "label": {
+                "fr": "Gris",
+                "en": "Grey"
+              }
+            },
+            {
+              "value": "argent",
+              "label": {
+                "fr": "Argent",
+                "en": "Silver"
+              }
+            },
+            {
+              "value": "rouge",
+              "label": {
+                "fr": "Rouge",
+                "en": "Red"
+              }
+            },
+            {
+              "value": "orange",
+              "label": {
+                "fr": "Orange",
+                "en": "Orange"
+              }
+            },
+            {
+              "value": "rose",
+              "label": {
+                "fr": "Rose",
+                "en": "Pink"
+              }
+            },
+            {
+              "value": "lilas",
+              "label": {
+                "fr": "Lilas",
+                "en": "Lilac"
+              }
+            },
+            {
+              "value": "bleu",
+              "label": {
+                "fr": "Bleu",
+                "en": "Blue"
+              }
+            },
+            {
+              "value": "vert",
+              "label": {
+                "fr": "Vert",
+                "en": "Green"
+              }
+            },
+            {
+              "value": "beige",
+              "label": {
+                "fr": "Beige",
+                "en": "Beige"
+              }
+            },
+            {
+              "value": "marron",
+              "label": {
+                "fr": "Marron",
+                "en": "Brown"
+              }
+            },
+            {
+              "value": "dore",
+              "label": {
+                "fr": "Doré",
+                "en": "Gold"
+              }
+            },
+            {
+              "value": "multicolore",
+              "label": {
+                "fr": "Multicolore",
+                "en": "Multicolour"
+              }
+            }
+          ]
+        },
+        {
+          "key": "fini",
+          "type": "choice",
+          "label": {
+            "fr": "Fini",
+            "en": "Finish"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "mat",
+              "label": {
+                "fr": "Mat",
+                "en": "Matte"
+              }
+            },
+            {
+              "value": "brillant",
+              "label": {
+                "fr": "Brillant",
+                "en": "Gloss"
+              }
+            }
+          ]
+        },
+        {
+          "key": "longue_tenue",
+          "type": "boolean",
+          "label": {
+            "fr": "Longue tenue",
+            "en": "Long-wear"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": []
+        }
+      ]
+    },
+    {
+      "slug": "mobilier",
+      "name": {
+        "fr": "Mobilier",
+        "en": "Furniture"
+      },
+      "attributes": [
+        {
+          "key": "couleur",
+          "type": "choice",
+          "label": {
+            "fr": "Couleur",
+            "en": "Colour"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "noir",
+              "label": {
+                "fr": "Noir",
+                "en": "Black"
+              }
+            },
+            {
+              "value": "blanc",
+              "label": {
+                "fr": "Blanc",
+                "en": "White"
+              }
+            },
+            {
+              "value": "gris",
+              "label": {
+                "fr": "Gris",
+                "en": "Grey"
+              }
+            },
+            {
+              "value": "argent",
+              "label": {
+                "fr": "Argent",
+                "en": "Silver"
+              }
+            },
+            {
+              "value": "rouge",
+              "label": {
+                "fr": "Rouge",
+                "en": "Red"
+              }
+            },
+            {
+              "value": "orange",
+              "label": {
+                "fr": "Orange",
+                "en": "Orange"
+              }
+            },
+            {
+              "value": "rose",
+              "label": {
+                "fr": "Rose",
+                "en": "Pink"
+              }
+            },
+            {
+              "value": "lilas",
+              "label": {
+                "fr": "Lilas",
+                "en": "Lilac"
+              }
+            },
+            {
+              "value": "bleu",
+              "label": {
+                "fr": "Bleu",
+                "en": "Blue"
+              }
+            },
+            {
+              "value": "vert",
+              "label": {
+                "fr": "Vert",
+                "en": "Green"
+              }
+            },
+            {
+              "value": "beige",
+              "label": {
+                "fr": "Beige",
+                "en": "Beige"
+              }
+            },
+            {
+              "value": "marron",
+              "label": {
+                "fr": "Marron",
+                "en": "Brown"
+              }
+            },
+            {
+              "value": "dore",
+              "label": {
+                "fr": "Doré",
+                "en": "Gold"
+              }
+            },
+            {
+              "value": "multicolore",
+              "label": {
+                "fr": "Multicolore",
+                "en": "Multicolour"
+              }
+            }
+          ]
+        },
+        {
+          "key": "matiere",
+          "type": "choice",
+          "label": {
+            "fr": "Matière",
+            "en": "Material"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "cuir",
+              "label": {
+                "fr": "Cuir",
+                "en": "Leather"
+              }
+            },
+            {
+              "value": "tissu",
+              "label": {
+                "fr": "Tissu",
+                "en": "Fabric"
+              }
+            },
+            {
+              "value": "bois",
+              "label": {
+                "fr": "Bois",
+                "en": "Wood"
+              }
+            }
+          ]
+        },
+        {
+          "key": "piece",
+          "type": "choice",
+          "label": {
+            "fr": "Pièce",
+            "en": "Room"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "salon",
+              "label": {
+                "fr": "Salon",
+                "en": "Living room"
+              }
+            },
+            {
+              "value": "chambre",
+              "label": {
+                "fr": "Chambre",
+                "en": "Bedroom"
+              }
+            }
+          ]
+        },
+        {
+          "key": "livre_monte",
+          "type": "boolean",
+          "label": {
+            "fr": "Livré monté",
+            "en": "Delivered assembled"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": []
+        },
+        {
+          "key": "origine",
+          "type": "choice",
+          "label": {
+            "fr": "Fabrication",
+            "en": "Made in"
+          },
+          "unit": null,
+          "required": false,
+          "filterable": true,
+          "options": [
+            {
+              "value": "cameroun",
+              "label": {
+                "fr": "Cameroun",
+                "en": "Cameroon"
+              }
+            },
+            {
+              "value": "afrique",
+              "label": {
+                "fr": "Afrique",
+                "en": "Africa"
+              }
+            },
+            {
+              "value": "import",
+              "label": {
+                "fr": "Importé",
+                "en": "Imported"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "shops": [
+    {
+      "slug": "akwa-style",
+      "name": "Akwa Style",
+      "description": {
+        "fr": "Mode, sacs et chaussures, boutique du marché d’Akwa.",
+        "en": "Fashion, bags and shoes from the Akwa market."
+      },
+      "products": [
+        {
+          "slug": "sac-a-dos-urbain-orange",
+          "category": "sacs",
+          "price": 18500,
+          "image": "images/sac-a-dos-orange.png",
+          "name": {
+            "fr": "Sac à dos urbain 22 L, orange",
+            "en": "Urban backpack 22 L, orange"
+          },
+          "description": {
+            "fr": "Toile déperlante, poche avant zippée, dos matelassé et bretelles réglables. Format cahier A4.",
+            "en": "Water-repellent canvas, zipped front pocket, padded back and adjustable straps. Fits A4 notebooks."
+          },
+          "alt": {
+            "fr": "Sac à dos orange vu de face",
+            "en": "Orange backpack, front view"
+          },
+          "attributes": {
+            "couleur": "orange",
+            "matiere": "toile",
+            "format": "dos",
+            "taille": "m",
+            "impermeable": true,
+            "origine": "import"
+          }
+        },
+        {
+          "slug": "sac-a-dos-classique-blanc",
+          "category": "sacs",
+          "price": 16500,
+          "image": "images/sac-a-dos-blanc.png",
+          "name": {
+            "fr": "Sac à dos classique blanc et noir",
+            "en": "Classic backpack, white and black"
+          },
+          "description": {
+            "fr": "Similicuir blanc, fond noir renforcé, compartiment ordinateur 14 pouces.",
+            "en": "White faux leather, reinforced black base, 14-inch laptop sleeve."
+          },
+          "alt": {
+            "fr": "Sac à dos blanc à fond noir",
+            "en": "White backpack with black base"
+          },
+          "attributes": {
+            "couleur": "blanc",
+            "matiere": "similicuir",
+            "format": "dos",
+            "taille": "l",
+            "impermeable": false,
+            "origine": "import"
+          }
+        },
+        {
+          "slug": "sac-epaule-cuir-rouge",
+          "category": "sacs",
+          "price": 24000,
+          "image": "images/sac-epaule-rouge.png",
+          "name": {
+            "fr": "Sac épaule cuir rouge",
+            "en": "Red leather shoulder bag"
+          },
+          "description": {
+            "fr": "Cuir lisse rouge, fermeture aimantée, bandoulière réglable et doublure coton.",
+            "en": "Smooth red leather, magnetic closure, adjustable strap and cotton lining."
+          },
+          "alt": {
+            "fr": "Sac à main rouge à anse",
+            "en": "Red handbag with handle"
+          },
+          "attributes": {
+            "couleur": "rouge",
+            "matiere": "cuir",
+            "format": "epaule",
+            "taille": "s",
+            "impermeable": false,
+            "origine": "cameroun"
+          }
+        },
+        {
+          "slug": "baskets-retro-multicolores",
+          "category": "chaussures",
+          "price": 32000,
+          "promotion_price": 28500,
+          "image": "images/baskets-retro.png",
+          "name": {
+            "fr": "Baskets rétro multicolores",
+            "en": "Retro colour-block sneakers"
+          },
+          "description": {
+            "fr": "Dessus daim et mesh, semelle gomme, pointures 38 à 45.",
+            "en": "Suede and mesh upper, gum sole, sizes 38 to 45."
+          },
+          "alt": {
+            "fr": "Basket rétro verte, bleue et jaune",
+            "en": "Retro sneaker in green, blue and yellow"
+          },
+          "attributes": {
+            "couleur": "multicolore",
+            "pointure": "38-45",
+            "usage": "ville",
+            "genre": "mixte",
+            "origine": "import"
+          }
+        },
+        {
+          "slug": "baskets-blanches-cuir",
+          "category": "chaussures",
+          "price": 27000,
+          "image": "images/baskets-blanches.png",
+          "name": {
+            "fr": "Baskets blanches en cuir",
+            "en": "White leather sneakers"
+          },
+          "description": {
+            "fr": "Cuir grainé blanc, semelle cousue, lacets cirés. Pointures 36 à 46.",
+            "en": "White grained leather, stitched sole, waxed laces. Sizes 36 to 46."
+          },
+          "alt": {
+            "fr": "Basket blanche en cuir",
+            "en": "White leather sneaker"
+          },
+          "attributes": {
+            "couleur": "blanc",
+            "pointure": "36-46",
+            "usage": "ville",
+            "genre": "mixte",
+            "origine": "afrique"
+          }
+        },
+        {
+          "slug": "baskets-running-pastel",
+          "category": "chaussures",
+          "price": 35000,
+          "image": "images/baskets-pastel.png",
+          "name": {
+            "fr": "Baskets running pastel",
+            "en": "Pastel running sneakers"
+          },
+          "description": {
+            "fr": "Mesh respirant, semelle amortie, coloris pêche et lilas. Pointures 36 à 44.",
+            "en": "Breathable mesh, cushioned sole, peach and lilac colourway. Sizes 36 to 44."
+          },
+          "alt": {
+            "fr": "Basket de course pêche, lilas et bleu",
+            "en": "Peach, lilac and blue running sneaker"
+          },
+          "attributes": {
+            "couleur": "rose",
+            "pointure": "36-41",
+            "usage": "sport",
+            "genre": "femme",
+            "origine": "import"
+          }
+        }
+      ],
+      "city": "Douala",
+      "district": "Akwa"
+    },
+    {
+      "slug": "bonapriso-tech",
+      "name": "Bonapriso Tech",
+      "description": {
+        "fr": "Informatique, audio et montres, garantis en boutique à Bonapriso.",
+        "en": "Computers, audio and watches, with in-store warranty in Bonapriso."
+      },
+      "products": [
+        {
+          "slug": "ordinateur-portable-15",
+          "category": "informatique",
+          "price": 345000,
+          "image": "images/ordinateur-portable.png",
+          "name": {
+            "fr": "Ordinateur portable 15 pouces, 8 Go",
+            "en": "15-inch laptop, 8 GB"
+          },
+          "description": {
+            "fr": "Écran 15,6 pouces Full HD, 8 Go de mémoire, SSD 512 Go, clavier AZERTY rétroéclairé.",
+            "en": "15.6-inch Full HD display, 8 GB memory, 512 GB SSD, backlit keyboard."
+          },
+          "alt": {
+            "fr": "Ordinateur portable argenté ouvert",
+            "en": "Open silver laptop"
+          },
+          "warranty": {
+            "fr": "Garantie boutique 12 mois",
+            "en": "12-month shop warranty"
+          },
+          "attributes": {
+            "couleur": "argent",
+            "ecran": "15",
+            "memoire": "8",
+            "stockage": "512"
+          }
+        },
+        {
+          "slug": "ecouteurs-sans-fil-noirs",
+          "category": "audio",
+          "price": 29500,
+          "image": "images/ecouteurs-noirs.png",
+          "name": {
+            "fr": "Écouteurs sans fil à réduction de bruit",
+            "en": "Noise-cancelling wireless earbuds"
+          },
+          "description": {
+            "fr": "Réduction de bruit active, 30 heures avec le boîtier, résistants à la transpiration.",
+            "en": "Active noise cancelling, 30 hours with the case, sweat resistant."
+          },
+          "alt": {
+            "fr": "Écouteurs noirs dans leur boîtier ouvert",
+            "en": "Black earbuds in their open case"
+          },
+          "attributes": {
+            "couleur": "noir",
+            "type": "ecouteurs",
+            "autonomie": "10-30",
+            "reduction_bruit": true,
+            "etanche": true
+          }
+        },
+        {
+          "slug": "casque-bluetooth-lilas",
+          "category": "audio",
+          "price": 42000,
+          "promotion_price": 36900,
+          "image": "images/casque-lilas.png",
+          "name": {
+            "fr": "Casque Bluetooth lilas",
+            "en": "Lilac Bluetooth headphones"
+          },
+          "description": {
+            "fr": "Coussinets en mousse à mémoire, 40 heures d’autonomie, pliable, câble inclus.",
+            "en": "Memory-foam cushions, 40-hour battery, foldable, cable included."
+          },
+          "alt": {
+            "fr": "Casque audio lilas",
+            "en": "Lilac headphones"
+          },
+          "attributes": {
+            "couleur": "lilas",
+            "type": "casque",
+            "autonomie": "plus-30",
+            "reduction_bruit": false,
+            "etanche": false
+          }
+        },
+        {
+          "slug": "casque-argent-reduction-bruit",
+          "category": "audio",
+          "price": 58000,
+          "image": "images/casque-argent.png",
+          "name": {
+            "fr": "Casque argent à réduction de bruit",
+            "en": "Silver noise-cancelling headphones"
+          },
+          "description": {
+            "fr": "Arceau en maille, coques aluminium, réduction de bruit active et mode transparence.",
+            "en": "Mesh headband, aluminium cups, active noise cancelling and transparency mode."
+          },
+          "alt": {
+            "fr": "Casque audio argent et blanc",
+            "en": "Silver and white headphones"
+          },
+          "attributes": {
+            "couleur": "argent",
+            "type": "casque",
+            "autonomie": "10-30",
+            "reduction_bruit": true,
+            "etanche": false
+          }
+        },
+        {
+          "slug": "montre-connectee-blanche",
+          "category": "montres",
+          "price": 38000,
+          "image": "images/montre-connectee.png",
+          "name": {
+            "fr": "Montre connectée, bracelet blanc",
+            "en": "Smartwatch, white strap"
+          },
+          "description": {
+            "fr": "Écran 1,8 pouce, appels Bluetooth, suivi du sommeil et du rythme cardiaque, 7 jours d’autonomie.",
+            "en": "1.8-inch display, Bluetooth calls, sleep and heart-rate tracking, 7-day battery."
+          },
+          "alt": {
+            "fr": "Montre connectée à bracelet blanc",
+            "en": "Smartwatch with white strap"
+          },
+          "attributes": {
+            "couleur": "blanc",
+            "type": "connectee",
+            "bracelet": "silicone",
+            "genre": "mixte"
+          }
+        },
+        {
+          "slug": "montre-acier-cadran-blanc",
+          "category": "montres",
+          "price": 45000,
+          "image": "images/montre-acier.png",
+          "name": {
+            "fr": "Montre acier à cadran blanc",
+            "en": "Steel watch, white dial"
+          },
+          "description": {
+            "fr": "Boîtier 40 mm en acier, mouvement à quartz, bracelet maille milanaise, étanche 5 ATM.",
+            "en": "40 mm steel case, quartz movement, Milanese strap, water resistant to 5 ATM."
+          },
+          "alt": {
+            "fr": "Montre en acier à cadran blanc",
+            "en": "Steel watch with white dial"
+          },
+          "attributes": {
+            "couleur": "argent",
+            "type": "analogique",
+            "bracelet": "acier",
+            "genre": "homme"
+          }
+        },
+        {
+          "slug": "enceinte-portable-noire",
+          "category": "audio",
+          "price": 24500,
+          "image": "images/enceinte-portable.png",
+          "name": {
+            "fr": "Enceinte portable étanche",
+            "en": "Waterproof portable speaker"
+          },
+          "description": {
+            "fr": "Son puissant, étanche IP67, 5 heures d’autonomie, dragonne intégrée.",
+            "en": "Powerful sound, IP67 waterproof, 5-hour battery, built-in strap."
+          },
+          "alt": {
+            "fr": "Enceinte portable noire",
+            "en": "Black portable speaker"
+          },
+          "attributes": {
+            "couleur": "noir",
+            "type": "enceinte",
+            "autonomie": "moins-10",
+            "reduction_bruit": false,
+            "etanche": true
+          }
+        }
+      ],
+      "city": "Douala",
+      "district": "Bonapriso"
+    },
+    {
+      "slug": "deido-maison",
+      "name": "Deïdo Maison",
+      "description": {
+        "fr": "Cuisine, décoration et mobilier pour la maison, à Deïdo.",
+        "en": "Kitchen, decor and furniture for the home, in Deïdo."
+      },
+      "products": [
+        {
+          "slug": "fauteuil-cuir-cognac",
+          "category": "mobilier",
+          "price": 165000,
+          "image": "images/fauteuil-cuir.png",
+          "name": {
+            "fr": "Fauteuil en cuir cognac",
+            "en": "Cognac leather armchair"
+          },
+          "description": {
+            "fr": "Assise généreuse en cuir cognac, pieds en bois foncé. Livré monté à Douala.",
+            "en": "Generous cognac leather seat, dark wood legs. Delivered assembled in Douala."
+          },
+          "alt": {
+            "fr": "Fauteuil en cuir cognac à pieds en bois",
+            "en": "Cognac leather armchair with wooden legs"
+          },
+          "warranty": {
+            "fr": "Garantie boutique 12 mois",
+            "en": "12-month shop warranty"
+          },
+          "attributes": {
+            "couleur": "marron",
+            "matiere": "cuir",
+            "piece": "salon",
+            "livre_monte": true,
+            "origine": "cameroun"
+          }
+        },
+        {
+          "slug": "bouilloire-inox-1-7-l",
+          "category": "electromenager",
+          "price": 19500,
+          "image": "images/bouilloire-inox.png",
+          "name": {
+            "fr": "Bouilloire inox 1,7 L",
+            "en": "Stainless kettle 1.7 L"
+          },
+          "description": {
+            "fr": "Corps en acier brossé, poignée noire, arrêt automatique, 2 000 W.",
+            "en": "Brushed steel body, black handle, auto shut-off, 2,000 W."
+          },
+          "alt": {
+            "fr": "Bouilloire électrique en inox",
+            "en": "Stainless electric kettle"
+          },
+          "attributes": {
+            "couleur": "argent",
+            "puissance": "plus-1000",
+            "piece": "cuisine",
+            "garantie": "12"
+          }
+        },
+        {
+          "slug": "lampe-de-chevet-laiton",
+          "category": "decoration",
+          "price": 22000,
+          "image": "images/lampe-chevet.png",
+          "name": {
+            "fr": "Lampe de chevet laiton",
+            "en": "Brass bedside lamp"
+          },
+          "description": {
+            "fr": "Pied en laiton tourné, abat-jour en tissu crème. Hauteur 48 cm.",
+            "en": "Turned brass base, cream fabric shade. Height 48 cm."
+          },
+          "alt": {
+            "fr": "Lampe à pied laiton et abat-jour crème",
+            "en": "Brass lamp with cream shade"
+          },
+          "attributes": {
+            "couleur": "dore",
+            "matiere": "laiton",
+            "piece": "chambre",
+            "origine": "afrique"
+          }
+        },
+        {
+          "slug": "blender-inox-1-5-l",
+          "category": "electromenager",
+          "price": 39500,
+          "image": "images/blender-inox.png",
+          "name": {
+            "fr": "Blender inox 1,5 L",
+            "en": "Stainless blender 1.5 L"
+          },
+          "description": {
+            "fr": "Bol en verre 1,5 L, 6 lames inox, fonction glace pilée, 800 W.",
+            "en": "1.5 L glass jar, 6 stainless blades, ice-crush setting, 800 W."
+          },
+          "alt": {
+            "fr": "Blender à bol en verre et base inox",
+            "en": "Blender with glass jar and stainless base"
+          },
+          "attributes": {
+            "couleur": "argent",
+            "puissance": "moins-1000",
+            "piece": "cuisine",
+            "garantie": "12"
+          }
+        },
+        {
+          "slug": "ventilateur-sur-pied-40",
+          "category": "electromenager",
+          "price": 31000,
+          "image": "images/ventilateur.png",
+          "name": {
+            "fr": "Ventilateur sur pied 40 cm",
+            "en": "Pedestal fan 40 cm"
+          },
+          "description": {
+            "fr": "Trois vitesses, oscillation, hauteur réglable de 110 à 130 cm, silencieux.",
+            "en": "Three speeds, oscillation, height adjustable from 110 to 130 cm, quiet."
+          },
+          "alt": {
+            "fr": "Ventilateur blanc sur pied",
+            "en": "White pedestal fan"
+          },
+          "attributes": {
+            "couleur": "blanc",
+            "puissance": "moins-1000",
+            "piece": "chambre",
+            "garantie": "6"
+          }
+        },
+        {
+          "slug": "vase-terracotta",
+          "category": "decoration",
+          "price": 14000,
+          "image": "images/vase-terracotta.png",
+          "name": {
+            "fr": "Vase terracotta et fleurs séchées",
+            "en": "Terracotta vase with dried flowers"
+          },
+          "description": {
+            "fr": "Vase en céramique mate, bouquet de fleurs séchées inclus. Hauteur 32 cm.",
+            "en": "Matte ceramic vase, dried bouquet included. Height 32 cm."
+          },
+          "alt": {
+            "fr": "Vase rond terracotta avec fleurs séchées",
+            "en": "Round terracotta vase with dried flowers"
+          },
+          "attributes": {
+            "couleur": "orange",
+            "matiere": "ceramique",
+            "piece": "salon",
+            "origine": "cameroun"
+          }
+        }
+      ],
+      "city": "Douala",
+      "district": "Deïdo"
+    },
+    {
+      "slug": "makepe-beaute",
+      "name": "Makepe Beauté",
+      "description": {
+        "fr": "Parfums et soins sélectionnés, boutique de Makepe.",
+        "en": "Selected fragrances and skincare, from Makepe."
+      },
+      "products": [
+        {
+          "slug": "eau-de-parfum-ambree-100",
+          "category": "parfums",
+          "price": 46000,
+          "image": "images/parfum-ambre.png",
+          "name": {
+            "fr": "Eau de parfum ambrée 100 ml",
+            "en": "Amber eau de parfum 100 ml"
+          },
+          "description": {
+            "fr": "Notes d’ambre, de vanille et de bois de santal. Flacon 100 ml avec bouchon doré.",
+            "en": "Amber, vanilla and sandalwood notes. 100 ml bottle with gold cap."
+          },
+          "alt": {
+            "fr": "Flacon de parfum ambré",
+            "en": "Amber perfume bottle"
+          },
+          "attributes": {
+            "famille": "ambree",
+            "contenance": "100",
+            "genre": "mixte"
+          }
+        },
+        {
+          "slug": "eau-de-parfum-florale-50",
+          "category": "parfums",
+          "price": 32500,
+          "image": "images/parfum-floral.png",
+          "name": {
+            "fr": "Eau de parfum florale 50 ml",
+            "en": "Floral eau de parfum 50 ml"
+          },
+          "description": {
+            "fr": "Pivoine, rose et musc blanc. Flacon 50 ml.",
+            "en": "Peony, rose and white musk. 50 ml bottle."
+          },
+          "alt": {
+            "fr": "Flacon de parfum rose",
+            "en": "Pink perfume bottle"
+          },
+          "attributes": {
+            "famille": "florale",
+            "contenance": "50",
+            "genre": "femme"
+          }
+        },
+        {
+          "slug": "eau-de-parfum-boisee-50",
+          "category": "parfums",
+          "price": 29000,
+          "image": "images/parfum-degrade.png",
+          "name": {
+            "fr": "Eau de parfum boisée 50 ml",
+            "en": "Woody eau de parfum 50 ml"
+          },
+          "description": {
+            "fr": "Cèdre, poivre noir et cuir. Flacon dégradé 50 ml.",
+            "en": "Cedar, black pepper and leather. 50 ml gradient bottle."
+          },
+          "alt": {
+            "fr": "Flacon de parfum dégradé noir et ambre",
+            "en": "Black-to-amber gradient perfume bottle"
+          },
+          "attributes": {
+            "famille": "boisee",
+            "contenance": "50",
+            "genre": "homme"
+          }
+        },
+        {
+          "slug": "eau-de-toilette-fraiche-100",
+          "category": "parfums",
+          "price": 27500,
+          "image": "images/parfum-dore.png",
+          "name": {
+            "fr": "Eau de toilette fraîche 100 ml",
+            "en": "Fresh eau de toilette 100 ml"
+          },
+          "description": {
+            "fr": "Bergamote, citron vert et vétiver. Flacon 100 ml à bouchon argent.",
+            "en": "Bergamot, lime and vetiver. 100 ml bottle with silver cap."
+          },
+          "alt": {
+            "fr": "Flacon de parfum doré à bouchon argent",
+            "en": "Golden perfume bottle with silver cap"
+          },
+          "attributes": {
+            "famille": "fraiche",
+            "contenance": "100",
+            "genre": "mixte"
+          }
+        },
+        {
+          "slug": "rouge-a-levres-mat-rouge",
+          "category": "maquillage",
+          "price": 6500,
+          "image": "images/rouge-a-levres.png",
+          "name": {
+            "fr": "Rouge à lèvres mat, rouge",
+            "en": "Matte lipstick, red"
+          },
+          "description": {
+            "fr": "Fini mat longue tenue, teinte rouge franc, étui noir.",
+            "en": "Long-wear matte finish, true red, black case."
+          },
+          "alt": {
+            "fr": "Rouge à lèvres rouge ouvert",
+            "en": "Open red lipstick"
+          },
+          "attributes": {
+            "couleur": "rouge",
+            "fini": "mat",
+            "longue_tenue": true
+          }
+        }
+      ],
+      "city": "Douala",
+      "district": "Makepe"
+    }
+  ],
+  "scenes": [
+    {
+      "product": "sac-a-dos-urbain-orange",
+      "label": {
+        "fr": "Rentrée",
+        "en": "Back to school"
+      },
+      "title": {
+        "fr": "La rentrée, bien équipée.",
+        "en": "Back to school, well equipped."
+      },
+      "description": {
+        "fr": "Des sacs solides pour les trajets de tous les jours, livrés partout à Douala.",
+        "en": "Sturdy bags for everyday journeys, delivered anywhere in Douala."
+      },
+      "cta": {
+        "fr": "Découvrir le sac",
+        "en": "See the bag"
+      }
+    },
+    {
+      "product": "fauteuil-cuir-cognac",
+      "label": {
+        "fr": "Maison",
+        "en": "Home"
+      },
+      "title": {
+        "fr": "Le salon prend des couleurs.",
+        "en": "The living room warms up."
+      },
+      "description": {
+        "fr": "Mobilier, lampes et cuisine choisis dans les boutiques de Deïdo.",
+        "en": "Furniture, lamps and kitchenware picked from the shops of Deïdo."
+      },
+      "cta": {
+        "fr": "Voir le fauteuil",
+        "en": "See the armchair"
+      }
+    },
+    {
+      "product": "casque-bluetooth-lilas",
+      "label": {
+        "fr": "Nos découvertes",
+        "en": "Our finds"
+      },
+      "title": {
+        "fr": "Le son, en couleur.",
+        "en": "Sound, in colour."
+      },
+      "description": {
+        "fr": "Casques et écouteurs vérifiés auprès des boutiques de Bonapriso.",
+        "en": "Headphones and earbuds checked with the shops of Bonapriso."
+      },
+      "cta": {
+        "fr": "Voir le casque",
+        "en": "See the headphones"
+      }
+    }
+  ],
+  "home": [
+    {
+      "type": "image_text",
+      "image_from": "casque-bluetooth-lilas",
+      "title": {
+        "fr": "Audio",
+        "en": "Audio"
+      },
+      "text": {
+        "fr": "Casques, écouteurs et enceintes, testés en boutique à Bonapriso.",
+        "en": "Headphones, earbuds and speakers, tested in store in Bonapriso."
+      },
+      "link": "/catalogue?category=audio"
+    },
+    {
+      "type": "image_text",
+      "image_from": "eau-de-parfum-ambree-100",
+      "title": {
+        "fr": "Parfums",
+        "en": "Fragrances"
+      },
+      "text": {
+        "fr": "Des flacons choisis à Makepe, du plus doux au plus boisé.",
+        "en": "Bottles picked in Makepe, from soft to woody."
+      },
+      "link": "/catalogue?category=parfums"
+    },
+    {
+      "type": "image_text",
+      "image_from": "baskets-retro-multicolores",
+      "title": {
+        "fr": "Chaussures",
+        "en": "Shoes"
+      },
+      "text": {
+        "fr": "Baskets et sandales du marché d’Akwa, toutes pointures.",
+        "en": "Sneakers and sandals from the Akwa market, all sizes."
+      },
+      "link": "/catalogue?category=chaussures"
+    },
+    {
+      "type": "image_text",
+      "image_from": "fauteuil-cuir-cognac",
+      "title": {
+        "fr": "Mobilier",
+        "en": "Furniture"
+      },
+      "text": {
+        "fr": "Fauteuils et lampes de Deïdo, livrés montés chez vous.",
+        "en": "Armchairs and lamps from Deïdo, delivered assembled."
+      },
+      "link": "/catalogue?category=mobilier"
+    },
+    {
+      "type": "product_selection",
+      "title": {
+        "fr": "Ce qu’on aime en ce moment",
+        "en": "What we like right now"
+      },
+      "products": [
+        "sac-a-dos-urbain-orange",
+        "casque-bluetooth-lilas",
+        "montre-acier-cadran-blanc",
+        "eau-de-parfum-ambree-100",
+        "baskets-retro-multicolores",
+        "bouilloire-inox-1-7-l",
+        "sac-epaule-cuir-rouge",
+        "ecouteurs-sans-fil-noirs"
+      ]
+    },
+    {
+      "type": "banner",
+      "image_from": "fauteuil-cuir-cognac",
+      "text": {
+        "fr": "Le salon prend des couleurs. Le fauteuil cognac de Deïdo Maison, livré monté.",
+        "en": "The living room warms up. Deïdo Maison’s cognac armchair, delivered assembled."
+      },
+      "link_product": "fauteuil-cuir-cognac"
+    },
+    {
+      "type": "banner",
+      "image_from": "casque-bluetooth-lilas",
+      "text": {
+        "fr": "Le son, en couleur. Le casque lilas de Bonapriso Tech, 40 heures d’autonomie.",
+        "en": "Sound, in colour. Bonapriso Tech’s lilac headphones, 40-hour battery."
+      },
+      "link_product": "casque-bluetooth-lilas"
+    },
+    {
+      "type": "banner",
+      "image_from": "eau-de-parfum-ambree-100",
+      "text": {
+        "fr": "Un parfum pour chaque jour. L’eau de parfum ambrée de Makepe Beauté, 100 ml.",
+        "en": "A fragrance for every day. Makepe Beauté’s amber eau de parfum, 100 ml."
+      },
+      "link_product": "eau-de-parfum-ambree-100"
+    },
+    {
+      "type": "image_text",
+      "title": {
+        "fr": "Akwa Style",
+        "en": "Akwa Style"
+      },
+      "text": {
+        "fr": "Mode, sacs et chaussures, au cœur du marché d’Akwa.",
+        "en": "Fashion, bags and shoes, at the heart of the Akwa market."
+      },
+      "link": "/shops/akwa-style",
+      "image_file": "images/profil-akwa-style.jpg",
+      "alt": {
+        "fr": "Intérieur de la boutique Akwa Style",
+        "en": "Akwa Style shop interior"
+      }
+    },
+    {
+      "type": "image_text",
+      "title": {
+        "fr": "Bonapriso Tech",
+        "en": "Bonapriso Tech"
+      },
+      "text": {
+        "fr": "Ordinateurs, audio et montres, avec garantie en boutique.",
+        "en": "Computers, audio and watches, with in-store warranty."
+      },
+      "link": "/shops/bonapriso-tech",
+      "image_file": "images/profil-bonapriso-tech.jpg",
+      "alt": {
+        "fr": "Intérieur de la boutique Bonapriso Tech",
+        "en": "Bonapriso Tech shop interior"
+      }
+    },
+    {
+      "type": "image_text",
+      "title": {
+        "fr": "Deïdo Maison",
+        "en": "Deïdo Maison"
+      },
+      "text": {
+        "fr": "Cuisine, déco et mobilier pour la maison.",
+        "en": "Kitchen, decor and furniture for the home."
+      },
+      "link": "/shops/deido-maison",
+      "image_file": "images/profil-deido-maison.jpg",
+      "alt": {
+        "fr": "Intérieur de la boutique Deïdo Maison",
+        "en": "Deïdo Maison shop interior"
+      }
+    },
+    {
+      "type": "image_text",
+      "title": {
+        "fr": "Makepe Beauté",
+        "en": "Makepe Beauté"
+      },
+      "text": {
+        "fr": "Parfums et maquillage, conseillés en boutique.",
+        "en": "Fragrances and makeup, with in-store advice."
+      },
+      "link": "/shops/makepe-beaute",
+      "image_file": "images/profil-makepe-beaute.jpg",
+      "alt": {
+        "fr": "Intérieur de la boutique Makepe Beauté",
+        "en": "Makepe Beauté shop interior"
+      }
+    }
+  ],
+  "flash": {
+    "name": "Ventes flash du week-end",
+    "hours": 48,
+    "banner": {
+      "fr": "Ventes flash du week-end. Des prix cassés pendant 48 heures dans les boutiques partenaires. Quand c’est fini, c’est fini.",
+      "en": "Weekend flash sale. Slashed prices for 48 hours in our partner shops. When it’s over, it’s over."
+    },
+    "products": {
+      "casque-argent-reduction-bruit": 46500,
+      "montre-connectee-blanche": 29900,
+      "sac-epaule-cuir-rouge": 18900,
+      "eau-de-parfum-florale-50": 24900,
+      "bouilloire-inox-1-7-l": 14900
+    }
+  },
+  "pages": {
+    "catalogue": [
+      {
+        "type": "banner",
+        "image_file": "images/catalogue-entete.jpg",
+        "alt": {
+          "fr": "Quatre amis souriants en tenues aux tons chauds",
+          "en": "Four smiling friends in warm-toned outfits"
+        },
+        "text": {
+          "fr": "Tout le catalogue. Les produits des boutiques partenaires, au prix affiché en boutique.",
+          "en": "The whole catalogue. Products from our partner shops, at the shop’s own price."
+        },
+        "link": "/catalogue"
+      }
+    ]
+  }
+}

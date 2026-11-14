@@ -1,0 +1,95 @@
+---
+import '@kora/design-tokens/styles.css';
+import { preferenceScript } from '@kora/design-tokens';
+import { createHash } from 'node:crypto';
+import { Preferences, t } from '@kora/ui';
+import type { Locale } from '@kora/api-client';
+interface Props {
+  locale: Locale;
+  title: string;
+  privatePage?: boolean;
+}
+const { locale, title } = Astro.props;
+const copy = t(locale);
+const pathname = Astro.url.pathname;
+const canonical = new URL(pathname, import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321');
+const operations = import.meta.env.PUBLIC_OPERATIONS_URL || 'http://localhost:3000';
+Astro.csp?.insertScriptHash(
+  `sha256-${createHash('sha256').update(preferenceScript).digest('base64')}`,
+);
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+Astro.response.headers.set('X-Content-Type-Options', 'nosniff');
+Astro.response.headers.set('X-Frame-Options', 'DENY');
+Astro.response.headers.set('Referrer-Policy', 'same-origin');
+---
+
+<!doctype html>
+<html lang={locale + '-CM'} data-theme="system">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="description" content={copy.promise} />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>{title} · KORA</title>
+    <link rel="canonical" href={canonical} />
+    <link
+      rel="alternate"
+      hreflang="fr-CM"
+      href={new URL(pathname.replace(/^\/(fr|en)/, '/fr'), canonical.origin)}
+    />
+    <link
+      rel="alternate"
+      hreflang="en-CM"
+      href={new URL(pathname.replace(/^\/(fr|en)/, '/en'), canonical.origin)}
+    />
+    <script is:inline set:html={preferenceScript} />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">
+      {copy.skip}
+    </a>
+    <div class="topline">
+      <div class="wrap row spread">
+        <span>{copy.area}</span>
+        <span>{copy.promise}</span>
+      </div>
+    </div>
+    <header class="site-header">
+      <div class="wrap header-main">
+        <a class="brand" href={'/' + locale} aria-label={'KORA — ' + copy.home}>
+          <img src="/brand/logo.png" alt="KORA" width="156" height="78" />
+        </a>
+        <nav class="header-nav" aria-label={copy.catalogue}>
+          <a href={'/' + locale + '/catalogue'}>{copy.catalogue}</a>
+          <a href={'/' + locale + '/shops'}>{copy.shops}</a>
+          <a href={'/' + locale + '/account'}>{copy.account}</a>
+        </nav>
+        <Preferences locale={locale} client:load />
+      </div>
+    </header>
+    <div class="wrap">
+      <p class="notice" style="margin-block:20px">
+        {copy.development}
+      </p>
+    </div>
+    <main id="main" class="wrap">
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <div class="wrap row spread">
+        <div>
+          <p class="editorial" style="font-size:1.5rem">
+            KORA, Douala.
+          </p>
+          <p class="muted">{copy.localCopy}</p>
+          <small>{copy.termsPending}</small>
+        </div>
+        <div class="stack">
+          <a href={'/' + locale + '/catalogue'}>{copy.catalogue}</a>
+          <a href={'/' + locale + '/shops'}>{copy.shops}</a>
+          <a href={operations + '/' + locale}>{copy.operationsLink}</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

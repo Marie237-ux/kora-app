@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites>
+	<testcase name="Astro production CSP permits its exact inline scripts without allowing arbitrary inline scripts" time="1.516726" classname="test"/>
+	<testcase name="Next production scripts carry a fresh nonce and CSP forbids framing the management page" time="0.056139" classname="test"/>
+	<!-- tests 2 -->
+	<!-- suites 0 -->
+	<!-- pass 2 -->
+	<!-- fail 0 -->
+	<!-- cancelled 0 -->
+	<!-- skipped 0 -->
+	<!-- todo 0 -->
+	<!-- duration_ms 1753.97 -->
+</testsuites>

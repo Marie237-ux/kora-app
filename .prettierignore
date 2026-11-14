@@ -1,0 +1,26 @@
+# Dépendances, builds et données locales
+node_modules/
+vendor/
+.cache/
+.local/
+.astro/
+.next/
+dist/
+services/api/storage/
+services/api/bootstrap/cache/
+services/api/resources/views/
+services/api/public/
+services/api/composer.json
+services/api/composer.lock
+
+# Fichiers générés ou de verrouillage
+package-lock.json
+packages/api-client/src/schema.ts
+docs/openapi.json
+docs/preuves/
+*.tsbuildinfo
+next-env.d.ts
+
+# Documentation rédigée à la main ; le PHP passe par Prettier puis Pint (npm run format)
+*.md
+*.xml

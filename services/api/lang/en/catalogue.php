@@ -1,0 +1,28 @@
+<?php
+
+return [
+    'MINIMUM_QUANTITY' => 'The requested quantity is below the minimum for this offer.',
+    'INVALID_IMAGE' => 'Upload a valid JPEG, PNG or WebP image up to 2 MB, with at most 4,096 pixels per side and 8 million pixels.',
+    'CATEGORY_TREE' => 'Choose a published parent category, without a cycle, with at most eight levels.',
+    'ATTRIBUTE_DUPLICATE' => 'Attribute keys must be distinct, including inherited categories.',
+    'ATTRIBUTE_OPTIONS' => 'Define distinct choices for this attribute.',
+    'ATTRIBUTE_UNKNOWN' => 'This attribute is not an allowed filter or feature for this category.',
+    'ATTRIBUTE_REQUIRED' => 'Enter this required feature before publication.',
+    'ATTRIBUTE_VALUE' => 'The value does not match this feature’s type or choices.',
+    'PROMOTION_FUNDING' => 'KORA and supplier contributions must exactly cover the discount from the reference price.',
+    'SUPPLIER_FUNDING_AGREEMENT' => 'A supplier contribution needs an explicit agreement reference.',
+    'AGREEMENT_MISSING' => 'No supplier agreement covers this product, quantity and date.',
+    'AGREEMENT_AMBIGUOUS' => 'Multiple agreements have the same priority. Clarify their scope before publication.',
+    'AGREEMENT_OVERLAP' => 'An agreement with the same scope, quantity and priority already covers this period.',
+    'AGREEMENT_INVALID' => 'Choose a single scope and a consistent cost mode.',
+    'SUPPLIER_INACTIVE' => 'This supplier is archived.',
+    'ASSOCIATION_LOCKED' => 'A published shop cannot silently change its contractual supplier.',
+    'TARGET_UNPUBLISHED' => 'Publish the shop, product and category, and verify the variant before publishing this offer.',
+    'VARIANT_OWNERSHIP' => 'This variant belongs to another product.',
+    'SKU_DUPLICATE' => 'This SKU belongs to another variant.',
+    'IMAGE_REQUIRED' => 'Choose an actual product image uploaded and published in the media library.',
+    'NEGATIVE_MARGIN' => 'The estimated margin is negative. A reasoned owner override is required.',
+    'DEPENDENCIES_PUBLISHED' => 'Withdraw the published resources that depend on this item first.',
+    'SLUG_TAKEN' => 'This URL is already owned by another resource or its history.',
+    'FILTER_CATEGORY_REQUIRED' => 'Choose a category before using its filters.',
+];

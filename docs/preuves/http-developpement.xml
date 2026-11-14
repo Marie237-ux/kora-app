@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites>
+	<testcase name="Storefront SSR fr shows the real logo and honest empty catalogue" time="2.395861" classname="test"/>
+	<testcase name="Catalogue SSR fr preserves search filters in the form" time="0.966068" classname="test"/>
+	<testcase name="Operations fr returns a private page" time="1.232485" classname="test"/>
+	<testcase name="Storefront SSR en shows the real logo and honest empty catalogue" time="1.883219" classname="test"/>
+	<testcase name="Catalogue SSR en preserves search filters in the form" time="1.307355" classname="test"/>
+	<testcase name="Operations en returns a private page" time="0.609085" classname="test"/>
+	<testcase name="API rejects unauthenticated operations and preferences" time="1.351093" classname="test"/>
+	<testcase name="CSRF protects real HTTP authentication requests" time="0.481913" classname="test"/>
+	<testcase name="Both frontend proxies forward CSRF cookies and headers to Laravel" time="2.212642" classname="test"/>
+	<testcase name="Private preview only permits same-origin framing and cannot expose a draft to guests" time="0.668859" classname="test"/>
+	<testcase name="API unknown product gives a safe localized error" time="0.561170" classname="test"/>
+	<testcase name="Catalogue, pricing and media administration remain private through both frontend proxies" time="1.878519" classname="test"/>
+	<testcase name="Stock, documents and supplier debts stay private at the API and through both frontend proxies" time="6.292517" classname="test"/>
+	<testcase name="Internal reminders, supplier forecasts and worker diagnostics stay private through all three services" time="4.423109" classname="test"/>
+	<!-- tests 14 -->
+	<!-- suites 0 -->
+	<!-- pass 14 -->
+	<!-- fail 0 -->
+	<!-- cancelled 0 -->
+	<!-- skipped 0 -->
+	<!-- todo 0 -->
+	<!-- duration_ms 26417.4521 -->
+</testsuites>

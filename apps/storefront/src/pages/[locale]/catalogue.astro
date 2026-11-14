@@ -1,0 +1,385 @@
+---
+/**
+ * Catalogue. Header photo from the CMS page "catalogue"; filters on the left in a clean scrollable panel; results on the
+ * right. Every filter is applied by the API (/api/v1/catalogue) with real counts (/api/v1/catalogue/facets).
+ * Filters, sort, page size and pagination update the results in place (fetch + swap, URL kept in sync, back button
+ * works); without JavaScript the same links and form work as normal page loads.
+ */
+import Site from '../../layouts/Site.astro';
+import ProductCard from '../../components/ProductCard.astro';
+import FilterChars from '../../components/FilterChars.astro';
+import { copy, money } from '../../lib/copy';
+import { api, localeOf, safe } from '../../lib/server';
+const locale = localeOf(Astro.params.locale);
+if (!locale) return new Response(null, { status: 404 });
+const c = copy(locale);
+const k = api(locale);
+const home = '/' + locale;
+const url = Astro.url.searchParams;
+const q = (url.get('q') ?? '').slice(0, 150);
+const category = url.get('category') ?? '';
+const sorts = ['name', 'best_selling', 'price_asc', 'price_desc'];
+const sort = sorts.includes(url.get('sort') ?? '') ? (url.get('sort') as string) : 'name';
+const per = ['12', '24', '48'].includes(url.get('per') ?? '') ? (url.get('per') as string) : '12';
+const page = Math.max(1, Number.parseInt(url.get('page') ?? '1', 10) || 1);
+const int = (v: string | null) => (v && /^\d{1,9}$/.test(v) ? Number(v) : null);
+const min = int(url.get('min'));
+const max = int(url.get('max'));
+const promo = url.get('promo') === '1';
+const stock = url.get('stock') === '1';
+const many = (key: string) => [...new Set(url.getAll(key).filter(Boolean))];
+const shopsSel = many('shop');
+const citiesSel = many('city');
+const districtsSel = many('district');
+
+type Option = { value: string; label: string; count: number };
+type Facets = { total: number; price: { min: number; max: number }; on_sale: number; in_stock: number; shops: Option[]; cities: Option[]; districts: Option[]; categories?: Option[]; characteristics: { key: string; type: string; label: string; unit: string | null; options: Option[] }[] };
+type CmsPage = { data: { page: { blocks: { type: string; media_id?: string }[] } | null; media: Record<string, string> } };
+const base = new URLSearchParams();
+if (q) base.set('q', q);
+if (category) base.set('category', category);
+const emptyFacets: Facets = { total: 0, price: { min: 0, max: 0 }, on_sale: 0, in_stock: 0, shops: [], cities: [], districts: [], categories: [], characteristics: [] };
+const [facetsRes, categories, cms] = await Promise.all([
+  safe(k.request<{ data: Facets }>('/api/v1/catalogue/facets?' + base.toString()), { data: emptyFacets }),
+  safe(k.categories(), { data: [] }),
+  safe(k.request<CmsPage>('/api/v1/content/pages/catalogue'), { data: { page: null, media: {} } } as CmsPage),
+]);
+const facets = facetsRes.value.data;
+const focused = Boolean(q || category);
+const aisleCounts = new Map((facets.categories ?? []).map((o) => [o.value, o.count]));
+// While searching, only aisles that contain results (with their count); otherwise every aisle.
+const aisleList = q ? categories.value.data.filter((x) => aisleCounts.has(x.slug)) : categories.value.data;
+const chars = facets.characteristics.map((ch) => ({ ...ch, selected: many('c_' + ch.key).filter((v) => ch.options.some((o) => o.value === v)) }));
+
+const query = new URLSearchParams(base);
+if (shopsSel.length) query.set('shop', shopsSel.join(','));
+if (citiesSel.length) query.set('city', citiesSel.join(','));
+if (districtsSel.length) query.set('district', districtsSel.join(','));
+if (min !== null) query.set('price_min', String(min));
+if (max !== null) query.set('price_max', String(max));
+if (promo) query.set('on_sale', '1');
+if (stock) query.set('in_stock', '1');
+for (const ch of chars) if (ch.selected.length) query.set('filters[' + ch.key + ']', ch.selected.join(','));
+query.set('sort', sort);
+query.set('per_page', per);
+query.set('page', String(page));
+const empty = { data: [], meta: { page: 1, last_page: 1, total: 0, demo: false } };
+const list = await safe(k.catalogue('?' + query.toString()), empty);
+const offers = list.value.data;
+const meta = list.value.meta;
+const names = Object.fromEntries(categories.value.data.map((x) => [x.slug, x.name]));
+const currentAisle = categories.value.data.find((x) => x.slug === category);
+const title = q ? c.resultsFor + ' « ' + q + ' »' : currentAisle?.name ?? c.catalogue;
+const headerBlock = cms.value.data.page?.blocks.find((b) => b.type === 'banner' && b.media_id);
+const headerImage = headerBlock?.media_id ? cms.value.data.media[headerBlock.media_id] ?? null : null;
+
+const current = new URLSearchParams(url);
+current.delete('page');
+const link = (mutate: (p: URLSearchParams) => void) => {
+  const p = new URLSearchParams(current);
+  mutate(p);
+  const s = p.toString();
+  return home + '/catalogue' + (s ? '?' + s : '');
+};
+const without = (key: string, value?: string) =>
+  link((p) => {
+    const keep = value === undefined ? [] : p.getAll(key).filter((v) => v !== value);
+    p.delete(key);
+    keep.forEach((v) => p.append(key, v));
+  });
+const pageLink = (n: number) => link((p) => (n > 1 ? p.set('page', String(n)) : p.delete('page')));
+const pages = Array.from({ length: meta.last_page }, (_, i) => i + 1).filter((n) => n === 1 || n === meta.last_page || Math.abs(n - meta.page) <= 1);
+
+const pmin = facets.price.min;
+const pmax = facets.price.max;
+const pstep = pmax > 100000 ? 5000 : 500;
+const lo = Math.max(pmin, Math.min(min ?? pmin, pmax));
+const hi = Math.min(pmax, Math.max(max ?? pmax, pmin));
+const pct = (v: number) => (pmax > pmin ? Math.round(((v - pmin) / (pmax - pmin)) * 1000) / 10 : 0);
+
+const active: { label: string; href: string }[] = [];
+if (q) active.push({ label: '« ' + q + ' »', href: without('q') });
+if (currentAisle) active.push({ label: currentAisle.name, href: without('category') });
+if (min !== null || max !== null) active.push({ label: (min !== null ? money(min, locale) : money(pmin, locale)) + ' – ' + (max !== null ? money(max, locale) : money(pmax, locale)), href: link((p) => { p.delete('min'); p.delete('max'); }) });
+if (promo) active.push({ label: c.onSale, href: without('promo') });
+if (stock) active.push({ label: c.inStockOnly, href: without('stock') });
+for (const v of citiesSel) active.push({ label: v, href: without('city', v) });
+for (const v of districtsSel) active.push({ label: v, href: without('district', v) });
+for (const v of shopsSel) active.push({ label: facets.shops.find((s) => s.value === v)?.label ?? v, href: without('shop', v) });
+for (const ch of chars) for (const v of ch.selected) active.push({ label: ch.label + ' : ' + (ch.options.find((o) => o.value === v)?.label ?? v), href: without('c_' + ch.key, v) });
+---
+
+<Site locale={locale} title={title} active="catalogue" query={q}>
+  <section class={'cat-hero' + (headerImage ? ' has-photo' : '')}>
+    {headerImage && <img class="cat-photo" src={headerImage} alt="" decoding="async" fetchpriority="high" />}
+    <div class="wrap cat-hero-inner">
+      <div class="cat-hero-text">
+        <nav class="crumbs" aria-label={c.breadcrumb}>
+          <a href={home}>{c.home}</a><span aria-hidden="true">/</span>
+          {currentAisle || q ? <a href={home + '/catalogue'}>{c.catalogue}</a> : <span aria-current="page">{c.catalogue}</span>}
+          {currentAisle && (<><span aria-hidden="true">/</span><span aria-current="page">{currentAisle.name}</span></>)}
+        </nav>
+        <h1>{title}</h1>
+        {!q && <p>{c.catalogueIntro}</p>}
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap cat-body" data-cat>
+    <aside class="cat-filters" aria-label={c.filters}>
+      <details open>
+        <summary>
+          <span>{c.filters}</span>
+          {active.length > 0 && <span class="cat-count">{active.length}</span>}
+          {active.length > 0 && <a class="fclear" href={home + '/catalogue'}>{c.clearAll}</a>}
+        </summary>
+        <form id="cat-form" class="cat-form" action={home + '/catalogue'} method="get">
+          {category && <input type="hidden" name="category" value={category} />}
+
+          <div class="cat-search" role="search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+            <label class="sr-only" for="cat-q">{c.search}</label>
+            <input id="cat-q" type="search" name="q" value={q} placeholder={c.searchPlaceholder} maxlength="150" />
+          </div>
+
+          {focused && chars.length > 0 && (
+            <p class="ffor">{c.filtersFor} <strong>{q ? '« ' + q + ' »' : currentAisle?.name}</strong></p>
+          )}
+          {focused && <FilterChars chars={chars} openAll={true} />}
+
+          <details class="fgroup" open>
+            <summary>{c.categories}</summary>
+            <div class="fpills">
+              <a href={without('category')} aria-current={!category ? 'true' : undefined}>{c.allCategories}</a>
+              {aisleList.map((x) => <a href={link((p) => { p.set('category', x.slug); [...p.keys()].filter((key) => key.startsWith('c_')).forEach((key) => p.delete(key)); })} aria-current={category === x.slug ? 'true' : undefined}>{x.name}{aisleCounts.has(x.slug) && <small>{aisleCounts.get(x.slug)}</small>}</a>)}
+            </div>
+          </details>
+
+          {pmax > 0 && (
+            <details class="fgroup" open>
+              <summary>{c.price}</summary>
+              <div class="fslider" style={'--a:' + pct(lo) + '%;--b:' + pct(hi) + '%'}>
+                <span class="fslider-track"><i></i></span>
+                <input type="range" min={pmin} max={pmax} step={pstep} value={lo} data-range="min" aria-label={c.priceMin} />
+                <input type="range" min={pmin} max={pmax} step={pstep} value={hi} data-range="max" aria-label={c.priceMax} />
+              </div>
+              <div class="frange">
+                <label><span>{c.priceMin}</span><input type="number" name="min" inputmode="numeric" min="0" step={pstep} value={min ?? ''} placeholder={String(pmin)} /><em>FCFA</em></label>
+                <label><span>{c.priceMax}</span><input type="number" name="max" inputmode="numeric" min="0" step={pstep} value={max ?? ''} placeholder={String(pmax)} /><em>FCFA</em></label>
+              </div>
+            </details>
+          )}
+
+          <details class="fgroup" open>
+            <summary>{c.goodDeals}</summary>
+            <label class="fswitch"><input type="checkbox" name="promo" value="1" checked={promo} data-auto /><span>{c.onSale}<small>{facets.on_sale}</small></span><b aria-hidden="true"><em></em></b></label>
+            <label class="fswitch"><input type="checkbox" name="stock" value="1" checked={stock} data-auto /><span>{c.inStockOnly}<small>{facets.in_stock}</small></span><b aria-hidden="true"><em></em></b></label>
+          </details>
+
+          {facets.cities.length > 0 && (
+            <details class="fgroup" open={!focused || citiesSel.length > 0}>
+              <summary>{c.city}</summary>
+              <div class="fchips">{facets.cities.map((o) => <label><input type="checkbox" name="city" value={o.value} checked={citiesSel.includes(o.value)} data-auto /><span>{o.label}<small>{o.count}</small></span></label>)}</div>
+            </details>
+          )}
+          {facets.districts.length > 0 && (
+            <details class="fgroup" open={!focused || districtsSel.length > 0}>
+              <summary>{c.district}</summary>
+              <div class="fchips">{facets.districts.map((o) => <label><input type="checkbox" name="district" value={o.value} checked={districtsSel.includes(o.value)} data-auto /><span>{o.label}<small>{o.count}</small></span></label>)}</div>
+            </details>
+          )}
+          {facets.shops.length > 0 && (
+            <details class="fgroup">
+              <summary>{c.shops}</summary>
+              <div class="fchips">{facets.shops.map((o) => <label><input type="checkbox" name="shop" value={o.value} checked={shopsSel.includes(o.value)} data-auto /><span>{o.label}<small>{o.count}</small></span></label>)}</div>
+            </details>
+          )}
+
+          {!focused && <FilterChars chars={chars} openAll={false} />}
+          {shopsSel.filter((v) => !facets.shops.some((o) => o.value === v)).map((v) => <input type="hidden" name="shop" value={v} />)}
+          <noscript><button type="submit" class="btn btn-dark btn-small">{c.applyFilters}</button></noscript>
+        </form>
+        <div class="fapply">
+          <button type="button" class="btn btn-dark" data-show-results>{c.showResults.replace('{n}', String(meta.total))}</button>
+        </div>
+      </details>
+    </aside>
+
+    <div class="cat-main" id="cat-results">
+      <div class="cat-bar">
+        <p><strong>{meta.total}</strong> {meta.total > 1 ? c.productsCount : c.productOne}</p>
+        <div class="cat-bar-tools">
+          <label class="cat-select"><span>{c.perPage}</span>
+            <select name="per" form="cat-form" data-auto>
+              {['12', '24', '48'].map((n) => <option value={n} selected={per === n}>{n}</option>)}
+            </select>
+          </label>
+          <label class="cat-select"><span>{c.sortBy}</span>
+            <select name="sort" form="cat-form" data-auto>
+              <option value="name" selected={sort === 'name'}>{c.sortName}</option>
+              <option value="best_selling" selected={sort === 'best_selling'}>{c.sortBest}</option>
+              <option value="price_asc" selected={sort === 'price_asc'}>{c.sortPriceAsc}</option>
+              <option value="price_desc" selected={sort === 'price_desc'}>{c.sortPriceDesc}</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      {active.length > 0 && (
+        <div class="cat-active">
+          {active.map((f) => <a href={f.href} aria-label={c.removeFilter + ' ' + f.label}>{f.label}<span aria-hidden="true">×</span></a>)}
+          <a class="cat-clear" href={home + '/catalogue'}>{c.resetFilters}</a>
+        </div>
+      )}
+
+      {list.failed ? (
+        <p class="notice error" role="alert">{c.dataUnavailable} <a href={Astro.url.pathname + Astro.url.search}>{c.retry}</a></p>
+      ) : offers.length ? (
+        <>
+          <div class="cat-grid">
+            {offers.map((o) => <ProductCard offer={o as any} locale={locale} categoryName={names[o.category]} />)}
+          </div>
+          {meta.last_page > 1 && (
+            <nav class="cat-pages" aria-label={c.page}>
+              {meta.page > 1 ? <a class="cat-step" href={pageLink(meta.page - 1)}>← {c.previousPage}</a> : <span class="cat-step off">← {c.previousPage}</span>}
+              <span class="cat-nums">
+                {pages.map((n, i) => (
+                  <>
+                    {i > 0 && n - pages[i - 1] > 1 && <span aria-hidden="true">…</span>}
+                    <a href={pageLink(n)} aria-current={n === meta.page ? 'page' : undefined} aria-label={c.page + ' ' + n}>{n}</a>
+                  </>
+                ))}
+              </span>
+              {meta.page < meta.last_page ? <a class="cat-step" href={pageLink(meta.page + 1)}>{c.nextPage} →</a> : <span class="cat-step off">{c.nextPage} →</span>}
+            </nav>
+          )}
+        </>
+      ) : (
+        <div class="cat-empty">
+          <img src="/brand/logo-ink.png" alt="" width="120" height="52" />
+          <h2>{q ? c.noResultsFor + ' « ' + q + ' »' : c.noResults}</h2>
+          <p>{c.noResultsText}</p>
+          <div>
+            <a class="btn btn-accent btn-small" href={home + '/request-product'}>{c.requestAction}</a>
+            {active.length > 0 && <a class="btn btn-line btn-small" href={home + '/catalogue'}>{c.resetFilters}</a>}
+          </div>
+        </div>
+      )}
+      <p class="sr-only" role="status" aria-live="polite">{meta.total} {meta.total > 1 ? c.productsCount : c.productOne}</p>
+    </div>
+  </section>
+
+  <script>
+    // In-place updates: filters, sort, page size and pagination fetch the new page and swap only the hero text and the
+    // catalogue body. The URL follows (back/forward work); filter panel scroll, open groups and focus are kept.
+    const isCatalogue = (u: URL) => u.origin === location.origin && /^\/(fr|en)\/catalogue\/?$/.test(u.pathname);
+    let ctrl: AbortController | null = null;
+
+    function formUrl(form: HTMLFormElement): URL {
+      const u = new URL(form.action, location.href);
+      for (const [key, value] of new FormData(form)) if (String(value).trim() !== '') u.searchParams.append(key, String(value));
+      if (u.searchParams.get('sort') === 'name') u.searchParams.delete('sort');
+      if (u.searchParams.get('per') === '12') u.searchParams.delete('per');
+      return u;
+    }
+
+    async function go(target: URL, push = true, toResults = false) {
+      ctrl?.abort();
+      ctrl = new AbortController();
+      const body = document.querySelector<HTMLElement>('[data-cat]');
+      const results = document.getElementById('cat-results');
+      results?.setAttribute('aria-busy', 'true');
+      try {
+        const res = await fetch(target.href, { headers: { Accept: 'text/html' }, signal: ctrl.signal });
+        if (!res.ok) throw new Error(String(res.status));
+        const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+        const nextBody = doc.querySelector('[data-cat]');
+        const nextHero = doc.querySelector('.cat-hero-text');
+        if (!body || !nextBody) throw new Error('layout');
+        // keep UI state of the filter panel
+        const form = body.querySelector<HTMLElement>('.cat-form');
+        const scroll = form?.scrollTop ?? 0;
+        const open = new Map<string, boolean>();
+        body.querySelectorAll<HTMLDetailsElement>('.cat-filters details').forEach((d) => open.set(d.querySelector('summary')?.textContent?.trim().replace(/\d+$/, '') ?? '', d.open));
+        const focused = document.activeElement as HTMLInputElement | null;
+        const focusKey = focused && body.contains(focused) && focused.name ? [focused.name, focused.value] : null;
+        body.replaceWith(nextBody);
+        const hero = document.querySelector('.cat-hero-text');
+        if (hero && nextHero) hero.replaceWith(nextHero);
+        document.title = doc.title;
+        nextBody.querySelectorAll<HTMLDetailsElement>('.cat-filters details').forEach((d) => {
+          const key = d.querySelector('summary')?.textContent?.trim().replace(/\d+$/, '') ?? '';
+          if (open.has(key)) d.open = open.get(key)!;
+        });
+        const nextForm = nextBody.querySelector<HTMLElement>('.cat-form');
+        if (nextForm) nextForm.scrollTop = scroll;
+        if (focusKey) nextBody.querySelector<HTMLElement>(`[name="${CSS.escape(focusKey[0])}"][value="${CSS.escape(focusKey[1])}"]`)?.focus({ preventScroll: true });
+        if (push) history.pushState({ catalogue: true }, '', target.pathname + target.search);
+        const top = document.getElementById('cat-results');
+        if (top && (toResults || top.getBoundingClientRect().top < 0)) top.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+        bindSliders();
+      } catch (e) {
+        if ((e as Error).name !== 'AbortError') location.href = target.href;
+      }
+    }
+
+    document.addEventListener('submit', (e) => {
+      const form = e.target as HTMLFormElement;
+      if (form.id !== 'cat-form') return;
+      e.preventDefault();
+      go(formUrl(form));
+    });
+    document.addEventListener('change', (e) => {
+      const el = e.target as HTMLInputElement;
+      if (!el.closest('[data-cat]')) return;
+      if (el.matches('[data-auto], input[type=number]')) {
+        const form = document.getElementById('cat-form') as HTMLFormElement | null;
+        if (form) go(formUrl(form));
+      }
+    });
+    document.addEventListener('click', (e) => {
+      const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[href]');
+      if (a && (a.closest('[data-cat]') || a.closest('.cat-hero')) && !e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
+        const u = new URL(a.href);
+        if (isCatalogue(u)) {
+          e.preventDefault();
+          go(u, true, Boolean(a.closest('.cat-pages')));
+        }
+      }
+      const show = (e.target as HTMLElement).closest('[data-show-results]');
+      if (show) {
+        document.querySelector<HTMLDetailsElement>('.cat-filters > details')?.removeAttribute('open');
+        document.getElementById('cat-results')?.scrollIntoView({ block: 'start' });
+      }
+    });
+    addEventListener('popstate', () => go(new URL(location.href), false));
+
+    // Dual price slider: drag to preview, release to apply.
+    function bindSliders() {
+      document.querySelectorAll<HTMLElement>('.fslider').forEach((box) => {
+        if (box.dataset.bound) return;
+        box.dataset.bound = '1';
+        const [a, b] = box.querySelectorAll<HTMLInputElement>('input[type=range]');
+        const form = box.closest('form') as HTMLFormElement;
+        const minField = form.querySelector<HTMLInputElement>('input[name=min]')!;
+        const maxField = form.querySelector<HTMLInputElement>('input[name=max]')!;
+        const lo = Number(a.min);
+        const hi = Number(a.max);
+        const paint = () => {
+          if (Number(a.value) > Number(b.value)) [a.value, b.value] = [b.value, a.value];
+          const p = (v: string) => ((Number(v) - lo) / (hi - lo || 1)) * 100;
+          box.style.setProperty('--a', p(a.value) + '%');
+          box.style.setProperty('--b', p(b.value) + '%');
+          minField.value = Number(a.value) > lo ? a.value : '';
+          maxField.value = Number(b.value) < hi ? b.value : '';
+        };
+        a.addEventListener('input', paint);
+        b.addEventListener('input', paint);
+        const apply = () => go(formUrl(form));
+        a.addEventListener('change', apply);
+        b.addEventListener('change', apply);
+      });
+    }
+    bindSliders();
+    if (matchMedia('(max-width: 760px)').matches) document.querySelector('.cat-filters > details')?.removeAttribute('open');
+  </script>
+</Site>

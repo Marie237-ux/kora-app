@@ -1,0 +1,55 @@
+---
+import AddToCart from './AddToCart.tsx';
+import { copy, money, tone, type Locale } from '../lib/copy';
+interface Props {
+  offer: {
+    id: string;
+    name: string;
+    image: string | null;
+    category: string;
+    availability: 'available' | 'unconfirmed' | 'unavailable';
+    price: { amount: number };
+    shop: { name: string; slug: string };
+    minimum_quantity: number;
+  };
+  locale: Locale;
+  categoryName?: string;
+}
+const { offer, locale, categoryName } = Astro.props;
+const c = copy(locale);
+---
+
+<article class="tile reveal">
+  <div class={'tile-stage ' + tone(offer.category)}>
+    {offer.image ? (
+      <img src={offer.image} alt="" loading="lazy" width="320" height="320" />
+    ) : (
+      <span class="muted">KORA</span>
+    )}
+    {offer.availability !== 'available' && (
+      <div class="tile-badges">
+        <span class="badge warn">{c[offer.availability]}</span>
+      </div>
+    )}
+    <div class="tile-add">
+      <AddToCart
+        client:visible
+        locale={locale}
+        offerId={offer.id}
+        name={offer.name}
+        minimum={offer.minimum_quantity}
+        disabled={offer.availability === 'unavailable'}
+      />
+    </div>
+  </div>
+  <div class="tile-body">
+    {categoryName && <span class="tile-cat">{categoryName}</span>}
+    <h3 class="tile-name">
+      <a href={'/' + locale + '/products/' + offer.id}>{offer.name}</a>
+    </h3>
+    <span class="tile-shop">
+      {c.soldBy} <a href={'/' + locale + '/shops/' + offer.shop.slug}>{offer.shop.name}</a>
+    </span>
+    <span class="tile-price">{money(offer.price.amount, locale)}</span>
+  </div>
+</article>

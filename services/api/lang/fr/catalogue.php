@@ -1,0 +1,28 @@
+<?php
+
+return [
+    'INVALID_IMAGE' => 'Envoyez une image JPEG, PNG ou WebP valide de 2 Mo maximum, avec au plus 4 096 pixels par côté et 8 millions de pixels.',
+    'CATEGORY_TREE' => 'La catégorie doit avoir un parent publié, sans boucle, avec huit niveaux au maximum.',
+    'ATTRIBUTE_DUPLICATE' => 'Chaque attribut doit avoir une clé distincte, y compris dans les catégories parentes.',
+    'ATTRIBUTE_OPTIONS' => 'Définissez des choix distincts pour cet attribut.',
+    'ATTRIBUTE_UNKNOWN' => 'Cet attribut ne fait pas partie des filtres ou caractéristiques autorisés de la catégorie.',
+    'ATTRIBUTE_REQUIRED' => 'Renseignez cette caractéristique obligatoire avant publication.',
+    'ATTRIBUTE_VALUE' => 'La valeur ne correspond pas au type ou aux choix de cette caractéristique.',
+    'PROMOTION_FUNDING' => 'Les contributions KORA et fournisseur doivent couvrir exactement la différence avec le prix de référence.',
+    'SUPPLIER_FUNDING_AGREEMENT' => 'Une contribution fournisseur exige une référence d’accord explicite.',
+    'AGREEMENT_MISSING' => 'Aucun accord fournisseur ne couvre cette référence, cette quantité et cette date.',
+    'AGREEMENT_AMBIGUOUS' => 'Plusieurs accords ont la même priorité. Clarifiez leurs périmètres avant publication.',
+    'AGREEMENT_OVERLAP' => 'Un accord de même périmètre, quantité et priorité couvre déjà cette période.',
+    'AGREEMENT_INVALID' => 'Choisissez un seul périmètre et un mode de coût cohérent.',
+    'SUPPLIER_INACTIVE' => 'Ce fournisseur est archivé.',
+    'ASSOCIATION_LOCKED' => 'La boutique publiée ne peut pas changer silencieusement de fournisseur contractuel.',
+    'TARGET_UNPUBLISHED' => 'Publiez la boutique, le produit et sa catégorie, et vérifiez la variante avant de publier cette offre.',
+    'VARIANT_OWNERSHIP' => 'Cette variante appartient à un autre produit.',
+    'SKU_DUPLICATE' => 'Ce SKU est déjà attribué à une autre variante.',
+    'IMAGE_REQUIRED' => 'Choisissez un vrai média produit, téléversé et publié depuis la médiathèque.',
+    'NEGATIVE_MARGIN' => 'La marge estimée est négative. Une dérogation motivée du propriétaire est nécessaire.',
+    'DEPENDENCIES_PUBLISHED' => 'Retirez d’abord les éléments publiés qui dépendent de cette ressource.',
+    'SLUG_TAKEN' => 'Cette URL appartient déjà à une autre ressource ou à son historique.',
+    'FILTER_CATEGORY_REQUIRED' => 'Choisissez une catégorie avant d’utiliser ses filtres.',
+    'MINIMUM_QUANTITY' => 'La quantité demandée est inférieure au minimum de cette offre.',
+];

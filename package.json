@@ -1,0 +1,41 @@
+{
+  "name": "kora",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.23.4 <23",
+    "npm": ">=11"
+  },
+  "scripts": {
+    "dev:storefront": "npm run dev -w @kora/storefront",
+    "dev:operations": "npm run dev -w @kora/operations",
+    "check": "npm run check --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "test": "node --test tests/contract.test.mjs tests/catalogue-components.test.cjs",
+    "api:serve": "php services/api/artisan serve --host=localhost --port=8000",
+    "api:test": "php services/api/vendor/phpunit/phpunit/phpunit --configuration services/api/phpunit.xml --colors=never",
+    "test:http": "node --test tests/http.test.mjs",
+    "api:setup": "node scripts/setup-api.mjs",
+    "api:generate": "openapi-typescript docs/openapi.json -o packages/api-client/src/schema.ts",
+    "api:contract-check": "node scripts/check-contract.mjs",
+    "api:test:pgsql": "php services/api/vendor/phpunit/phpunit/phpunit --configuration services/api/phpunit.pgsql.xml --colors=never",
+    "db:start": "node scripts/postgres.mjs start",
+    "db:stop": "node scripts/postgres.mjs stop",
+    "test:csp": "node --test tests/csp.test.mjs",
+    "format": "prettier --write . && php services/api/vendor/laravel/pint/builds/pint --config services/api/pint.json --quiet services/api",
+    "format:check": "prettier --check . \"!services/api/**/*.php\" && php services/api/vendor/laravel/pint/builds/pint --config services/api/pint.json --test services/api"
+  },
+  "devDependencies": {
+    "@prettier/plugin-php": "0.25.0",
+    "@types/node": "22.20.5",
+    "node": "22.23.4",
+    "openapi-typescript": "7.13.0",
+    "prettier": "3.9.10",
+    "prettier-plugin-astro": "1.1.1",
+    "typescript": "5.9.3"
+  }
+}

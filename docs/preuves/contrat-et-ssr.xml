@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites>
+	<testcase name="Category definitions generate both variant inputs and localized public filters with their selected values" time="0.036938" classname="test"/>
+	<testcase name="Boolean false and decimal filters retain their values in SSR instead of becoming empty" time="0.002866" classname="test"/>
+	<testcase name="Percentage input converts to exact basis points and Douala dates round trip without browser timezone dependence" time="0.104443" classname="test"/>
+	<testcase name="All 110 master scenarios remain in the launch matrix exactly once" time="0.012567" classname="test"/>
+	<testcase name="Reference copies retain the exact originals, including the logo used by both apps" time="0.032288" classname="test"/>
+	<testcase name="OpenAPI references resolve and all private operations declare session security" time="0.023233" classname="test"/>
+	<testcase name="Every stock and procurement route has a matching secured contract and retry requirements" time="0.988351" classname="test"/>
+	<testcase name="Every customer request and cart route declares its ownership and retry boundary" time="0.965823" classname="test"/>
+	<!-- tests 8 -->
+	<!-- suites 0 -->
+	<!-- pass 8 -->
+	<!-- fail 0 -->
+	<!-- cancelled 0 -->
+	<!-- skipped 0 -->
+	<!-- todo 0 -->
+	<!-- duration_ms 2206.5768 -->
+</testsuites>

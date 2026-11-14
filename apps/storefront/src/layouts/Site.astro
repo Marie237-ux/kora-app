@@ -1,0 +1,138 @@
+---
+import '../styles/site.css';
+import { createHash } from 'node:crypto';
+import Header from '../components/Header.tsx';
+import { copy, type Locale } from '../lib/copy';
+import { api, safe } from '../lib/server';
+interface Props {
+  locale: Locale;
+  title: string;
+  description?: string;
+  active?: string;
+  query?: string;
+}
+const { locale, title, description, active = '', query = '' } = Astro.props;
+const c = copy(locale);
+const path = Astro.url.pathname;
+const origin = import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321';
+const demo = import.meta.env.PUBLIC_KORA_DEMO !== 'false';
+// Light is the default. Dark only applies when the visitor chose it; the system setting is not followed.
+const themeScript =
+  "(()=>{try{var t=localStorage.getItem('kora.theme');document.documentElement.dataset.theme=t==='dark'?'dark':'light'}catch(e){}})();";
+// Loading screen: shown until every image of the page (and the fonts) is ready, at most 15 s; the bar follows the real count.
+const loaderStart = "document.documentElement.classList.add('kora-loading');";
+const loaderScript =
+  "(()=>{const h=document.documentElement,l=document.getElementById('loader');if(!l)return;const bar=l.querySelector('i');const imgs=[...document.images].filter(i=>!l.contains(i));imgs.forEach(i=>{if(i.loading==='lazy')i.loading='eager'});let done=0,end=false;const total=imgs.length+1;const step=()=>{bar.style.transform='scaleX('+Math.max(.05,done/total)+')';if(done>=total)finish()};const finish=()=>{if(end)return;end=true;bar.style.transform='scaleX(1)';setTimeout(()=>{l.dataset.done='true';setTimeout(()=>h.classList.remove('kora-loading'),750)},300)};imgs.forEach(i=>{if(i.complete&&i.naturalWidth){done++}else{const f=()=>{done++;step()};i.addEventListener('load',f,{once:true});i.addEventListener('error',f,{once:true})}});document.fonts.ready.then(()=>{done++;step()});step();setTimeout(finish,15000)})();";
+const reveal =
+  "(()=>{const o=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.dataset.visible='true';o.unobserve(e.target)}}),{rootMargin:'0px 0px -8% 0px'});document.querySelectorAll('.reveal').forEach(n=>o.observe(n))})();";
+for (const script of [themeScript, loaderStart, loaderScript, reveal]) {
+  Astro.csp?.insertScriptHash(`sha256-${createHash('sha256').update(script).digest('base64')}`);
+}
+Astro.response.headers.set('X-Content-Type-Options', 'nosniff');
+Astro.response.headers.set('Referrer-Policy', 'same-origin');
+const links = [
+  { href: '/' + locale + '/shops', label: c.shops, key: 'shops' },
+  { href: '/' + locale + '/catalogue', label: c.catalogue, key: 'catalogue' },
+  { href: '/' + locale + '/request-product', label: c.request, key: 'request' },
+];
+const year = new Date().getFullYear();
+const aisles = (await safe(api(locale).categories(), { data: [] })).value.data.map((a) => ({ slug: a.slug, name: a.name }));
+---
+
+<!doctype html>
+<html lang={locale + '-CM'} data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <title>{title} · KORA</title>
+    <meta name="description" content={description ?? c.slogan + ' ' + c.heroText} />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="color-scheme" content="light" />
+    <link rel="icon" href="/brand/logo.png" />
+    <link rel="alternate" hreflang="fr-CM" href={origin + path.replace(/^\/(fr|en)/, '/fr')} />
+    <link rel="alternate" hreflang="en-CM" href={origin + path.replace(/^\/(fr|en)/, '/en')} />
+    <script is:inline set:html={themeScript} />
+    <script is:inline set:html={loaderStart} />
+  </head>
+  <body>
+    <div class="loader" id="loader" role="status" aria-label={c.loading}>
+      <div class="loader-inner">
+        <img class="loader-logo" src="/brand/logo-ink.png" alt="KORA" width="150" height="66" />
+        <span class="loader-bar"><i></i></span>
+        <p class="loader-text">{c.loading}</p>
+      </div>
+    </div>
+    <a class="skip-link" href="#main">{c.skip}</a>
+    {demo && <div class="demo-strip">{c.demo}</div>}
+    <Header client:load locale={locale} links={links} aisles={aisles} active={active} query={query} />
+    <main id="main">
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <div class="wrap">
+        <div class="final">
+          <span class="final-kicker">{c.finalKicker}</span>
+          <h2>{c.finalTitleA} <em>{c.finalTitleB}</em></h2>
+          <p>{c.requestText}</p>
+          <div class="final-actions">
+            <a class="final-main" href={'/' + locale + '/request-product'}>{c.requestAction}</a>
+            <button type="button" class="final-ghost" data-open-search>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.6l1.4-2h5l1.4 2h1.6A2.5 2.5 0 0 1 20 8.5v8A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5z" /><circle cx="12" cy="12.5" r="3.5" /></svg>
+              {c.photoButton}
+            </button>
+          </div>
+        </div>
+        <div class="footer-grid">
+          <div class="footer-brand-col">
+            <img class="footer-logo" src="/brand/logo-ink.png" alt="KORA" width="120" height="55" />
+            <p class="footer-claim">{c.slogan.split(', ').map((part, i, all) => <span>{part}{i < all.length - 1 ? ',' : ''}</span>)}</p>
+            <span class="footer-status"><i></i>{c.footerStatus}</span>
+          </div>
+          <nav class="footer-cols" aria-label={c.footerNav}>
+            <div>
+              <h3>{c.footerShop}</h3>
+              <ul>
+                <li><a href={'/' + locale + '/catalogue'}>{c.catalogue}</a></li>
+                <li><a href={'/' + locale + '/shops'}>{c.shops}</a></li>
+                <li><a href={'/' + locale + '/cart'}>{c.cart}</a></li>
+              </ul>
+            </div>
+            <div>
+              <h3>{c.footerHelp}</h3>
+              <ul>
+                <li><a href={'/' + locale + '/request-product'}>{c.request}</a></li>
+                <li><a href={'/' + locale + '/account'}>{c.account}</a></li>
+                <li><a href={'/' + locale + '/legal/returns'}>{c.returnsPolicy}</a></li>
+              </ul>
+            </div>
+            <div>
+              <h3>{c.footerCompany}</h3>
+              <ul>
+                <li><a href={'/' + locale + '/partners'}>{c.partners}</a></li>
+                <li><a href={'/' + locale + '/shops'}>{c.ourShops}</a></li>
+              </ul>
+            </div>
+            <div>
+              <h3>{c.footerLegal}</h3>
+              <ul>
+                <li><a href={'/' + locale + '/legal/terms_of_sale'}>{c.termsOfSale}</a></li>
+                <li><a href={'/' + locale + '/legal/terms_of_use'}>{c.termsOfUse}</a></li>
+                <li><a href={'/' + locale + '/legal/privacy'}>{c.privacy}</a></li>
+              </ul>
+            </div>
+          </nav>
+        </div>
+        <div class="footer-mark" aria-hidden="true"><img src="/brand/logo-ink.png" alt="" loading="lazy" /></div>
+        <div class="footer-bottom">
+          <span>© {year} {c.rights}</span>
+          <span>{c.madeIn}</span>
+        </div>
+      </div>
+    </footer>
+    <script>
+      document.querySelectorAll('[data-open-search]').forEach((b) => b.addEventListener('click', () => window.dispatchEvent(new CustomEvent('kora:open-search'))));
+    </script>
+    <script is:inline set:html={loaderScript} />
+    <script is:inline set:html={reveal} />
+  </body>
+</html>
