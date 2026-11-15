@@ -17,6 +17,7 @@ import { copy, money } from '../../../lib/copy';
 import { colorHex } from '../../../lib/colors';
 import { api, localeOf, safe } from '../../../lib/server';
 import { ApiError, type Offer } from '@kora/api-client';
+import { sampleReviews } from '../../../lib/demo-reviews';
 
 const locale = localeOf(Astro.params.locale);
 if (!locale) return new Response(null, { status: 404 });
@@ -34,35 +35,77 @@ try {
   failed = true;
 }
 
-type Review = { id: string; author: string; verified_purchase: boolean; rating: number; title: string | null; body: string; photos: string[]; reply: string | null; created_at: string };
+type Review = { id: string; author: string; avatar?: string | null; verified_purchase: boolean; rating: number; title: string | null; body: string; photos: string[]; reply: string | null; created_at: string };
 type Reviews = { summary: { count: number; average: number | null; ratings: Record<string, number> }; reviews: Review[] };
-type Zone = { id: string; name: string; districts: string[] };
 type CmsPage = { data: { page: { blocks: { type: string; media_id?: string; text?: Partial<Record<'fr' | 'en', string>> }[] } | null; media: Record<string, string> } };
 const noReviews: Reviews = { summary: { count: 0, average: null, ratings: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } }, reviews: [] };
 const emptyList = { data: [] as Offer[], meta: { page: 1, last_page: 1, total: 0, demo: false } };
-const [categories, related, reviewsRes, zonesRes, cms] = await Promise.all([
+const [categories, related, reviewsRes, cms] = await Promise.all([
   safe(k.categories(), { data: [] }),
   offer ? safe(k.catalogue('?category=' + encodeURIComponent(offer.category) + '&sort=best_selling&per_page=12'), emptyList) : Promise.resolve({ value: emptyList, failed: false }),
   offer ? safe(k.request<{ data: Reviews }>('/api/v1/products/' + offer.product_id + '/reviews'), { data: noReviews }) : Promise.resolve({ value: { data: noReviews }, failed: false }),
-  safe(k.request<{ data: Zone[] }>('/api/v1/delivery/zones'), { data: [] }),
   safe(k.request<CmsPage>('/api/v1/content/pages/product'), { data: { page: null, media: {} } } as CmsPage),
 ]);
 const heroBlock = cms.value.data.page?.blocks.find((b) => b.type === 'banner');
 const heroImage = heroBlock?.media_id ? cms.value.data.media[heroBlock.media_id] ?? null : null;
+// More from the same shop (best sellers first), without this product nor the ones already shown above.
+const fromShop = offer
+  ? (await safe(k.catalogue('?shop=' + encodeURIComponent(offer.shop.slug) + '&sort=best_selling&per_page=12'), emptyList)).value.data
+  : [];
 const aisle = categories.value.data.find((x) => x.slug === offer?.category);
 const names = Object.fromEntries(categories.value.data.map((x) => [x.slug, x.name]));
-const similar = related.value.data.filter((o) => o.id !== offer?.id).slice(0, 4);
-const reviews = reviewsRes.value.data;
-const districts = [...new Set(zonesRes.value.data.flatMap((z) => z.districts ?? []))];
+// "You may also like" mixes OTHER shops (this shop has its own section below): same aisle first, then best sellers,
+// taking shops in turn so no shop appears twice while another one still has a product to show.
+const bestSellers = offer ? (await safe(k.catalogue('?sort=best_selling&per_page=48'), emptyList)).value.data : [];
+const similar: Offer[] = (() => {
+  if (!offer) return [];
+  const pool = [...related.value.data, ...bestSellers].filter(
+    (o, i, all) => o.shop.slug !== offer.shop.slug && o.product_id !== offer.product_id && all.findIndex((x) => x.product_id === o.product_id) === i,
+  );
+  const byShop = new Map<string, Offer[]>();
+  for (const o of pool) byShop.set(o.shop.slug, [...(byShop.get(o.shop.slug) ?? []), o]);
+  const picked: Offer[] = [];
+  while (picked.length < 4 && [...byShop.values()].some((l) => l.length)) {
+    for (const list of byShop.values()) {
+      const next = list.shift();
+      if (next && picked.length < 4) picked.push(next);
+    }
+  }
+  return picked;
+})();
+// Demo site only: example reviews when a product has none yet, labelled as such (see lib/demo-reviews.ts).
+const demo = import.meta.env.PUBLIC_KORA_DEMO !== 'false';
+const sampleMode = demo && reviewsRes.value.data.reviews.length === 0;
+const reviews: Reviews = sampleMode
+  ? (() => {
+      const list = sampleReviews(locale, offer?.image ?? null);
+      const ratings: Record<string, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+      list.forEach((r) => (ratings[String(r.rating)] += 1));
+      return { summary: { count: list.length, average: Math.round((list.reduce((t, r) => t + r.rating, 0) / list.length) * 10) / 10, ratings }, reviews: list };
+    })()
+  : reviewsRes.value.data;
+// Delivery, warranty and bulk texts come with the product from the API (service block of /catalogue/{id}).
+const service = offer?.service ?? null;
+const bulk = offer?.bulk ?? null;
+// "KORA" and the shop's name stand out in orange inside the service texts.
+const marks = (text: string) => {
+  const names = ['KORA', offer?.shop.name ?? ''].filter(Boolean).map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  return text.split(new RegExp('(' + names.join('|') + ')', 'g')).filter(Boolean).map((t) => ({ t, k: t === 'KORA' || t === offer?.shop.name }));
+};
+const unitWord = (unit: string, n: number) => {
+  const fr: Record<string, [string, string]> = { carton: ['carton', 'cartons'], lot: ['lot', 'lots'], boite: ['boîte', 'boîtes'], sac: ['sac', 'sacs'], palette: ['palette', 'palettes'] };
+  const en: Record<string, [string, string]> = { carton: ['carton', 'cartons'], lot: ['lot', 'lots'], boite: ['box', 'boxes'], sac: ['bag', 'bags'], palette: ['pallet', 'pallets'] };
+  const pair = (locale === 'fr' ? fr : en)[unit] ?? [unit, unit];
+  return n > 1 ? pair[1] : pair[0];
+};
 
 const was = offer?.compare_at_price && offer.compare_at_price > offer.price.amount ? offer.compare_at_price : null;
 const off = was && offer ? Math.round((1 - offer.price.amount / was) * 100) : 0;
-const saved = was && offer ? was - offer.price.amount : 0;
 
 // The aisle's typed characteristics, in the aisle's order, with readable labels.
 const specs = offer && aisle
   ? aisle.attributes
-      .filter((def) => offer!.attributes[def.key] !== undefined && offer!.attributes[def.key] !== null && offer!.attributes[def.key] !== '')
+      .filter((def) => def.key !== 'garantie' && offer!.attributes[def.key] !== undefined && offer!.attributes[def.key] !== null && offer!.attributes[def.key] !== '')
       .map((def) => {
         const value = offer!.attributes[def.key];
         const label =
@@ -75,22 +118,158 @@ const specs = offer && aisle
       })
   : [];
 const colour = specs.find((s) => s.key === 'couleur');
+// Variants of the same product in this shop (shades, sizes…), shown as photo thumbnails like the BR.F colour picker.
+const variants = offer?.variants ?? [];
+const variantKey = aisle?.attributes.find((def) => def.key === 'couleur') ? 'couleur' : aisle?.attributes.find((def) => def.type === 'choice' && variants.some((v) => v.attributes[def.key] !== offer?.attributes[def.key]))?.key;
+const variantDef = aisle?.attributes.find((def) => def.key === variantKey);
+const variantLabel = (v: { attributes: Record<string, unknown> }) => {
+  // A named shade ("Bordeaux", "Rose poudré"…) reads better than the colour family used by the filters.
+  if (typeof v.attributes.teinte === 'string' && v.attributes.teinte.trim()) return v.attributes.teinte.trim();
+  const value = variantKey ? v.attributes[variantKey] : undefined;
+  return variantDef?.options.find((o) => o.value === value)?.label ?? (value === undefined ? '' : String(value));
+};
 const shopPlace = offer ? [offer.shop.district, offer.shop.city].filter(Boolean).join(', ') : '';
 const shopHref = offer ? home + '/shops/' + offer.shop.slug : '';
 const avg = reviews.summary.average;
 const fmtAvg = (n: number) => n.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-const date = (iso: string) => new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(iso));
-const maxBar = Math.max(1, ...Object.values(reviews.summary.ratings).map(Number));
+// "1 month ago" style dates for reviews.
+const ago = (iso: string) => {
+  const s = (new Date(iso).getTime() - Date.now()) / 1000;
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+  const steps: [Intl.RelativeTimeFormatUnit, number][] = [['year', 31536000], ['month', 2592000], ['week', 604800], ['day', 86400], ['hour', 3600], ['minute', 60]];
+  for (const [unit, size] of steps) if (Math.abs(s) >= size) return rtf.format(Math.round(s / size), unit);
+  return rtf.format(0, 'minute');
+};
+// Gallery and option pickers walk through the product's variants (each has its own photo).
+const vIndex = Math.max(0, variants.findIndex((v) => v.id === offer?.id));
+const prevV = variants.length > 1 ? variants[(vIndex - 1 + variants.length) % variants.length] : null;
+const nextV = variants.length > 1 ? variants[(vIndex + 1) % variants.length] : null;
+const tags = [aisle?.name, ...specs.filter((x) => x.key !== 'couleur' && x.key !== 'teinte' && ![c.yes, c.no].includes(x.label)).map((x) => x.label)].filter(Boolean).slice(0, 5) as string[];
+const pageUrl = new URL(Astro.url.pathname, import.meta.env.PUBLIC_SITE_URL || Astro.url.origin).href;
+// Everything the page needs to switch variant instantly, without asking the server.
+const variantData = variants.map((v) => {
+  const vWas = v.compare_at_price && v.compare_at_price > v.price.amount ? v.compare_at_price : null;
+  return {
+    id: v.id,
+    href: home + '/products/' + v.id,
+    image: v.image,
+    label: variantLabel(v),
+    sku: v.sku,
+    price: money(v.price.amount, locale),
+    was: vWas ? money(vWas, locale) : null,
+    off: vWas ? Math.round((1 - v.price.amount / vWas) * 100) : 0,
+    availability: v.availability,
+    availabilityText: c[v.availability],
+  };
+});
+const shareText = encodeURIComponent((offer?.name ?? '') + ' — ' + pageUrl);
+const reviewCount = reviews.summary.count;
 const stars = (n: number) => [1, 2, 3, 4, 5].map((i) => (n >= i ? 'star-full' : n >= i - 0.5 ? 'star-half' : 'star-off'));
 
 const L = fr
   ? {
       reviewsCount: (n: number) => (n === 0 ? 'Aucun avis vérifié' : n === 1 ? '1 avis vérifié' : n + ' avis vérifiés'),
-      deliveryPill: 'Livraison dans Douala · frais calculés selon votre quartier, avant le paiement',
-      bulkLink: 'Acheter en gros ou pour une entreprise ?',
-      bulkCta: 'Voir les conditions',
-      trust: [['Livraison suivie', 'De la boutique à votre porte'], ['Garantie boutique', 'Suivie par KORA'], ['Après-vente', 'Dossier depuis votre compte']],
-      tabs: { details: 'Détails', specs: 'Caractéristiques', warranty: 'Garantie & après-vente', delivery: 'Livraison', bulk: 'Au détail ou en gros' },
+      journeyTitle: 'Votre commande, de la boutique à votre porte',
+      stepShop: (place: string) => 'Préparée à ' + place,
+      stepKora: 'Livrée et suivie en direct',
+      stepHome: 'Chez vous',
+      stepHomeText: 'Frais selon votre quartier, affichés avant le paiement',
+      followedByKora: 'Suivie par KORA avec la boutique',
+      afterSales: 'Après-vente',
+      afterSalesTitle: 'Un souci ? On s’en occupe',
+      afterSalesText: 'Dossier depuis votre compte, avec photos',
+      bulkLink: 'Achat en gros ou pour une entreprise',
+      bulkCta: 'Prix selon la quantité, sur devis',
+      bulkLabel: 'En gros',
+      bulkGoShort: 'Voir les conditions',
+      tabs: { details: 'Description', specs: 'Caractéristiques', warranty: 'Garantie & après-vente', delivery: 'Livraison', bulk: 'En gros', reviews: 'Avis' },
+      refLabel: 'Réf.',
+      tagsLabel: 'Tags',
+      shopLabel: 'Boutique',
+      shareLabel: 'Partager',
+      copyLink: 'Copier le lien',
+      prev: 'Variante précédente',
+      next: 'Variante suivante',
+      reviewsShort: (n: number) => '(' + n + ' avis)',
+      shipsWarehouse: 'Expédié depuis l’entrepôt KORA',
+      shippedFrom: 'Expédié depuis',
+      koraWarehouse: 'Entrepôt KORA',
+      shipsShop: (shop: string) => 'Expédié depuis ' + shop,
+      perUnit: (u: string) => 'pièces par ' + u,
+      minUnits: (u: string) => u + ' minimum',
+      minPieces: 'pièces au minimum',
+      bulkRow: (n: number, u: string, size: number) => 'Dès ' + n + ' ' + u + ' de ' + size,
+      notBulk: 'Ce produit n’est pas proposé en gros pour l’instant.',
+      notBulkText: 'Besoin d’une grande quantité ? Dites-nous ce qu’il vous faut : l’équipe interroge les boutiques et vous répond.',
+      notBulkGo: 'Faire une demande',
+      districtSearch: 'Votre quartier, ex. Bonamoussadi',
+      servedIn: (d: string, z: string) => 'Livré à ' + d + ' · ' + z,
+      notServed: 'Ce quartier n’est pas encore desservi.',
+      askIt: 'Faire une demande',
+      zonesSummary: (n: number, z: number) => n + ' quartiers desservis dans ' + z + (z > 1 ? ' zones' : ' zone') + '. Tapez le vôtre pour vérifier.',
+      seeAllDistricts: 'Voir tous les quartiers',
+      districtsCount: (n: number) => n + (n > 1 ? ' quartiers' : ' quartier'),
+      bulkTitle: 'Vente en gros',
+      packTitle: 'Le conditionnement',
+      packUnit: 'Unité de gros',
+      packUnitText: (u: string, n: number) => u.charAt(0).toUpperCase() + u.slice(1) + ' de ' + n + ' pièces',
+      packMin: 'Minimum',
+      packTotal: 'Soit au minimum',
+      pieces: 'pièces',
+      howTitle: 'Comment ça marche',
+      showReply: 'Voir la réponse de KORA',
+      hideReply: 'Masquer la réponse',
+      zoomPhoto: 'Agrandir la photo',
+      closePhoto: 'Fermer',
+      recommend: 'des clients recommandent ce produit (4 ou 5 étoiles)',
+      verifiedOnly: 'Achats vérifiés uniquement',
+      readMore: 'Lire la suite',
+      trustTitle: 'Avis 100 % vérifiés.',
+      sameShopKicker: 'De la même boutique',
+      moreFrom: (shop: string) => 'Plus de ' + shop,
+      keyPoints: 'Points clés',
+      specsBand: ['Caractéristiques', 'Informations'],
+      shortShop: 'Boutique',
+      shortPlace: 'Quartier',
+      shortMin: 'Minimum',
+      techSpecs: 'Fiche technique',
+      warrantyBig: (m: number) => m + ' mois',
+      warrantyHead: 'de garantie boutique, suivie par KORA.',
+      warrantyLead: 'Si un article pose problème, vous n’êtes pas seul face à la boutique : KORA ouvre le dossier, le suit et vous tient informé à chaque étape.',
+      stepsTitles: ['Votre facture', 'Un dossier', 'On s’en occupe', 'Vous suivez tout'],
+      deliveryHead: 'De la boutique à votre porte.',
+      deliveryLead: 'Votre commande est préparée chez la boutique, récupérée par un livreur KORA et suivie en direct jusqu’à chez vous.',
+      deliveryIntro: 'Votre article part de l’entrepôt KORA quand il y est en stock, ou de la boutique qui le vend. Dans les deux cas, c’est KORA qui le prépare, vous le livre et vous tient informé jusqu’à votre porte.',
+      routeTitle: 'Le parcours',
+      routeShip: 'Expédition',
+      routeShipText: (shop: string, place: string) => 'Depuis l’entrepôt KORA, ou depuis ' + shop + ' (' + place + ')',
+      routeCarry: 'Livraison',
+      routeCarryText: 'Par un livreur KORA, suivi en direct',
+      routeHome: 'Réception',
+      routeHomeText: 'Chez vous, au créneau choisi',
+      termsTitle: 'Les conditions',
+      zonesTitle: 'Quartiers desservis',
+      retailPer: '/ unité',
+      retailPoints: (min: number) => ['Dès ' + min + (min > 1 ? ' pièces' : ' pièce'), 'Paiement en ligne', 'Livraison suivie dans Douala'],
+      retailGo: 'Choisir la quantité',
+      bulkPrice: 'Sur devis',
+      bulkPoints: ['Prix selon la quantité', 'Devis écrit, à accepter avant de payer', 'Paiement par le parcours habituel'],
+      bulkGoBtn: 'Demander un devis',
+      sampleTag: 'Avis d’exemple · données de test',
+      basedOn: (n: number) => 'Basé sur ' + n + (n > 1 ? ' avis vérifiés' : ' avis vérifié'),
+      groupProduct: 'Le produit',
+      groupSale: 'La vente',
+      outOfLong: 'sur 5',
+      starsN: (n: number) => n + (n > 1 ? ' étoiles' : ' étoile'),
+      reviewList: 'Liste des avis',
+      showing: (a: number, b: number, n: number) => 'Affichage de ' + a + '–' + b + ' sur ' + n + ' avis',
+      sortBy: 'Trier par',
+      sortNewest: 'Plus récents',
+      sortBest: 'Meilleures notes',
+      sortWorst: 'Notes les plus basses',
+      moreReviews: 'Voir plus d’avis',
+      relatedKicker: 'Dans d’autres boutiques',
+      relatedTitle: ['Vous aimerez', 'aussi'],
       inShort: 'En bref',
       aisle: 'Rayon',
       shop: 'Vendu par',
@@ -126,11 +305,107 @@ const L = fr
     }
   : {
       reviewsCount: (n: number) => (n === 0 ? 'No verified reviews' : n === 1 ? '1 verified review' : n + ' verified reviews'),
-      deliveryPill: 'Delivery in Douala · fee based on your district, shown before payment',
-      bulkLink: 'Buying in bulk or for a company?',
-      bulkCta: 'See the terms',
-      trust: [['Tracked delivery', 'From the shop to your door'], ['Shop warranty', 'Followed up by KORA'], ['After-sales', 'Case from your account']],
-      tabs: { details: 'Details', specs: 'Specifications', warranty: 'Warranty & after-sales', delivery: 'Delivery', bulk: 'Retail or bulk' },
+      journeyTitle: 'Your order, from the shop to your door',
+      stepShop: (place: string) => 'Prepared in ' + place,
+      stepKora: 'Delivered and tracked live',
+      stepHome: 'At your door',
+      stepHomeText: 'Fee based on your district, shown before payment',
+      followedByKora: 'Followed up by KORA with the shop',
+      afterSales: 'After-sales',
+      afterSalesTitle: 'A problem? We handle it',
+      afterSalesText: 'Case from your account, with photos',
+      bulkLink: 'Buying in bulk or for a company',
+      bulkCta: 'Price by quantity, on quote',
+      bulkLabel: 'Bulk',
+      bulkGoShort: 'See the terms',
+      tabs: { details: 'Description', specs: 'Specifications', warranty: 'Warranty & after-sales', delivery: 'Delivery', bulk: 'Bulk', reviews: 'Reviews' },
+      refLabel: 'SKU',
+      tagsLabel: 'Tags',
+      shopLabel: 'Shop',
+      shareLabel: 'Share',
+      copyLink: 'Copy link',
+      prev: 'Previous variant',
+      next: 'Next variant',
+      reviewsShort: (n: number) => '(' + n + (n > 1 ? ' reviews)' : ' review)'),
+      shipsWarehouse: 'Ships from the KORA warehouse',
+      shippedFrom: 'Ships from',
+      koraWarehouse: 'KORA warehouse',
+      shipsShop: (shop: string) => 'Ships from ' + shop,
+      perUnit: (u: string) => 'pieces per ' + u,
+      minUnits: (u: string) => u + ' minimum',
+      minPieces: 'pieces minimum',
+      bulkRow: (n: number, u: string, size: number) => 'From ' + n + ' ' + u + ' of ' + size,
+      notBulk: 'This product is not sold in bulk yet.',
+      notBulkText: 'Need a large quantity? Tell us what you need: the team asks the shops and gets back to you.',
+      notBulkGo: 'Make a request',
+      districtSearch: 'Your district, e.g. Bonamoussadi',
+      servedIn: (d: string, z: string) => 'Delivered to ' + d + ' · ' + z,
+      notServed: 'This district is not served yet.',
+      askIt: 'Make a request',
+      zonesSummary: (n: number, z: number) => n + ' districts served in ' + z + (z > 1 ? ' zones' : ' zone') + '. Type yours to check.',
+      seeAllDistricts: 'See all districts',
+      districtsCount: (n: number) => n + (n > 1 ? ' districts' : ' district'),
+      bulkTitle: 'Bulk sale',
+      packTitle: 'Packaging',
+      packUnit: 'Bulk unit',
+      packUnitText: (u: string, n: number) => u.charAt(0).toUpperCase() + u.slice(1) + ' of ' + n + ' pieces',
+      packMin: 'Minimum',
+      packTotal: 'That is at least',
+      pieces: 'pieces',
+      howTitle: 'How it works',
+      showReply: 'See KORA’s reply',
+      hideReply: 'Hide the reply',
+      zoomPhoto: 'Enlarge the photo',
+      closePhoto: 'Close',
+      recommend: 'of customers recommend this product (4 or 5 stars)',
+      verifiedOnly: 'Verified purchases only',
+      readMore: 'Read more',
+      trustTitle: '100% verified reviews.',
+      sameShopKicker: 'From the same shop',
+      moreFrom: (shop: string) => 'More from ' + shop,
+      keyPoints: 'Key points',
+      specsBand: ['Specifications', 'Details'],
+      shortShop: 'Shop',
+      shortPlace: 'District',
+      shortMin: 'Minimum',
+      techSpecs: 'Tech specs',
+      warrantyBig: (m: number) => m + (m > 1 ? ' months' : ' month'),
+      warrantyHead: 'shop warranty, followed up by KORA.',
+      warrantyLead: 'If an item has a problem, you are not alone with the shop: KORA opens the case, follows it and keeps you posted at every step.',
+      stepsTitles: ['Your invoice', 'A case', 'We handle it', 'You follow it all'],
+      deliveryHead: 'From the shop to your door.',
+      deliveryLead: 'Your order is prepared at the shop, picked up by a KORA courier and tracked live to your home.',
+      deliveryIntro: 'Your item ships from the KORA warehouse when it is in stock there, or from the shop that sells it. Either way, KORA prepares it, delivers it and keeps you posted all the way to your door.',
+      routeTitle: 'The journey',
+      routeShip: 'Shipping',
+      routeShipText: (shop: string, place: string) => 'From the KORA warehouse, or from ' + shop + ' (' + place + ')',
+      routeCarry: 'Delivery',
+      routeCarryText: 'By a KORA courier, tracked live',
+      routeHome: 'Arrival',
+      routeHomeText: 'At your home, in the slot you chose',
+      termsTitle: 'The terms',
+      zonesTitle: 'Districts served',
+      retailPer: '/ unit',
+      retailPoints: (min: number) => ['From ' + min + (min > 1 ? ' pieces' : ' piece'), 'Online payment', 'Tracked delivery in Douala'],
+      retailGo: 'Choose the quantity',
+      bulkPrice: 'On quote',
+      bulkPoints: ['Price based on quantity', 'Written quote, accepted before paying', 'Paid through the usual checkout'],
+      bulkGoBtn: 'Ask for a quote',
+      sampleTag: 'Example reviews · test data',
+      basedOn: (n: number) => 'Based on ' + n + (n > 1 ? ' verified reviews' : ' verified review'),
+      groupProduct: 'The product',
+      groupSale: 'The sale',
+      outOfLong: 'out of 5',
+      starsN: (n: number) => n + (n > 1 ? ' stars' : ' star'),
+      reviewList: 'Review list',
+      showing: (a: number, b: number, n: number) => 'Showing ' + a + '–' + b + ' of ' + n + ' reviews',
+      sortBy: 'Sort by',
+      sortNewest: 'Newest',
+      sortBest: 'Highest rated',
+      sortWorst: 'Lowest rated',
+      moreReviews: 'Show more reviews',
+      relatedKicker: 'From other shops',
+      relatedTitle: ['You may', 'also like'],
       inShort: 'At a glance',
       aisle: 'Aisle',
       shop: 'Sold by',
@@ -189,77 +464,109 @@ const L = fr
         </div>
       </section>
 
+      <script type="application/json" id="pdp-variants" set:html={JSON.stringify(variantData)} />
       <section class="wrap pdp">
-
         <div class="pdp-grid">
           <div class="pdp-media">
-            <div class="pdp-photo">
+            <div class="pdp-photo" data-tilt>
               {offer.image ? <img src={offer.image} alt={offer.name} decoding="async" fetchpriority="high" /> : <p class="muted">{c.noImage}</p>}
-              {off > 0 && <span class="pdp-off">−{off} %</span>}
+              <span class="pdp-off" hidden={off <= 0}>−{off} %</span>
+              {prevV && <a class="pdp-arrow prev" href={home + '/products/' + prevV.id} data-variant aria-label={L.prev}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6" /></svg></a>}
+              {nextV && <a class="pdp-arrow next" href={home + '/products/' + nextV.id} data-variant aria-label={L.next}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg></a>}
             </div>
+            {variants.length > 1 && (
+              <div class="pdp-thumbs">
+                {variants.map((v) => (
+                  <a href={home + '/products/' + v.id} data-variant aria-current={v.id === offer!.id ? 'true' : undefined} title={variantLabel(v)}>
+                    {v.image ? <img src={v.image} alt={variantLabel(v)} loading="lazy" decoding="async" /> : <span>{variantLabel(v)}</span>}
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
 
           <div class="pdp-info">
             <div class="pdp-shop">
               <a class="pdp-shop-id" href={shopHref}>
-                <span class="pdp-avatar" aria-hidden="true">{offer.shop.name.slice(0, 1)}</span>
+                <span class="pdp-avatar story-ring" aria-hidden="true">{offer.shop.avatar ? <img src={offer.shop.avatar} alt="" loading="lazy" decoding="async" /> : offer.shop.name.slice(0, 1)}</span>
                 <span><strong>{offer.shop.name}</strong><small>{shopPlace || c.officialShop}</small></span>
               </a>
-              <a class="pdp-shop-go" href={shopHref}>{c.visitShop}</a>
+              <a class="pdp-shop-go" href={shopHref}>{c.visitShop} <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9" /></svg></a>
             </div>
-
-            {aisle && <a class="pdp-aisle" href={home + '/catalogue?category=' + aisle.slug}>{aisle.name}</a>}
+            {aisle && <a class="pdp-cat" href={home + '/catalogue?category=' + aisle.slug}>{aisle.name}</a>}
             <h1>{offer.name}</h1>
-            <a class="pdp-rating" href="#avis">
-              <span class="stars" aria-hidden="true">{stars(avg ?? 0).map((s) => <i class={s}></i>)}</span>
+            <a class="pdp-rating" href="#infos" data-tab-open="reviews">
+              <span class="stars" aria-hidden="true">{stars(avg ?? 0).map((st) => <i class={st}></i>)}</span>
               {avg !== null && <strong>{fmtAvg(avg)}</strong>}
-              <span>{L.reviewsCount(reviews.summary.count)}</span>
+              <span>{L.reviewsShort(reviewCount)}</span>
             </a>
 
-            <div class="pdp-prices">
+            <p class="pdp-prices">
               <strong>{money(offer.price.amount, locale)}</strong>
-              {was && <s><span class="sr-only">{c.wasPrice}</span>{money(was, locale)}</s>}
-              {off > 0 && <em>−{off} %</em>}
-            </div>
-            {saved > 0 && <p class="pdp-save">{L.save(money(saved, locale))}</p>}
-            <p class={'pdp-stock ' + offer.availability}><i aria-hidden="true"></i>{c[offer.availability]}</p>
-
-            <p class="pdp-pill">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h.01" /></svg>
-              {L.deliveryPill}
+              <s hidden={!was}><span class="sr-only">{c.wasPrice}</span><span data-was>{was ? money(was, locale) : ''}</span></s>
+              <em hidden={off <= 0}>−{off} %</em>
             </p>
+            {offer.description && <p class="pdp-short">{offer.description.split(/\n\s*\n/)[0]}</p>}
 
-            {colour && (
-              <div class="pdp-option">
-                <p>{colour.name} <span>· {colour.label}</span></p>
-                <span class="pdp-swatch" title={colour.label}><i style={'background:' + (colorHex[colour.value] ?? '#ccc')}></i></span>
+            {variants.length > 1 && variantKey === 'couleur' ? (
+              <div class="pdp-opt">
+                <p>{variantDef?.label ?? colour?.name} : <strong>{variantLabel(offer)}</strong></p>
+                <div class="pdp-dots">
+                  {variants.map((v) => (
+                    <a href={home + '/products/' + v.id} data-variant aria-current={v.id === offer!.id ? 'true' : undefined} title={variantLabel(v) + ' · ' + c[v.availability]} class={v.availability === 'unavailable' ? 'off' : undefined}>
+                      <i data-swatch={v.image ?? undefined} style={'background:' + (colorHex[String(v.attributes.couleur)] ?? '#ccc')}></i>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ) : variants.length > 1 ? (
+              <div class="pdp-opt">
+                <p>{variantDef?.label} : <strong>{variantLabel(offer)}</strong></p>
+                <div class="pdp-boxes">
+                  {variants.map((v) => (
+                    <a href={home + '/products/' + v.id} data-variant aria-current={v.id === offer!.id ? 'true' : undefined} class={v.availability === 'unavailable' ? 'off' : undefined}>{variantLabel(v)}</a>
+                  ))}
+                </div>
+              </div>
+            ) : colour && (
+              <div class="pdp-opt">
+                <p>{colour.name} : <strong>{colour.label}</strong></p>
+                <div class="pdp-dots"><span aria-current="true"><i style={'background:' + (colorHex[colour.value] ?? '#ccc')}></i></span></div>
               </div>
             )}
+
+            <p class="pdp-stockline">
+              <span class={'pdp-badge ' + offer.availability}>{c[offer.availability]}</span>
+              {offer.minimum_quantity > 1 && <span class="pdp-min">{L.minimum} : {offer.minimum_quantity}</span>}
+            </p>
 
             <div class="pdp-buy">
               <AddToCart
                 client:load
                 variant="full"
+                follow
                 locale={locale}
                 offerId={offer.id}
                 name={offer.name}
                 minimum={offer.minimum_quantity}
                 disabled={offer.availability === 'unavailable'}
               />
-              {offer.minimum_quantity > 1 && <p class="pdp-min">{L.minimum} : {offer.minimum_quantity}</p>}
-              <a class="pdp-bulk-link" href="#infos" data-tab-open="bulk">{L.bulkLink} <span>{L.bulkCta} →</span></a>
             </div>
 
-            <ul class="pdp-trust">
-              {L.trust.map(([title, text], i) => (
-                <li>
-                  {i === 0 && <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7" /><circle cx="7" cy="17.5" r="1.6" /><circle cx="17" cy="17.5" r="1.6" /></svg>}
-                  {i === 1 && <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z" /><path d="m9 12 2 2 4-4" /></svg>}
-                  {i === 2 && <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3" /><path d="M18 3v4h-4M6 21v-4h4" /></svg>}
-                  <span><strong>{title}</strong>{text}</span>
-                </li>
-              ))}
-            </ul>
+            <dl class="pdp-meta">
+              {bulk && <div><dt>{L.bulkLabel}</dt><dd class="pdp-bulk-row"><span>{L.bulkRow(bulk.min_units, unitWord(bulk.unit, bulk.min_units), bulk.unit_size)}</span><a href="#infos" data-tab-open="bulk">{L.bulkGoShort} →</a></dd></div>}
+              <div><dt>{L.refLabel}</dt><dd data-sku>{offer.sku}</dd></div>
+              {tags.length > 0 && <div><dt>{L.tagsLabel}</dt><dd class="pdp-tags">{tags.map((t) => <span>{t}</span>)}</dd></div>}
+              <div>
+                <dt>{L.shareLabel}</dt>
+                <dd class="pdp-share">
+                  <a href={'https://wa.me/?text=' + shareText} target="_blank" rel="noopener" aria-label="WhatsApp" class="share-wa"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" /></svg></a>
+                  <a href={'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(pageUrl)} target="_blank" rel="noopener" aria-label="Facebook" class="share-fb"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.101 23.691v-7.98H6.627v-3.667h2.474v-1.58c0-4.085 1.848-5.978 5.858-5.978.401 0 .955.042 1.468.103a8.68 8.68 0 0 1 1.141.195v3.325a8.623 8.623 0 0 0-.653-.036 26.805 26.805 0 0 0-.733-.009c-.707 0-1.259.096-1.675.309a1.686 1.686 0 0 0-.679.622c-.258.42-.374.995-.374 1.752v1.297h3.919l-.386 2.103-.287 1.564h-3.246v8.245C19.396 23.238 24 18.179 24 12.044c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.628 3.874 10.35 9.101 11.647Z" /></svg></a>
+                  <a href={'https://twitter.com/intent/tweet?text=' + shareText} target="_blank" rel="noopener" aria-label="X" class="share-x"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z" /></svg></a>
+                  <button type="button" data-copy-link={pageUrl} aria-label={L.copyLink} title={L.copyLink}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" /><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" /></svg></button>
+                </dd>
+              </div>
+            </dl>
           </div>
         </div>
       </section>
@@ -267,153 +574,626 @@ const L = fr
       <section class="wrap pdp-tabs" id="infos">
         <div class="pdp-tablist" role="tablist">
           {Object.entries(L.tabs).map(([key, label], i) => (
-            <button type="button" role="tab" id={'tab-' + key} aria-controls={'panel-' + key} aria-selected={i === 0 ? 'true' : 'false'} data-tab={key}>{label}</button>
+            <button type="button" role="tab" id={'tab-' + key} aria-controls={'panel-' + key} aria-selected={i === 0 ? 'true' : 'false'} data-tab={key}>
+              {label}{key === 'reviews' && <span class="pdp-tab-count">{reviewCount}</span>}
+            </button>
           ))}
+          <span class="pdp-tab-ink" aria-hidden="true"></span>
         </div>
         <div class="pdp-tabgrid">
           <div class="pdp-panels">
             <div class="pdp-panel" role="tabpanel" id="panel-details" aria-labelledby="tab-details">
-              <p class="pdp-lead">{offer.description}</p>
-              {specs.length > 0 && (
-                <>
-                  <h3>{L.inShort}</h3>
-                  <ul class="pdp-bullets">
-                    {specs.slice(0, 6).map((s) => <li><span>{s.name}</span><strong>{s.label}</strong></li>)}
-                  </ul>
-                </>
-              )}
+              <div class="px-desc">
+                {(offer.description ?? '').split(/\n\s*\n/).map((para) => <p>{para}</p>)}
+              </div>
             </div>
             <div class="pdp-panel" role="tabpanel" id="panel-specs" aria-labelledby="tab-specs" hidden>
-              <dl class="pdp-specs">
-                {specs.map((s) => (<div><dt>{s.name}</dt><dd>{s.label}</dd></div>))}
-                {aisle && <div><dt>{L.aisle}</dt><dd>{aisle.name}</dd></div>}
-                <div><dt>{L.shop}</dt><dd><a href={shopHref}>{offer.shop.name}</a></dd></div>
-                {shopPlace && <div><dt>{L.location}</dt><dd>{shopPlace}</dd></div>}
-                <div><dt>{L.warrantyLen}</dt><dd>{offer.warranty || '—'}</dd></div>
-                <div><dt>{L.minimum}</dt><dd>{offer.minimum_quantity}</dd></div>
-                <div><dt>{c.reference}</dt><dd>{offer.sku}</dd></div>
-              </dl>
+              <div class="px-plain">
+                {specs.length > 0 && (
+                  <section>
+                    <h3>{L.groupProduct}</h3>
+                    <dl>
+                      {specs.map((sp) => (
+                        <div><dt>{sp.name}</dt><dd>{sp.key === 'couleur' && <i class="spec-dot" style={'background:' + (colorHex[sp.value] ?? '#ccc')}></i>}{sp.label}</dd></div>
+                      ))}
+                    </dl>
+                  </section>
+                )}
+                <section>
+                  <h3>{L.groupSale}</h3>
+                  <dl>
+                    {aisle && <div><dt>{L.aisle}</dt><dd>{aisle.name}</dd></div>}
+                    <div><dt>{L.shop}</dt><dd><a href={shopHref}>{offer.shop.name}</a></dd></div>
+                    {shopPlace && <div><dt>{L.location}</dt><dd>{shopPlace}</dd></div>}
+                    <div><dt>{L.warrantyLen}</dt><dd>{offer.warranty || '—'}</dd></div>
+                    <div><dt>{L.minimum}</dt><dd>{offer.minimum_quantity}</dd></div>
+                    <div><dt>{c.reference}</dt><dd>{offer.sku}</dd></div>
+                  </dl>
+                </section>
+              </div>
             </div>
             <div class="pdp-panel" role="tabpanel" id="panel-warranty" aria-labelledby="tab-warranty" hidden>
-              <div class="pdp-warranty">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z" /><path d="m9 12 2 2 4-4" /></svg>
-                <span><small>{L.warrantyLen} · {offer.shop.name}</small><strong>{offer.warranty || L.warrantyNone}</strong></span>
-              </div>
-              <h3>{L.warrantyHow}</h3>
-              <ol class="pdp-steps">{L.warrantySteps.map((s) => <li>{s}</li>)}</ol>
-            </div>
-            <div class="pdp-panel" role="tabpanel" id="panel-delivery" aria-labelledby="tab-delivery" hidden>
-              <div class="pdp-facts">
-                {L.facts.map(([title, text], i) => (
-                  <div>
-                    <span class="pdp-fact-ico" aria-hidden="true">
-                      {i === 0 && <svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z" /><circle cx="12" cy="10" r="2.5" /></svg>}
-                      {i === 1 && <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /></svg>}
-                      {i === 2 && <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M8 3v4M16 3v4M4 10h16" /></svg>}
-                      {i === 3 && <svg viewBox="0 0 24 24"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7" /><circle cx="7" cy="17.5" r="1.6" /><circle cx="17" cy="17.5" r="1.6" /></svg>}
-                    </span>
-                    <span><small>{title}</small><strong>{text}</strong></span>
-                  </div>
-                ))}
-              </div>
-              {districts.length > 0 && (
+              {service && (
                 <>
-                  <h3>{L.districts}</h3>
-                  <p class="pdp-districts">{districts.map((d) => <span>{d}</span>)}</p>
+                  <div class="px-hero">
+                    <p class="px-big">{service.warranty.months ? L.warrantyBig(service.warranty.months) : (offer.warranty || L.warrantyNone)}</p>
+                    <div>
+                      {service.warranty.months ? <h3>{marks(service.warranty.title).map((m) => (m.k ? <span class="hl">{m.t}</span> : m.t))}</h3> : null}
+                      <p>{marks(service.warranty.intro).map((m) => (m.k ? <span class="hl">{m.t}</span> : m.t))}</p>
+                    </div>
+                  </div>
+                  <ol class="px-steps">
+                    {service.warranty.steps.map((step, i) => (
+                      <li><span>{String(i + 1).padStart(2, '0')}</span><strong>{marks(step.label).map((m) => (m.k ? <span class="hl">{m.t}</span> : m.t))}</strong><p>{marks(step.text).map((m) => (m.k ? <span class="hl">{m.t}</span> : m.t))}</p></li>
+                    ))}
+                  </ol>
                 </>
               )}
             </div>
+
+            <div class="pdp-panel" role="tabpanel" id="panel-delivery" aria-labelledby="tab-delivery" hidden>
+              {service && (
+                <>
+                  <div class="dv">
+                    <div class="dv-main">
+                      <h3 class="dv-title">{marks(service.ships_from === 'warehouse' ? L.shipsWarehouse : L.shipsShop(offer.shop.name)).map((m) => (m.k ? <span class="hl">{m.t}</span> : m.t))}</h3>
+                      <p class="dv-intro">{marks(service.delivery.intro).map((m) => (m.k ? <span class="hl">{m.t}</span> : m.t))}</p>
+                      <ol class="dv-track">
+                        {service.delivery.route.map((step, i) => (
+                          <li class={i === service.delivery.route.length - 1 ? 'last' : undefined}>
+                            <span class="dv-dot" aria-hidden="true">
+                              {i === 0 && (service.ships_from === 'shop' && offer.shop.avatar ? <img src={offer.shop.avatar} alt="" loading="lazy" /> : <svg viewBox="0 0 24 24"><path d="M3 9 12 4l9 5v10H3z" /><path d="M8 19v-6h8v6" /></svg>)}
+                              {i === 1 && <svg viewBox="0 0 24 24"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7" /><circle cx="7" cy="17.5" r="1.6" /><circle cx="17" cy="17.5" r="1.6" /></svg>}
+                              {i >= 2 && <svg viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v9h-5v-6H9v6H4z" /></svg>}
+                            </span>
+                            <div><strong>{marks(step.label).map((m) => (m.k ? <span class="hl">{m.t}</span> : m.t))}</strong><p>{marks(step.text).map((m) => (m.k ? <span class="hl">{m.t}</span> : m.t))}</p></div>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                    <div class="px-plain dv-terms-plain">
+                      <section>
+                        <h3>{L.termsTitle}</h3>
+                        <dl>
+                          {service.delivery.terms.map((t) => <div><dt>{t.label}</dt><dd>{marks(t.text).map((m) => (m.k ? <span class="hl">{m.t}</span> : m.t))}</dd></div>)}
+                        </dl>
+                      </section>
+                    </div>
+                  </div>
+                  {service.zones.length > 0 && (
+                    <div class="dz" data-zones data-served={L.servedIn('{d}', '{z}')} data-no={L.notServed} data-ask={home + '/request-product'} data-ask-label={L.askIt}>
+                      <div class="dz-head">
+                        <h3 class="dv-title">{L.zonesTitle}</h3>
+                        <label class="dz-search">
+                          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+                          <span class="sr-only">{L.districtSearch}</span>
+                          <input type="search" placeholder={L.districtSearch} autocomplete="off" data-district-search />
+                        </label>
+                      </div>
+                      <p class="dz-result" data-district-result aria-live="polite" hidden></p>
+                      <p class="dz-summary">{L.zonesSummary(service.zones.reduce((n, z) => n + z.districts.length, 0), service.zones.length)}</p>
+                      <details class="dz-all">
+                        <summary>{L.seeAllDistricts}</summary>
+                        <div class="dz-list">
+                          {service.zones.map((z) => (
+                            <details class="dz-zone">
+                              <summary><strong>{z.name}</strong><span>{L.districtsCount(z.districts.length)}</span></summary>
+                              <ul>{z.districts.map((d) => <li data-zone={z.name}>{d}</li>)}</ul>
+                            </details>
+                          ))}
+                        </div>
+                      </details>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
             <div class="pdp-panel" role="tabpanel" id="panel-bulk" aria-labelledby="tab-bulk" hidden>
-              <div class="pdp-modes">
-                <div>
-                  <h3>{L.retail}</h3>
-                  <p>{L.retailText(offer.minimum_quantity, money(offer.price.amount, locale))}</p>
+              {bulk && service?.bulk ? (
+                <div class="bk">
+                  <div class="dv">
+                    <div class="dv-main">
+                      <h3 class="dv-title">{L.bulkTitle}</h3>
+                      <p class="dv-intro">{marks(service.bulk.intro).map((m) => (m.k ? <span class="hl">{m.t}</span> : m.t))}</p>
+                      <div class="px-plain dv-terms-plain bk-pack">
+                        <section>
+                          <h3>{L.packTitle}</h3>
+                          <dl>
+                            <div><dt>{L.packUnit}</dt><dd>{L.packUnitText(unitWord(bulk.unit, 1), bulk.unit_size)}</dd></div>
+                            <div><dt>{L.packMin}</dt><dd>{bulk.min_units} {unitWord(bulk.unit, bulk.min_units)}</dd></div>
+                            <div><dt>{L.packTotal}</dt><dd>{bulk.unit_size * bulk.min_units} {L.pieces}</dd></div>
+                          </dl>
+                        </section>
+                      </div>
+                      <a class="px-plan-go bk-go" href={home + '/account'}>{L.bulkGoBtn}</a>
+                    </div>
+                    <div class="px-plain dv-terms-plain">
+                      <section>
+                        <h3>{L.howTitle}</h3>
+                        <dl>
+                          {service.bulk.steps.map((step) => <div><dt>{marks(step.label).map((m) => (m.k ? <span class="hl">{m.t}</span> : m.t))}</dt><dd>{marks(step.text).map((m) => (m.k ? <span class="hl">{m.t}</span> : m.t))}</dd></div>)}
+                        </dl>
+                      </section>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <h3>{L.bulk}</h3>
-                  <p>{L.bulkText}</p>
-                  <a class="pdp-mode-go" href={home + '/account'}>{L.bulkGo} →</a>
+              ) : (
+                <div class="rv-empty bk-none">
+                  <h3>{L.notBulk}</h3>
+                  <p>{L.notBulkText}</p>
+                  <a class="px-plan-go" href={home + '/request-product'}>{L.notBulkGo}</a>
                 </div>
+              )}
+            </div>
+
+            <div class="pdp-panel" role="tabpanel" id="panel-reviews" aria-labelledby="tab-reviews" hidden>
+              {sampleMode && <p class="px-sample">{L.sampleTag}</p>}
+              <div class="px-rv-sum">
+                <div class="px-rv-score">
+                  <p><strong>{avg !== null ? fmtAvg(avg) : '–'}</strong><span>/5</span></p>
+                  <span class="stars" aria-hidden="true">{stars(avg ?? 0).map((st) => <i class={st}></i>)}</span>
+                  <small>{L.basedOn(reviewCount)}</small>
+                </div>
+                <ul class="px-rv-bars">
+                  {[5, 4, 3, 2, 1].map((n) => {
+                    const v = Number(reviews.summary.ratings[String(n)] ?? 0);
+                    const pc = reviewCount ? Math.round((v / reviewCount) * 100) : 0;
+                    return <li><span class="px-lvl"><i aria-hidden="true">★</i>{n}</span><span class="px-track"><i style={'width:' + pc + '%'}></i></span><small><b>{pc}</b> %</small></li>;
+                  })}
+                </ul>
+                {reviewCount > 0 && (
+                  <div class="px-rv-rec">
+                    <p><strong>{Math.round(((Number(reviews.summary.ratings['4'] ?? 0) + Number(reviews.summary.ratings['5'] ?? 0)) / reviewCount) * 100)}</strong><span>%</span></p>
+                    <small>{L.recommend}</small>
+                    <em>{L.verifiedOnly}</em>
+                  </div>
+                )}
               </div>
+              <div class="rv-list-head">
+                <div>
+                  <h3>{L.reviewList}</h3>
+                  {reviewCount > 0 && <p>{L.reviewsCount(reviewCount)}</p>}
+                </div>
+                {reviewCount > 1 && (
+                  <label class="rv-sort">{L.sortBy}
+                    <select data-review-sort>
+                      <option value="newest">{L.sortNewest}</option>
+                      <option value="best">{L.sortBest}</option>
+                      <option value="worst">{L.sortWorst}</option>
+                    </select>
+                  </label>
+                )}
+              </div>
+              {reviews.reviews.length === 0 ? (
+                <div class="rv-empty"><p>{c.reviewsEmpty}</p></div>
+              ) : (
+                <div class="rv-rail">
+                <button type="button" class="rv-arrow prev" data-rv-scroll="-1" aria-label={L.prev}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6" /></svg></button>
+                <div class="px-rv-list rv-scroller" data-review-list>
+                  {reviews.reviews.map((r) => (
+                    <article class="rv-item rv-card" data-date={r.created_at} data-rating={r.rating}>
+                      <header>
+                        <span class="px-rv-av" aria-hidden="true">{r.avatar ? <img src={r.avatar} alt="" loading="lazy" decoding="async" /> : r.author.slice(0, 1)}</span>
+                        <span class="px-rv-who"><strong>{r.author}</strong>{r.verified_purchase && <small>✓ {L.verified}</small>}</span>
+                        <time datetime={r.created_at}>{ago(r.created_at)}</time>
+                      </header>
+                      <p class="rv-meta"><span class="stars" role="img" aria-label={r.rating + ' / 5'}>{stars(r.rating).map((st) => <i class={st}></i>)}</span>{r.title && <strong>{r.title}</strong>}</p>
+                      <p class="rv-quote">« {r.body} »</p>
+                      <button type="button" class="rv-more-link" data-review-open>{L.readMore}</button>
+                      <div class="rv-foot">
+                      {r.photos.length > 0 && <div class="px-rv-photos">{r.photos.map((ph) => <button type="button" data-zoom={ph} aria-label={L.zoomPhoto}><img src={ph} alt="" loading="lazy" decoding="async" /></button>)}</div>}
+                      {r.reply && (
+                        <details class="rv-reply">
+                          <summary><span class="rv-show">{L.showReply}</span><span class="rv-hide">{L.hideReply}</span></summary>
+                          <p>{r.reply}</p>
+                        </details>
+                      )}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+                <button type="button" class="rv-arrow next" data-rv-scroll="1" aria-label={L.next}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg></button>
+                </div>
+              )}
+              <p class="rv-note"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6z" /><path d="m9 12 2 2 4-4" /></svg><span><strong>{L.trustTitle}</strong> {L.reviewsNote}</span></p>
             </div>
           </div>
-          {offer.image && (
-            <div class="pdp-zoom" aria-hidden="true"><img src={offer.image} alt="" loading="lazy" decoding="async" /></div>
-          )}
         </div>
-      </section>
-
-      <section class="wrap pdp-reviews" id="avis">
-        <h2>{c.reviewsTitle}</h2>
-        <div class="pdp-reviews-grid">
-          <div class="pdp-score">
-            <p class={'pdp-avg' + (avg === null ? ' none' : '')}><strong>{avg !== null ? fmtAvg(avg) : '–'}</strong><span>{L.outOf}</span></p>
-            <p class="pdp-count">{L.reviewsCount(reviews.summary.count)}</p>
-            <ul class="pdp-bars">
-              {[5, 4, 3, 2, 1].map((n) => {
-                const v = Number(reviews.summary.ratings[String(n)] ?? 0);
-                return (
-                  <li><span class="pdp-bar-star">{n}</span><span class="pdp-bar-track"><i style={'width:' + (v / maxBar) * 100 + '%'}></i></span><span class="pdp-bar-n">{v}</span></li>
-                );
-              })}
-            </ul>
-          </div>
-          <div class="pdp-review-list">
-            {reviews.reviews.length === 0 ? (
-              <div class="pdp-review-empty">
-                <span class="stars" aria-hidden="true">{stars(0).map((s) => <i class={s}></i>)}</span>
-                <p>{c.reviewsEmpty}</p>
-              </div>
-            ) : (
-              reviews.reviews.slice(0, 6).map((r) => (
-                <article class="pdp-review">
-                  <header>
-                    <span class="stars" role="img" aria-label={r.rating + ' / 5'}>{stars(r.rating).map((s) => <i class={s}></i>)}</span>
-                    <time datetime={r.created_at}>{date(r.created_at)}</time>
-                  </header>
-                  {r.title && <h3>{r.title}</h3>}
-                  <p>{r.body}</p>
-                  {r.photos.length > 0 && <div class="pdp-review-photos">{r.photos.map((p) => <img src={p} alt="" loading="lazy" />)}</div>}
-                  <footer><strong>{r.author}</strong>{r.verified_purchase && <span>✓ {L.verified}</span>}</footer>
-                  {r.reply && <p class="pdp-review-reply"><strong>{L.reply}</strong>{r.reply}</p>}
-                </article>
-              ))
-            )}
-          </div>
-        </div>
-        <p class="pdp-reviews-note">{L.reviewsNote}</p>
       </section>
 
       {similar.length > 0 && (
-        <section class="wrap pdp-similar">
-          <div class="pdp-similar-head">
-            <h2>{L.youMayLike}</h2>
-            {aisle && <a href={home + '/catalogue?category=' + aisle.slug}>{c.seeAll} →</a>}
-          </div>
-          <div class="cat-grid pdp-similar-grid">
-            {similar.map((o) => <ProductCard offer={o as any} locale={locale} categoryName={names[o.category]} />)}
+        <section class="rel section">
+          <div class="wrap">
+            <header class="sec-head">
+              <div>
+                <span class="kicker">{L.relatedKicker}</span>
+                <h2>{L.youMayLike}</h2>
+              </div>
+              {aisle && <a class="sec-link" href={home + '/catalogue?category=' + aisle.slug}>{c.seeAll} →</a>}
+            </header>
+            <div class="cat-grid rel-cards">
+              {similar.map((o) => <ProductCard offer={o as any} locale={locale} categoryName={names[o.category]} />)}
+            </div>
           </div>
         </section>
       )}
 
+      <dialog class="rv-full" data-review-dialog aria-label={c.reviewsTitle}>
+        <button type="button" class="rv-zoom-close" data-review-close aria-label={L.closePhoto}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg></button>
+        <div class="rv-full-body" data-review-body></div>
+      </dialog>
+      <dialog class="rv-zoom" data-zoom-dialog aria-label={L.zoomPhoto}>
+        <button type="button" class="rv-zoom-close" data-zoom-close aria-label={L.closePhoto}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg></button>
+        <img alt="" />
+      </dialog>
+
+      {(() => {
+        const shown = new Set([offer.product_id, ...similar.map((o) => o.product_id)]);
+        const more = fromShop.filter((o) => !shown.has(o.product_id)).slice(0, 4);
+        return more.length > 0 && (
+          <section class="section more-shop">
+            <div class="wrap">
+              <header class="sec-head">
+                <div>
+                  <span class="kicker">{L.sameShopKicker}</span>
+                  <h2>{L.moreFrom(offer.shop.name)}</h2>
+                </div>
+                <a class="sec-link" href={shopHref}>{c.visitShop} →</a>
+              </header>
+              <div class="cat-grid rel-cards">
+                {more.map((o) => <ProductCard offer={o as any} locale={locale} categoryName={names[o.category]} />)}
+              </div>
+            </div>
+          </section>
+        );
+      })()}
+
       <div class="pdp-bar">
         <span><small>{c.price}</small><strong>{money(offer.price.amount, locale)}</strong></span>
-        <AddToCart client:visible variant="pill" locale={locale} offerId={offer.id} name={offer.name} minimum={offer.minimum_quantity} disabled={offer.availability === 'unavailable'} />
+        <AddToCart client:visible variant="pill" follow locale={locale} offerId={offer.id} name={offer.name} minimum={offer.minimum_quantity} disabled={offer.availability === 'unavailable'} />
       </div>
     </>
   )}
 
   <script>
+    // Product photo follows the mouse: slight 3D tilt and drift, back to rest when the pointer leaves.
+    // Delegated, so it keeps working after a variant swap.
+    if (matchMedia('(hover: hover) and (prefers-reduced-motion: no-preference)').matches) {
+      document.addEventListener('pointermove', (e) => {
+        const tilt = (e.target as HTMLElement).closest<HTMLElement>('[data-tilt]');
+        document.querySelectorAll<HTMLElement>('[data-tilt].is-moving').forEach((t) => {
+          if (t !== tilt) {
+            t.classList.remove('is-moving');
+            for (const k of ['--rx', '--ry', '--tx', '--ty']) t.style.removeProperty(k);
+          }
+        });
+        if (!tilt) return;
+        const r = tilt.getBoundingClientRect();
+        const x = (e.clientX - r.left) / r.width - 0.5;
+        const y = (e.clientY - r.top) / r.height - 0.5;
+        tilt.style.setProperty('--rx', (-y * 8).toFixed(2) + 'deg');
+        tilt.style.setProperty('--ry', (x * 10).toFixed(2) + 'deg');
+        tilt.style.setProperty('--tx', (x * 26).toFixed(1) + 'px');
+        tilt.style.setProperty('--ty', (y * 20).toFixed(1) + 'px');
+        tilt.classList.add('is-moving');
+      });
+    }
+
     // Detail tabs (no reload): click a tab, or a link with data-tab-open, to show its panel.
+    // The orange line slides to the chosen tab; the panel fades in.
+    function moveInk() {
+      const list = document.querySelector<HTMLElement>('.pdp-tablist');
+      const on = list?.querySelector<HTMLElement>('[aria-selected=true]');
+      if (!list || !on) return;
+      list.style.setProperty('--ink-x', on.offsetLeft + 'px');
+      list.style.setProperty('--ink-w', on.offsetWidth + 'px');
+      list.classList.add('ink-ready');
+    }
     function show(key: string) {
       document.querySelectorAll<HTMLButtonElement>('.pdp-tablist [role=tab]').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === key)));
-      document.querySelectorAll<HTMLElement>('.pdp-panel').forEach((p) => (p.hidden = p.id !== 'panel-' + key));
+      document.querySelectorAll<HTMLElement>('.pdp-panel').forEach((p) => {
+        const on = p.id === 'panel-' + key;
+        if (on && p.hidden) { p.hidden = false; p.classList.remove('panel-in'); void p.offsetWidth; p.classList.add('panel-in'); }
+        else if (!on) p.hidden = true;
+      });
+      moveInk();
+      // A tab that was hidden had no size: check again which reviews are cut once it is visible.
+      requestAnimationFrame(() => markClamped());
     }
+    moveInk();
+    addEventListener('resize', moveInk);
+    document.fonts?.ready.then(moveInk);
+
+    // Variants (shade, size, material…) belong to the same product: choosing one switches the photo, price, stock,
+    // reference and the add-to-cart instantly from data already on the page; only the detail tabs are refreshed
+    // quietly in the background. The address follows (back button works).
+    type V = { id: string; href: string; image: string | null; label: string; sku: string; price: string; was: string | null; off: number; availability: string; availabilityText: string };
+    const all = (): V[] => {
+      try { return JSON.parse(document.getElementById('pdp-variants')?.textContent || '[]'); } catch { return []; }
+    };
+    let ctrl: AbortController | null = null;
+    function apply(v: V, list: V[]) {
+      const q = <T extends Element>(sel: string) => document.querySelector<T>(sel);
+      const img = q<HTMLImageElement>('.pdp-photo img');
+      if (img && v.image) { img.src = v.image; img.alt = v.label; }
+      const off = q<HTMLElement>('.pdp-photo .pdp-off');
+      if (off) { off.hidden = v.off <= 0; off.textContent = '−' + v.off + ' %'; }
+      document.querySelectorAll<HTMLAnchorElement>('a[data-variant]:not(.pdp-arrow)').forEach((a) => {
+        if (new URL(a.href).pathname === v.href) a.setAttribute('aria-current', 'true');
+        else a.removeAttribute('aria-current');
+      });
+      const label = q<HTMLElement>('.pdp-opt > p strong');
+      if (label) label.textContent = v.label;
+      const price = q<HTMLElement>('.pdp-prices strong');
+      if (price) price.textContent = v.price;
+      const was = q<HTMLElement>('.pdp-prices s');
+      if (was) { was.hidden = !v.was; was.querySelector('[data-was]')!.textContent = v.was ?? ''; }
+      const pct = q<HTMLElement>('.pdp-prices em');
+      if (pct) { pct.hidden = v.off <= 0; pct.textContent = '−' + v.off + ' %'; }
+      const badge = q<HTMLElement>('.pdp-badge');
+      if (badge) { badge.className = 'pdp-badge ' + v.availability; badge.textContent = v.availabilityText; }
+      const sku = q<HTMLElement>('[data-sku]');
+      if (sku) sku.textContent = v.sku;
+      const bar = q<HTMLElement>('.pdp-bar strong');
+      if (bar) bar.textContent = v.price;
+      const i = list.findIndex((x) => x.id === v.id);
+      const prev = q<HTMLAnchorElement>('.pdp-arrow.prev');
+      const next = q<HTMLAnchorElement>('.pdp-arrow.next');
+      if (prev) prev.href = list[(i - 1 + list.length) % list.length].href;
+      if (next) next.href = list[(i + 1) % list.length].href;
+      window.dispatchEvent(new CustomEvent('kora:variant', { detail: { offerId: v.id, disabled: v.availability === 'unavailable' } }));
+      syncThumbs();
+    }
+    async function refreshTabs(url: string) {
+      ctrl?.abort();
+      ctrl = new AbortController();
+      try {
+        const res = await fetch(url, { headers: { Accept: 'text/html' }, signal: ctrl.signal });
+        if (!res.ok) return;
+        const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+        const tab = document.querySelector<HTMLElement>('.pdp-tablist [aria-selected=true]')?.dataset.tab ?? 'details';
+        const next = doc.querySelector('.pdp-tabgrid');
+        const current = document.querySelector('.pdp-tabgrid');
+        if (next && current) current.replaceWith(next);
+        show(tab);
+      } catch {}
+    }
+    function variant(url: string, push: boolean) {
+      const list = all();
+      const path = new URL(url, location.href).pathname;
+      const v = list.find((x) => x.href === path);
+      if (!v) { location.href = url; return; }
+      apply(v, list);
+      if (push) history.pushState({ variant: true }, '', path);
+      refreshTabs(url);
+    }
+
     document.addEventListener('click', (e) => {
-      const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tab], [data-tab-open]');
+      const target = e.target as HTMLElement;
+      const pick = target.closest<HTMLAnchorElement>('a[data-variant]');
+      if (pick && !e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
+        e.preventDefault();
+        if (pick.getAttribute('aria-current') !== 'true') variant(pick.href, true);
+        return;
+      }
+      if (target.closest('[data-scroll-buy]')) {
+        e.preventDefault();
+        document.querySelector('.pdp-buy')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      const copy = target.closest<HTMLElement>('[data-copy-link]');
+      if (copy) {
+        navigator.clipboard?.writeText(copy.dataset.copyLink ?? location.href).then(() => {
+          copy.classList.add('copied');
+          setTimeout(() => copy.classList.remove('copied'), 1400);
+        });
+        return;
+      }
+      const el = target.closest<HTMLElement>('[data-tab], [data-tab-open]');
       if (!el) return;
       show(el.dataset.tab ?? el.dataset.tabOpen ?? 'details');
       if (el.dataset.tab) el.scrollIntoView({ block: 'nearest', inline: 'center' });
+    });
+    addEventListener('popstate', () => variant(location.href, false));
+
+    // Districts served: type your district, the matching one lights up and the answer appears.
+    const plain = (v: string) => v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    document.addEventListener('input', (e) => {
+      const field = e.target as HTMLInputElement;
+      if (!field.matches('[data-district-search]')) return;
+      const box = field.closest<HTMLElement>('[data-zones]');
+      const out = box?.querySelector<HTMLElement>('[data-district-result]');
+      if (!box || !out) return;
+      const q = plain(field.value);
+      let first: HTMLElement | null = null;
+      box.querySelectorAll<HTMLElement>('li[data-zone]').forEach((li) => {
+        const hit = q.length >= 2 && plain(li.textContent ?? '').includes(q);
+        li.classList.toggle('hit', hit);
+        if (hit && !first) first = li;
+        // When the full list is open, open the zone of the matching district.
+        if (hit) li.closest<HTMLDetailsElement>('details.dz-zone')!.open = true;
+      });
+      if (q.length < 2) { out.hidden = true; return; }
+      out.hidden = false;
+      const found = first as HTMLElement | null;
+      out.className = 'dz-result ' + (found ? 'ok' : 'no');
+      out.replaceChildren();
+      const zones = out.closest<HTMLElement>('[data-zones]')!.dataset;
+      const pill = document.createElement('span');
+      pill.className = 'dz-pill';
+      const ico = document.createElement('span');
+      ico.className = 'dz-ico';
+      ico.setAttribute('aria-hidden', 'true');
+      ico.innerHTML = found
+        ? '<svg viewBox="0 0 24 24"><path d="m6 12.5 4 4L18 8" /></svg>'
+        : '<svg viewBox="0 0 24 24"><path d="M12 11v6M12 7.5h.01" /></svg>';
+      pill.append(ico);
+      if (found) {
+        const [before, after] = zones.served!.split('{d}');
+        const name = document.createElement('strong');
+        name.textContent = found.textContent ?? '';
+        const text = document.createElement('span');
+        text.append(before, name, (after ?? '').replace('{z}', found.dataset.zone ?? ''));
+        pill.append(text);
+      } else {
+        const a = document.createElement('a');
+        a.href = zones.ask!;
+        a.textContent = zones.askLabel! + ' →';
+        const text = document.createElement('span');
+        text.textContent = zones.no!;
+        pill.append(text, a);
+      }
+      out.append(pill);
+    });
+
+    // Thumbnail rail: keep the chosen variant in view and fade the edge that has more to scroll.
+    function syncThumbs() {
+      const rail = document.querySelector<HTMLElement>('.pdp-thumbs');
+      if (!rail) return;
+      const fade = () => {
+        const more = rail.scrollWidth > rail.clientWidth + 2;
+        const start = rail.scrollLeft <= 2;
+        const end = rail.scrollLeft + rail.clientWidth >= rail.scrollWidth - 2;
+        rail.classList.toggle('has-more', more);
+        rail.classList.toggle('at-end', more && end && !start);
+        rail.classList.toggle('mid', more && !start && !end);
+      };
+      const current = rail.querySelector<HTMLElement>('[aria-current=true]');
+      if (current) rail.scrollLeft = Math.max(0, current.offsetLeft - rail.clientWidth / 2 + current.clientWidth / 2);
+      if (!rail.dataset.bound) {
+        rail.dataset.bound = '1';
+        rail.addEventListener('scroll', fade, { passive: true });
+      }
+      fade();
+    }
+    syncThumbs();
+
+    // Colour dots take the real shade from each variant's photo: average of its vivid pixels (the product, not the
+    // packaging or the background). Black, white or grey products keep the colour-family swatch.
+    function swatches() {
+      document.querySelectorAll<HTMLElement>('.pdp-dots i[data-swatch]').forEach((dot) => {
+        const src = dot.dataset.swatch;
+        if (!src || dot.dataset.done) return;
+        dot.dataset.done = '1';
+        const img = new Image();
+        img.onload = () => {
+          const size = 64;
+          const canvas = document.createElement('canvas');
+          canvas.width = canvas.height = size;
+          const ctx = canvas.getContext('2d', { willReadFrequently: true });
+          if (!ctx) return;
+          const scale = Math.min(size / img.width, size / img.height);
+          ctx.drawImage(img, (size - img.width * scale) / 2, (size - img.height * scale) / 2, img.width * scale, img.height * scale);
+          const data = ctx.getImageData(0, 0, size, size).data;
+          let r = 0, g = 0, b = 0, n = 0;
+          for (let i = 0; i < data.length; i += 4) {
+            if (data[i + 3] < 200) continue;
+            const max = Math.max(data[i], data[i + 1], data[i + 2]);
+            const min = Math.min(data[i], data[i + 1], data[i + 2]);
+            if (max < 25 || max - min < 0.22 * max) continue; // skip black, white, grey and metal
+            r += data[i]; g += data[i + 1]; b += data[i + 2]; n++;
+          }
+          if (n > 12) dot.style.background = `rgb(${Math.round(r / n)}, ${Math.round(g / n)}, ${Math.round(b / n)})`;
+        };
+        img.src = src;
+      });
+    }
+    swatches();
+
+    // Swipe the thumbnail rail sideways: touch scrolls natively; with a mouse, click and drag. A drag never
+    // triggers the thumbnail it started on.
+    let drag: { x: number; left: number; moved: boolean; rail: HTMLElement } | null = null;
+    document.addEventListener('pointerdown', (e) => {
+      const rail = (e.target as HTMLElement).closest<HTMLElement>('.pdp-thumbs, .rv-scroller');
+      if (!rail || e.pointerType !== 'mouse' || e.button !== 0) return;
+      drag = { x: e.clientX, left: rail.scrollLeft, moved: false, rail };
+    });
+    document.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      const dx = e.clientX - drag.x;
+      if (Math.abs(dx) > 5) { drag.moved = true; drag.rail.classList.add('dragging'); }
+      if (drag.moved) drag.rail.scrollLeft = drag.left - dx;
+    });
+    document.addEventListener('pointerup', () => {
+      if (!drag) return;
+      const was = drag;
+      drag = null;
+      was.rail.classList.remove('dragging');
+      if (was.moved) {
+        const stop = (ev: Event) => { ev.preventDefault(); ev.stopPropagation(); };
+        document.addEventListener('click', stop, { capture: true, once: true });
+        setTimeout(() => document.removeEventListener('click', stop, { capture: true }), 0);
+      }
+    });
+    new MutationObserver(() => syncThumbs()).observe(document.querySelector('.pdp') ?? document.body, { childList: true, subtree: true });
+
+    // Reviews: sort (newest / best / lowest) and "show more", all on the page.
+    const pageSize = 5;
+    let shown = Infinity;
+    // "Read more" only on reviews whose text is cut; it opens the whole review in a dialog.
+    function markClamped() {
+      document.querySelectorAll<HTMLElement>('.rv-card').forEach((card) => {
+        const q = card.querySelector<HTMLElement>('.rv-quote');
+        card.classList.toggle('clamped', !!q && q.scrollHeight > q.clientHeight + 2);
+      });
+    }
+    markClamped();
+    addEventListener('resize', markClamped);
+    document.fonts?.ready.then(markClamped);
+    document.addEventListener('click', (e) => {
+      const t = e.target as HTMLElement;
+      const dialog = document.querySelector<HTMLDialogElement>('[data-review-dialog]');
+      if (!dialog) return;
+      const open = t.closest<HTMLElement>('[data-review-open]');
+      if (open) {
+        const card = open.closest<HTMLElement>('.rv-card')!.cloneNode(true) as HTMLElement;
+        card.querySelectorAll('[data-review-open]').forEach((n) => n.remove());
+        card.querySelectorAll<HTMLDetailsElement>('details').forEach((d) => (d.open = true));
+        card.classList.remove('clamped');
+        dialog.querySelector('[data-review-body]')!.replaceChildren(card);
+        dialog.showModal();
+        return;
+      }
+      if (dialog.open && (t.closest('[data-review-close]') || t === dialog)) dialog.close();
+    });
+    // Review photos open full screen; close with the button, a click outside the photo or Escape.
+    document.addEventListener('click', (e) => {
+      const t = e.target as HTMLElement;
+      const zoom = t.closest<HTMLElement>('[data-zoom]');
+      const dialog = document.querySelector<HTMLDialogElement>('[data-zoom-dialog]');
+      if (!dialog) return;
+      if (zoom) {
+        dialog.querySelector('img')!.src = zoom.dataset.zoom!;
+        dialog.showModal();
+        return;
+      }
+      if (dialog.open && (t.closest('[data-zoom-close]') || t === dialog)) dialog.close();
+    });
+    // Review rail: arrows scroll one card; the rail also scrolls by swipe / trackpad / drag.
+    document.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-rv-scroll]');
+      if (!btn) return;
+      const track = btn.parentElement?.querySelector<HTMLElement>('.rv-scroller');
+      const card = track?.querySelector<HTMLElement>('.rv-card');
+      if (track && card) track.scrollBy({ left: Number(btn.dataset.rvScroll) * (card.offsetWidth + 16), behavior: 'smooth' });
+    });
+    function layoutReviews() {
+      const list = document.querySelector<HTMLElement>('[data-review-list]');
+      if (!list) return;
+      const items = [...list.querySelectorAll<HTMLElement>('.rv-item')];
+      const mode = document.querySelector<HTMLSelectElement>('[data-review-sort]')?.value ?? 'newest';
+      items.sort((a, b) =>
+        mode === 'best' ? Number(b.dataset.rating) - Number(a.dataset.rating) || b.dataset.date!.localeCompare(a.dataset.date!)
+        : mode === 'worst' ? Number(a.dataset.rating) - Number(b.dataset.rating) || b.dataset.date!.localeCompare(a.dataset.date!)
+        : b.dataset.date!.localeCompare(a.dataset.date!));
+      items.forEach((el, i) => { el.hidden = i >= shown; list.append(el); });
+      const more = document.querySelector<HTMLElement>('[data-review-more]');
+      if (more) more.hidden = shown >= items.length;
+    }
+    document.addEventListener('change', (e) => { if ((e.target as HTMLElement).matches('[data-review-sort]')) layoutReviews(); });
+    document.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('[data-review-more]')) { shown += pageSize; layoutReviews(); }
     });
   </script>
 </Site>

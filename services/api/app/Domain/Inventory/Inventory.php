@@ -711,6 +711,18 @@ final class Inventory
         }
     }
 
+    /** Units of an offer that a KORA warehouse can ship now (same rule as plan()); 0 when none or not sellable. */
+    public function warehouseAvailable(string $offerId): int
+    {
+        try {
+            $context = $this->offerTerms($offerId);
+        } catch (\Throwable) {
+            return 0;
+        }
+
+        return (int) $this->eligible($offerId, $context['hash'])->get()->sum(fn ($b) => max(0, $b->on_hand - $b->reserved));
+    }
+
     private function eligible(string $offerId, string $hash)
     {
         return DB::table('inventory_balances')

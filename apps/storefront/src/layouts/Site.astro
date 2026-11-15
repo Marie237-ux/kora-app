@@ -19,10 +19,12 @@ const demo = import.meta.env.PUBLIC_KORA_DEMO !== 'false';
 // Light is the default. Dark only applies when the visitor chose it; the system setting is not followed.
 const themeScript =
   "(()=>{try{var t=localStorage.getItem('kora.theme');document.documentElement.dataset.theme=t==='dark'?'dark':'light'}catch(e){}})();";
-// Loading screen: shown until every image of the page (and the fonts) is ready, at most 15 s; the bar follows the real count.
+// Loading screen: stays until everything is ready — every image downloaded and decoded (one retry on error), the
+// fonts, the window load and the interactive islands — at most 30 s; the bar follows the real count and the
+// message changes every 1.6 s.
 const loaderStart = "document.documentElement.classList.add('kora-loading');";
 const loaderScript =
-  "(()=>{const h=document.documentElement,l=document.getElementById('loader');if(!l)return;const bar=l.querySelector('i');const imgs=[...document.images].filter(i=>!l.contains(i));imgs.forEach(i=>{if(i.loading==='lazy')i.loading='eager'});let done=0,end=false;const total=imgs.length+1;const step=()=>{bar.style.transform='scaleX('+Math.max(.05,done/total)+')';if(done>=total)finish()};const finish=()=>{if(end)return;end=true;bar.style.transform='scaleX(1)';setTimeout(()=>{l.dataset.done='true';setTimeout(()=>h.classList.remove('kora-loading'),750)},300)};imgs.forEach(i=>{if(i.complete&&i.naturalWidth){done++}else{const f=()=>{done++;step()};i.addEventListener('load',f,{once:true});i.addEventListener('error',f,{once:true})}});document.fonts.ready.then(()=>{done++;step()});step();setTimeout(finish,15000)})();";
+  "(()=>{const h=document.documentElement,l=document.getElementById('loader');if(!l)return;const bar=l.querySelector('i'),txt=l.querySelector('.loader-text');const steps=(txt&&txt.dataset.steps||'').split('|').filter(Boolean);let si=0;const spin=steps.length>1?setInterval(()=>{txt.classList.add('swap');setTimeout(()=>{si=(si+1)%steps.length;txt.textContent=steps[si];txt.classList.remove('swap')},260)},1600):0;const imgs=[...document.images].filter(i=>!l.contains(i));imgs.forEach(i=>{if(i.loading==='lazy')i.loading='eager'});const ready=i=>new Promise(res=>{let tried=false;const ok=()=>(i.decode?i.decode().catch(()=>{}):Promise.resolve()).then(res);const bad=()=>{if(!tried&&i.currentSrc){tried=true;const s=i.src;i.src='';i.src=s}else res()};if(i.complete&&i.naturalWidth)return ok();i.addEventListener('load',ok);i.addEventListener('error',bad)});const islands=()=>new Promise(res=>{const t=()=>document.querySelector('astro-island[client=\"load\"][ssr]')?setTimeout(t,120):res();t()});const loaded=new Promise(res=>document.readyState==='complete'?res():addEventListener('load',res,{once:true}));const tasks=[...imgs.map(ready),document.fonts.ready,loaded,islands()];let done=0,end=false;const step=()=>{bar.style.transform='scaleX('+Math.max(.05,done/tasks.length)+')'};tasks.forEach(p=>Promise.resolve(p).then(()=>{done++;step()}));step();const finish=()=>{if(end)return;end=true;clearInterval(spin);bar.style.transform='scaleX(1)';setTimeout(()=>{l.dataset.done='true';setTimeout(()=>h.classList.remove('kora-loading'),750)},350)};Promise.all(tasks).then(finish);setTimeout(finish,30000)})();";
 const reveal =
   "(()=>{const o=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.dataset.visible='true';o.unobserve(e.target)}}),{rootMargin:'0px 0px -8% 0px'});document.querySelectorAll('.reveal').forEach(n=>o.observe(n))})();";
 for (const script of [themeScript, loaderStart, loaderScript, reveal]) {
@@ -59,7 +61,7 @@ const aisles = (await safe(api(locale).categories(), { data: [] })).value.data.m
       <div class="loader-inner">
         <img class="loader-logo" src="/brand/logo-ink.png" alt="KORA" width="150" height="66" />
         <span class="loader-bar"><i></i></span>
-        <p class="loader-text">{c.loading}</p>
+        <p class="loader-text" data-steps={c.loadingSteps}>{c.loading}</p>
       </div>
     </div>
     <a class="skip-link" href="#main">{c.skip}</a>
@@ -130,6 +132,106 @@ const aisles = (await safe(api(locale).categories(), { data: [] })).value.data.m
       </div>
     </footer>
     <script>
+      // Going to another page: show the loading screen if the next page takes more than a moment to arrive.
+      // In-page actions (filters, tabs, variants…) call preventDefault and never trigger it.
+      const leave = () => {
+        const html = document.documentElement;
+        const loader = document.getElementById('loader');
+        if (!loader || html.classList.contains('kora-leaving')) return;
+        window.setTimeout(() => {
+          if (document.visibilityState === 'hidden') return;
+          loader.removeAttribute('data-done');
+          const bar = loader.querySelector<HTMLElement>('i');
+          if (bar) bar.style.transform = 'scaleX(0.35)';
+          const txt = loader.querySelector<HTMLElement>('.loader-text');
+          const steps = (txt?.dataset.steps ?? '').split('|').filter(Boolean);
+          let i = 0;
+          if (txt && steps.length > 1) {
+            txt.textContent = steps[0];
+            window.setInterval(() => {
+              txt.classList.add('swap');
+              window.setTimeout(() => { i = (i + 1) % steps.length; txt.textContent = steps[i]; txt.classList.remove('swap'); }, 260);
+            }, 1600);
+          }
+          html.classList.add('kora-leaving');
+        }, 180);
+      };
+      document.addEventListener('click', (e) => {
+        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[href]');
+        if (!a || a.target === '_blank' || a.hasAttribute('download')) return;
+        const url = new URL(a.href, location.href);
+        if (url.origin !== location.origin || (url.pathname === location.pathname && url.search === location.search)) return;
+        if (url.pathname.startsWith('/api/')) return;
+        // Read defaultPrevented after every click handler ran (in-page navigation cancels the real one).
+        window.setTimeout(() => { if (!e.defaultPrevented) leave(); }, 0);
+      });
+      document.addEventListener('submit', (e) => { window.setTimeout(() => { if (!e.defaultPrevented) leave(); }, 0); });
+      // Coming back with the browser's back button (page restored from cache): hide it again.
+      addEventListener('pageshow', (e) => { if (e.persisted) document.documentElement.classList.remove('kora-leaving'); });
+      // Select menus drawn by KORA (the native list cannot be styled in every browser). The real <select> stays in
+      // place, hidden, so forms, filters and sorting keep working; the custom menu just drives it.
+      const closeAll = (except?: Element) => document.querySelectorAll('.ksel.open').forEach((w) => { if (w !== except) w.classList.remove('open'); });
+      const enhance = (sel: HTMLSelectElement) => {
+        if (sel.dataset.ksel || sel.multiple || sel.closest('[data-native]')) return;
+        sel.dataset.ksel = '1';
+        const wrap = document.createElement('div');
+        wrap.className = 'ksel';
+        sel.before(wrap);
+        wrap.append(sel);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ksel-btn';
+        btn.setAttribute('aria-haspopup', 'listbox');
+        const list = document.createElement('ul');
+        list.className = 'ksel-list';
+        list.setAttribute('role', 'listbox');
+        const render = () => {
+          btn.textContent = sel.options[sel.selectedIndex]?.text ?? '';
+          btn.setAttribute('aria-label', (sel.labels?.[0]?.textContent ?? '').trim() + ' ' + btn.textContent);
+          list.replaceChildren(...[...sel.options].map((o, i) => {
+            const li = document.createElement('li');
+            li.setAttribute('role', 'option');
+            li.setAttribute('aria-selected', String(i === sel.selectedIndex));
+            li.tabIndex = -1;
+            li.textContent = o.text;
+            li.addEventListener('click', () => pick(i));
+            return li;
+          }));
+        };
+        const pick = (i: number) => {
+          wrap.classList.remove('open');
+          btn.focus();
+          if (i === sel.selectedIndex) return;
+          sel.selectedIndex = i;
+          render();
+          sel.dispatchEvent(new Event('change', { bubbles: true }));
+        };
+        const open = () => {
+          closeAll(wrap);
+          wrap.classList.add('open');
+          (list.querySelector<HTMLElement>('[aria-selected=true]') ?? list.firstElementChild as HTMLElement)?.focus();
+        };
+        btn.addEventListener('click', () => (wrap.classList.contains('open') ? wrap.classList.remove('open') : open()));
+        btn.addEventListener('keydown', (e) => { if (['ArrowDown', 'ArrowUp'].includes(e.key)) { e.preventDefault(); open(); } });
+        list.addEventListener('keydown', (e) => {
+          const items = [...list.children] as HTMLElement[];
+          const at = items.indexOf(document.activeElement as HTMLElement);
+          if (e.key === 'ArrowDown') { e.preventDefault(); items[Math.min(items.length - 1, at + 1)]?.focus(); }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); items[Math.max(0, at - 1)]?.focus(); }
+          else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (at >= 0) pick(at); }
+          else if (e.key === 'Escape' || e.key === 'Tab') { wrap.classList.remove('open'); if (e.key === 'Escape') btn.focus(); }
+        });
+        sel.addEventListener('change', render);
+        wrap.append(btn, list);
+        render();
+      };
+      const enhanceAll = () => document.querySelectorAll<HTMLSelectElement>('main select').forEach(enhance);
+      enhanceAll();
+      // Content swapped in place (catalogue filters, product variants) brings new selects.
+      new MutationObserver(enhanceAll).observe(document.getElementById('main') ?? document.body, { childList: true, subtree: true });
+      document.addEventListener('click', (e) => { if (!(e.target as HTMLElement).closest('.ksel')) closeAll(); });
+
       document.querySelectorAll('[data-open-search]').forEach((b) => b.addEventListener('click', () => window.dispatchEvent(new CustomEvent('kora:open-search'))));
     </script>
     <script is:inline set:html={loaderScript} />

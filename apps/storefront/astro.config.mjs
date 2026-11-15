@@ -31,7 +31,8 @@ export default defineConfig({
   },
   vite: {
     server: { 
-      proxy: { '/api': 'http://localhost:8000', '/sanctum': 'http://localhost:8000' },
+      // Dev only: same API address as the server code (API_INTERNAL_URL), port 8000 by default.
+      proxy: { '/api': process.env.API_INTERNAL_URL || 'http://localhost:8000', '/sanctum': process.env.API_INTERNAL_URL || 'http://localhost:8000' },
       allowedHosts: ['.ngrok-free.app', 'ngrok-free.app', '.onrender.com', 'onrender.com'],
     },
   },

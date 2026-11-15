@@ -48,6 +48,7 @@ final class CatalogueManager
                 'description' => json_decode($row->description, true),
                 'city' => $row->city ?? 'Douala',
                 'district' => $row->district ?? null,
+                'avatar_path' => $row->avatar_path ?? null,
             ],
             'categories' => [
                 'parent_id' => $row->parent_id,
@@ -77,6 +78,9 @@ final class CatalogueManager
                 'availability' => $row->availability,
                 'warranty' => json_decode($row->warranty, true),
                 'image_path' => $row->image_path,
+                'bulk_unit' => $row->bulk_unit ?? null,
+                'bulk_unit_size' => isset($row->bulk_unit_size) ? (int) $row->bulk_unit_size : null,
+                'bulk_min_units' => isset($row->bulk_min_units) ? (int) $row->bulk_min_units : null,
                 'promotion' => $row->promotion_funding ? json_decode($row->promotion_funding, true) : null,
             ],
         };
@@ -152,6 +156,7 @@ final class CatalogueManager
                         'description' => $this->json($data['description']),
                         'city' => $data['city'] ?? 'Douala',
                         'district' => $data['district'] ?? null,
+                        'avatar_path' => $data['avatar_path'] ?? null,
                     ],
                     'categories' => [
                         'parent_id' => null,
@@ -171,6 +176,7 @@ final class CatalogueManager
                         'selling_price' => $data['reference_price'],
                         'minimum_quantity' => $data['minimum_quantity'],
                         'warranty' => $this->json($data['warranty']),
+                        ...$this->bulk($data),
                     ],
                 };
                 DB::table($entity)->insert($values);
@@ -294,6 +300,18 @@ final class CatalogueManager
         return $quote;
     }
 
+    /** Wholesale packaging: all three values, or none (not sold in bulk). */
+    private function bulk(array $data): array
+    {
+        $unit = $data['bulk_unit'] ?? null;
+
+        return [
+            'bulk_unit' => $unit ?: null,
+            'bulk_unit_size' => $unit ? (int) $data['bulk_unit_size'] : null,
+            'bulk_min_units' => $unit ? (int) $data['bulk_min_units'] : null,
+        ];
+    }
+
     private function publishShop(object $row, array $data): array
     {
         $supplier = $this->row('suppliers', $data['supplier_id'], true);
@@ -303,6 +321,11 @@ final class CatalogueManager
         if ($row->published_version !== null && $row->supplier_id !== $data['supplier_id']) {
             $this->fail('supplier_id', 'ASSOCIATION_LOCKED');
         }
+        // Profile photo: optional, but only an approved public image from the media library.
+        $avatar = trim((string) ($data['avatar_path'] ?? '')) ?: null;
+        if ($avatar !== null && ! app(MediaLibrary::class)->approvedPath($avatar)) {
+            $this->fail('avatar_path', 'IMAGE_REQUIRED');
+        }
 
         return [
             'supplier_id' => $data['supplier_id'],
@@ -311,6 +334,7 @@ final class CatalogueManager
             'description' => $this->json($data['description']),
             'city' => trim((string) ($data['city'] ?? '')) ?: 'Douala',
             'district' => trim((string) ($data['district'] ?? '')) ?: null,
+            'avatar_path' => $avatar,
             'published' => true,
             'status' => 'published',
         ];
@@ -420,6 +444,7 @@ final class CatalogueManager
             'availability' => $data['availability'],
             'warranty' => $this->json($data['warranty']),
             'image_path' => $data['image_path'],
+            ...$this->bulk($data),
             'status' => 'published',
             'promotion_price' => $promotion['price'] ?? null,
             'promotion_starts_at' => $promotion

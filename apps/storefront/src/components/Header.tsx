@@ -1,9 +1,9 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createApi } from '@kora/api-client';
 import { copy, money, tone, type Locale } from '../lib/copy';
 import { count, loadCart, setQuantity, type Cart } from '../lib/cart';
 import SearchPanel from './SearchPanel';
-import { ArrowRight, BagIcon, CloseIcon, GridIcon, HomeIcon, MenuIcon, MoonIcon, SearchIcon, SunIcon, UserIcon } from './icons';
+import { ArrowRight, BagIcon, CheckIcon, CloseIcon, GridIcon, HomeIcon, MenuIcon, MoonIcon, SearchIcon, SunIcon, UserIcon } from './icons';
 
 type Theme = 'light' | 'dark';
 type Link = { href: string; label: string; key: string };
@@ -28,9 +28,12 @@ export default function Header({ locale, links, aisles = [], active = '', query 
   useEffect(() => {
     loadCart(locale).then(setCart).catch(() => {});
     const onCart = (e: Event) => setCart((e as CustomEvent<Cart>).detail);
-    const onAdded = () => {
-      setToast(c.added);
-      window.setTimeout(() => setToast(''), 2200);
+    let toastTimer = 0;
+    const onAdded = (e: Event) => {
+      const d = (e as CustomEvent<{ name?: string; quantity?: number }>).detail ?? {};
+      setToast(d.name ? (d.quantity && d.quantity > 1 ? d.quantity + ' × ' : '') + d.name : ' ');
+      window.clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(() => setToast(''), 3800);
     };
     const onOpenSearch = () => setSearch(true);
     const onOpenCart = () => setDrawer(true);
@@ -78,18 +81,42 @@ export default function Header({ locale, links, aisles = [], active = '', query 
     url.pathname = url.pathname.replace(/^\/(fr|en)(?=\/|$)/, '/' + value);
     window.location.assign(url.pathname + url.search);
   }
-  async function change(lineId: string, quantity: number) {
-    if (!cart || busy) return;
+  // Quantity changes show at once (quantity, line price, subtotal); the server is updated just after, once per burst
+  // of clicks, with the final quantity. On failure the cart is reloaded from the server.
+  const syncTimers = useRef<Record<string, number>>({});
+  // Latest cart, also between two quick clicks (before React re-renders).
+  const cartRef = useRef<Cart | null>(cart);
+  cartRef.current = cart;
+  function change(lineId: string, delta: number | 'remove') {
+    const cart = cartRef.current;
+    if (!cart) return;
     const line = cart.lines.find((l) => l.id === lineId);
     if (!line) return;
-    setBusy(true);
-    try {
-      setCart(await setQuantity(locale, cart, line, quantity));
-    } catch {
-      setCart(await loadCart(locale).catch(() => cart));
-    } finally {
-      setBusy(false);
-    }
+    const quantity = delta === 'remove' ? 0 : line.quantity + delta;
+    const minimum = line.current_conditions?.minimum_quantity ?? 1;
+    if (quantity >= 1 && quantity < minimum) return;
+    const unit = line.current_line_total ? Number(line.current_line_total) / line.quantity : 0;
+    const lines = quantity < 1
+      ? cart.lines.filter((l) => l.id !== lineId)
+      : cart.lines.map((l) => (l.id === lineId ? { ...l, quantity, current_line_total: l.current_line_total ? String(Math.round(unit * quantity)) : null } : l));
+    const subtotal = lines.filter((l) => l.selected && l.current_line_total).reduce((t, l) => t + Number(l.current_line_total), 0);
+    const next = { ...cart, lines, selected_subtotal: lines.some((l) => l.selected) ? String(subtotal) : null };
+    cartRef.current = next;
+    setCart(next);
+    window.clearTimeout(syncTimers.current[lineId]);
+    syncTimers.current[lineId] = window.setTimeout(async () => {
+      setBusy(true);
+      try {
+        const fresh = await loadCart(locale);
+        const current = fresh.lines.find((l) => l.id === lineId);
+        if (current) setCart(await setQuantity(locale, fresh, current, quantity));
+        else setCart(fresh);
+      } catch {
+        setCart(await loadCart(locale).catch(() => cart));
+      } finally {
+        setBusy(false);
+      }
+    }, quantity < 1 ? 0 : 400);
   }
   function openSearch() {
     setMenu(false);
@@ -246,19 +273,23 @@ export default function Header({ locale, links, aisles = [], active = '', query 
                 <div className={'line-img ' + tone(l.offer?.category ?? l.offer_id)}>
                   {l.offer?.image && <img src={l.offer.image} alt="" loading="lazy" />}
                 </div>
-                <div>
-                  <h3><a href={home + '/products/' + l.offer_id}>{l.offer?.name ?? '—'}</a></h3>
-                  <small>{l.offer?.shop.name}</small>
-                  {Object.keys(l.changes ?? {}).length > 0 && <small style={{ display: 'block', color: 'var(--accent)' }}>{c.priceChanged}</small>}
-                  <div className="line-qty">
-                    <button type="button" aria-label={c.decrease} onClick={() => change(l.id, l.quantity - 1)} disabled={busy}>−</button>
-                    <output aria-label={c.quantity}>{l.quantity}</output>
-                    <button type="button" aria-label={c.increase} onClick={() => change(l.id, l.quantity + 1)} disabled={busy}>+</button>
+                <div className="line-info">
+                  <div className="line-head">
+                    <h3><a href={home + '/products/' + l.offer_id}>{l.offer?.name ?? '—'}</a></h3>
+                    <button type="button" className="line-remove" onClick={() => change(l.id, 'remove')} disabled={busy} aria-label={c.remove + ' — ' + (l.offer?.name ?? '')} title={c.remove}><CloseIcon /></button>
                   </div>
-                </div>
-                <div className="line-total">
-                  {l.current_line_total ? money(l.current_line_total, locale) : c.unavailable}
-                  <button type="button" onClick={() => change(l.id, 0)} disabled={busy}>{c.remove}</button>
+                  {l.offer?.shop.slug
+                    ? <a className="line-shop" href={home + '/shops/' + l.offer.shop.slug}>{l.offer.shop.name}</a>
+                    : <small className="line-shop">{l.offer?.shop.name}</small>}
+                  {Object.keys(l.changes ?? {}).length > 0 && <small className="line-changed">{c.priceChanged}</small>}
+                  <div className="line-foot">
+                    <div className="line-qty">
+                      <button type="button" aria-label={c.decrease} onClick={() => change(l.id, -1)}>−</button>
+                      <output aria-label={c.quantity}>{l.quantity}</output>
+                      <button type="button" aria-label={c.increase} onClick={() => change(l.id, 1)}>+</button>
+                    </div>
+                    <strong className="line-price">{l.current_line_total ? money(l.current_line_total, locale) : c.unavailable}</strong>
+                  </div>
                 </div>
               </div>
             ))
@@ -276,7 +307,14 @@ export default function Header({ locale, links, aisles = [], active = '', query 
           </footer>
         )}
       </aside>
-      <div className="toast" role="status" aria-live="polite" data-show={toast !== ''}>{toast}</div>
+      <div className="toast" role="status" aria-live="polite" data-show={toast !== ''}>
+        <span className="toast-ico" aria-hidden="true"><CheckIcon /></span>
+        <span className="toast-text">
+          <strong>{c.added}</strong>
+          {toast.trim() && <small>{toast}</small>}
+        </span>
+        <button type="button" className="toast-go" onClick={() => { setToast(''); setDrawer(true); }}>{c.viewCart}</button>
+      </div>
     </>
   );
 }

@@ -20,7 +20,7 @@ export const blankDraft = (entity: CatalogueEntity): CatalogueDraft => {
         private_details: { contact_name: '', email: '', phone: '', address: '', legal_name: '' },
       };
     case 'shops':
-      return { name: '', slug: '', supplier_id: '', description: { ...name } };
+      return { name: '', slug: '', supplier_id: '', description: { ...name }, city: 'Douala', district: null, avatar_path: null };
     case 'categories':
       return { name: { ...name }, slug: '', parent_id: null, attributes: [] };
     case 'products':
@@ -202,6 +202,23 @@ export function CatalogueForm({
             onChange={(value) => set('description', value)}
             area
           />
+          <div className="row">
+            <label className="field">
+              {c.city}
+              <input value={draft.city ?? ''} onChange={(e) => set('city', e.target.value)} maxLength={80} />
+            </label>
+            <label className="field">
+              {c.district}
+              <input value={draft.district ?? ''} onChange={(e) => set('district', e.target.value || null)} maxLength={120} />
+            </label>
+          </div>
+          <h3>{c.avatar_path}</h3>
+          <MediaPicker
+            locale={locale}
+            user={user}
+            value={draft.avatar_path ?? null}
+            onChange={(value) => set('avatar_path', value)}
+          />
         </>
       )}
       {entity === 'categories' && (
@@ -326,6 +343,33 @@ export function CatalogueForm({
                 onChange={(e) => set('minimum_quantity', Number(e.target.value))}
               />
             </label>
+            <label className="field">
+              {c.bulk_unit}
+              <select
+                value={draft.bulk_unit ?? ''}
+                onChange={(e) => {
+                  const unit = (e.target.value || null) as typeof draft.bulk_unit;
+                  set('bulk_unit', unit);
+                  if (unit && !draft.bulk_unit_size) set('bulk_unit_size', 12);
+                  if (unit && !draft.bulk_min_units) set('bulk_min_units', 1);
+                }}
+              >
+                <option value="">{c.bulk_none}</option>
+                {(['carton', 'lot', 'boite', 'sac', 'palette'] as const).map((u) => <option key={u} value={u}>{c['bulk_' + u as keyof typeof c] as string}</option>)}
+              </select>
+            </label>
+            {draft.bulk_unit && (
+              <>
+                <label className="field">
+                  {c.bulk_unit_size}
+                  <input type="number" min={2} max={100000} required value={draft.bulk_unit_size ?? ''} onChange={(e) => set('bulk_unit_size', Number(e.target.value))} />
+                </label>
+                <label className="field">
+                  {c.bulk_min_units}
+                  <input type="number" min={1} max={100000} required value={draft.bulk_min_units ?? ''} onChange={(e) => set('bulk_min_units', Number(e.target.value))} />
+                </label>
+              </>
+            )}
             <label className="field">
               {c.availability}
               <select

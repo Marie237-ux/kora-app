@@ -86,6 +86,10 @@ const bestOf = Object.fromEntries(
     shopSlugs.map(async (slug) => [slug, (await safe(k.catalogue('?shop=' + encodeURIComponent(slug) + '&sort=best_selling'), empty)).value.data.find((o) => o.image) ?? null] as const),
   ),
 );
+// Profile photo: the shop's own (back office → catalogue → shop); the CMS tile image stays as a fallback.
+const avatarOf: Record<string, string | null> = Object.fromEntries(
+  Object.values(bestOf).flatMap((o) => (o ? [[o.shop.slug, o.shop.avatar ?? null]] : [])),
+);
 const [flashTitle = c.flashKicker, ...flashRest] = (campaign?.banner ?? '').split(/(?<=[.!?])\s+/);
 const flashText = flashRest.join(' ');
 const failed = [hero, catalogue].some((r) => r.failed);
@@ -234,7 +238,7 @@ const failed = [hero, catalogue].some((r) => r.failed);
                 </a>
                 <div class="vendor-body">
                   <span class="vendor-avatar" aria-hidden="true">
-                    {t.image ? <img src={t.image} alt="" loading="lazy" decoding="async" /> : t.title.slice(0, 1)}
+                    {(avatarOf[slug] ?? t.image) ? <img src={(avatarOf[slug] ?? t.image)!} alt="" loading="lazy" decoding="async" /> : t.title.slice(0, 1)}
                   </span>
                   <h3>
                     <a href={t.href}>{t.title}</a>

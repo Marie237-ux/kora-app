@@ -67,6 +67,19 @@ class CatalogueController extends Controller
     }
 
     /** Applies every filter of the request; $only limits which groups are applied (facets use the base only). */
+    /**
+     * A product sold in several variants (shades, sizes, materials…) is one card, not one per variant: among the
+     * offers that match the filters, keep one per product and shop — the first variant by SKU, so a colour filter
+     * shows the matching shade. The other variants are picked on the product page.
+     */
+    private function oneCardPerProduct($query): void
+    {
+        $ranked = (clone $query)
+            ->select('offers.id as card_id')
+            ->selectRaw('ROW_NUMBER() OVER (PARTITION BY products.id, offers.shop_id ORDER BY variants.sku, offers.id) AS card_rank');
+        $query->whereIn('offers.id', DB::query()->fromSub($ranked, 'cards')->where('card_rank', 1)->select('card_id'));
+    }
+
     private function filtered(array $input, CategoryAttributes $attributes, PublicCatalogue $catalogue, bool $base = false): array
     {
         $query = $catalogue->query();
@@ -143,6 +156,7 @@ class CatalogueController extends Controller
         $input = $request->validate($this->rules());
         $locale = app()->getLocale();
         [$query, , $searchTokens] = $this->filtered($input, $attributes, $catalogue);
+        $this->oneCardPerProduct($query);
         $sort = $input['sort'] ?? 'name';
         if ($sort === 'best_selling') {
             // Real sales only: quantities on paid orders over the last 90 days, net of cancellations.
@@ -186,7 +200,9 @@ class CatalogueController extends Controller
         $locale = app()->getLocale();
         [$query, $category] = $this->filtered($input, $attributes, $catalogue, true);
         $rows = $query->limit(5000)->get();
-        $count = fn (callable $key) => $rows->groupBy($key)->map->count();
+        // Counts are products (a lipstick in five shades counts once), not variants.
+        $products = fn ($group) => collect($group)->unique(fn ($r) => $r->product_id.'|'.$r->shop_id)->count();
+        $count = fn (callable $key) => $rows->groupBy($key)->map($products);
         $definitions = $this->definitionsFor($category, $attributes);
         $characteristics = [];
         foreach ($definitions as $key => $d) {
@@ -200,8 +216,9 @@ class CatalogueController extends Controller
                     continue;
                 }
                 $v = is_bool($v) ? ($v ? 'true' : 'false') : (string) $v;
-                $counts[$v] = ($counts[$v] ?? 0) + 1;
+                $counts[$v][$r->product_id.'|'.$r->shop_id] = true;
             }
+            $counts = array_map('count', $counts);
             $options = $d['type'] === 'boolean'
                 ? [['value' => 'true', 'label' => $locale === 'fr' ? 'Oui' : 'Yes'], ['value' => 'false', 'label' => $locale === 'fr' ? 'Non' : 'No']]
                 : array_map(fn ($o) => ['value' => $o['value'], 'label' => $o['label'][$locale] ?? $o['value']], $d['options'] ?? []);
@@ -220,17 +237,17 @@ class CatalogueController extends Controller
         $aisles = $aisleRows->groupBy('category_slug')->map(fn ($g, $slug) => [
             'value' => (string) $slug,
             'label' => json_decode((string) ($aisleNames[$slug] ?? '{}'), true)[$locale] ?? (string) $slug,
-            'count' => $g->count(),
+            'count' => $products($g),
         ])->sortBy('label')->values();
         $toList = fn ($counts, $label = null) => $counts->filter(fn ($n, $k) => $k !== '' && $k !== null)
             ->map(fn ($n, $k) => ['value' => (string) $k, 'label' => $label ? $label($k) : (string) $k, 'count' => $n])->sortBy('label')->values();
         $shopNames = $rows->pluck('shop_name', 'shop_slug');
 
         return ['data' => [
-            'total' => $rows->count(),
+            'total' => $products($rows),
             'price' => ['min' => $prices->min() ?? 0, 'max' => $prices->max() ?? 0],
-            'on_sale' => $rows->filter(fn ($r) => isset($r->regular_price) && (int) $r->regular_price > (int) $r->selling_price)->count(),
-            'in_stock' => $rows->where('availability', 'available')->count(),
+            'on_sale' => $products($rows->filter(fn ($r) => isset($r->regular_price) && (int) $r->regular_price > (int) $r->selling_price)),
+            'in_stock' => $products($rows->where('availability', 'available')),
             'shops' => $toList($count(fn ($r) => $r->shop_slug), fn ($k) => $shopNames[$k] ?? $k),
             'cities' => $toList($count(fn ($r) => $r->shop_city ?? '')),
             'districts' => $toList($count(fn ($r) => $r->shop_district ?? '')),
@@ -243,6 +260,17 @@ class CatalogueController extends Controller
     {
         $offer = $catalogue->offer($id, app()->getLocale());
         abort_unless($offer, 404);
+        // Variants of the same product in the same shop (shades, sizes…): only ones that exist and are published.
+        $offer['variants'] = $catalogue->query()
+            ->where('products.id', $offer['product_id'])
+            ->where('shops.id', $offer['shop']['id'])
+            ->orderBy('variants.sku')
+            ->get()
+            ->map(fn ($row) => $catalogue->dto($row, app()->getLocale()))
+            ->map(fn ($v) => ['id' => $v['id'], 'sku' => $v['sku'], 'attributes' => $v['attributes'], 'image' => $v['image'], 'price' => $v['price'], 'compare_at_price' => $v['compare_at_price'], 'availability' => $v['availability']])
+            ->values();
+
+        $offer['service'] = app(\App\Domain\Catalogue\ProductService::class)->for($offer);
 
         return ['data' => $offer];
     }
@@ -269,7 +297,7 @@ class CatalogueController extends Controller
             'data' => DB::table('shops')
                 ->where('published', true)
                 ->orderBy('name')
-                ->get(['id', 'slug', 'name', 'description', 'city', 'district'])
+                ->get(['id', 'slug', 'name', 'description', 'city', 'district', 'avatar_path'])
                 ->map(fn ($s) => $this->shopDto($s)),
         ];
     }
@@ -341,6 +369,7 @@ class CatalogueController extends Controller
             'description' => json_decode($shop->description, true)[app()->getLocale()] ?? '',
             'city' => $shop->city ?? 'Douala',
             'district' => $shop->district ?? null,
+            'avatar' => $shop->avatar_path ?? null,
         ];
     }
 }

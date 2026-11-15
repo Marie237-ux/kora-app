@@ -25,6 +25,9 @@ final class PublicCatalogue
                 'offers.warranty',
                 'offers.image_path',
                 'offers.minimum_quantity',
+                'offers.bulk_unit',
+                'offers.bulk_unit_size',
+                'offers.bulk_min_units',
                 'offers.selling_price as regular_price',
                 'products.id as product_id',
                 'products.slug',
@@ -37,6 +40,7 @@ final class PublicCatalogue
                 'shops.slug as shop_slug',
                 'shops.city as shop_city',
                 'shops.district as shop_district',
+                'shops.avatar_path as shop_avatar',
                 'categories.slug as category_slug',
             ])
             ->selectRaw(
@@ -64,13 +68,16 @@ final class PublicCatalogue
             'attributes' => (object) json_decode($row->attributes, true),
             'category' => $row->category_slug,
             'minimum_quantity' => (int) $row->minimum_quantity,
+            'bulk' => $row->bulk_unit
+                ? ['unit' => $row->bulk_unit, 'unit_size' => (int) $row->bulk_unit_size, 'min_units' => (int) $row->bulk_min_units]
+                : null,
             'price' => ['amount' => (int) $row->selling_price, 'currency' => 'XAF'],
             // Shop price before an active promotion, so a sale can show the struck-through price; null otherwise.
             'compare_at_price' => isset($row->regular_price) && (int) $row->regular_price > (int) $row->selling_price ? (int) $row->regular_price : null,
             'availability' => $row->availability,
             'warranty' => $this->localized($row->warranty, $locale),
             'image' => app(MediaLibrary::class)->approvedPath($row->image_path) ? $row->image_path : null,
-            'shop' => ['id' => $row->shop_id, 'name' => $row->shop_name, 'slug' => $row->shop_slug, 'city' => $row->shop_city ?? 'Douala', 'district' => $row->shop_district ?? null],
+            'shop' => ['id' => $row->shop_id, 'name' => $row->shop_name, 'slug' => $row->shop_slug, 'city' => $row->shop_city ?? 'Douala', 'district' => $row->shop_district ?? null, 'avatar' => $row->shop_avatar ?? null],
         ];
     }
 

@@ -9692,6 +9692,8 @@ export interface components {
             description: string;
             city: string;
             district: string | null;
+            /** @description Photo de profil de la boutique (chemin média public), sinon null. */
+            avatar: string | null;
         };
         Offer: {
             id: string;
@@ -9716,10 +9718,69 @@ export interface components {
                 slug: string;
                 city: string;
                 district: string | null;
+                /** @description Photo de profil de la boutique (chemin média public), sinon null. */
+                avatar: string | null;
             };
             minimum_quantity: number;
             /** @description Prix boutique avant une promotion active (barré), sinon null. */
             compare_at_price: number | null;
+            /** @description Fiche produit seulement : variantes publiées du même produit dans la même boutique. */
+            variants?: {
+                /** Format: uuid */
+                id: string;
+                attributes: {
+                    [key: string]: unknown;
+                };
+                image: string | null;
+                price: components["schemas"]["Money"];
+                /** @enum {string} */
+                availability: "available" | "unconfirmed" | "unavailable";
+                sku: string;
+                compare_at_price: number | null;
+            }[];
+            /** @description Vente en gros : unité (carton, lot…), pièces par unité, minimum d’unités ; null si non vendu en gros. */
+            bulk: {
+                /** @enum {string} */
+                unit: "carton" | "lot" | "boite" | "sac" | "palette";
+                unit_size: number;
+                min_units: number;
+            } | null;
+            /** @description Fiche produit seulement : service rattaché au produit, calculé par l’API. */
+            service?: {
+                /** @enum {string} */
+                ships_from: "warehouse" | "shop";
+                delivery: {
+                    intro: string;
+                    route: {
+                        label: string;
+                        text: string;
+                    }[];
+                    terms: {
+                        label: string;
+                        text: string;
+                    }[];
+                };
+                warranty: {
+                    months: number | null;
+                    title: string;
+                    intro: string;
+                    steps: {
+                        label: string;
+                        text: string;
+                    }[];
+                };
+                bulk: {
+                    intro: string;
+                    steps: {
+                        label: string;
+                        text: string;
+                    }[];
+                } | null;
+                zones: {
+                    name: string;
+                    districts: string[];
+                }[];
+            };
         };
         Translations: {
             fr: string;
@@ -9887,6 +9948,12 @@ export interface components {
             availability?: "available" | "unconfirmed" | "unavailable";
             image_path?: string | null;
             promotion?: components["schemas"]["PromotionDraft"] | null;
+            city?: string | null;
+            district?: string | null;
+            avatar_path?: string | null;
+            bulk_unit?: ("carton" | "lot" | "boite" | "sac" | "palette") | null;
+            bulk_unit_size?: number | null;
+            bulk_min_units?: number | null;
         };
         CatalogueRecord: {
             /** Format: uuid */

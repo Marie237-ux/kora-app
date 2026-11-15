@@ -41,7 +41,7 @@ function changed(cart: Cart) {
   window.dispatchEvent(new CustomEvent('kora:cart', { detail: cart }));
 }
 
-export async function addToCart(locale: Locale, offerId: string, quantity = 1): Promise<Cart> {
+export async function addToCart(locale: Locale, offerId: string, quantity = 1, name = ''): Promise<Cart> {
   const cart = await loadCart(locale);
   const line = cart.lines.find((l) => l.offer_id === offerId);
   if (line) {
@@ -61,7 +61,7 @@ export async function addToCart(locale: Locale, offerId: string, quantity = 1): 
   }
   const next = await loadCart(locale);
   changed(next);
-  window.dispatchEvent(new CustomEvent('kora:cart-added'));
+  window.dispatchEvent(new CustomEvent('kora:cart-added', { detail: { name, quantity } }));
   return next;
 }
 

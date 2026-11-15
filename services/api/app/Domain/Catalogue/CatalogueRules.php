@@ -31,6 +31,7 @@ final class CatalogueRules
                 'description.en' => [$text, 'string', 'max:1500'],
                 'city' => ['nullable', 'string', 'max:80'],
                 'district' => ['nullable', 'string', 'max:120'],
+                'avatar_path' => ['nullable', 'string', 'max:200'],
             ],
             'categories' => [
                 'parent_id' => ['nullable', 'uuid', 'exists:categories,id'],
@@ -80,6 +81,9 @@ final class CatalogueRules
                 'warranty.fr' => [$text, 'string', 'max:1500'],
                 'warranty.en' => [$text, 'string', 'max:1500'],
                 'image_path' => ['nullable', 'string', 'max:200'],
+                'bulk_unit' => ['nullable', 'in:carton,lot,boite,sac,palette'],
+                'bulk_unit_size' => ['nullable', 'required_with:bulk_unit', 'integer', 'min:2', 'max:100000'],
+                'bulk_min_units' => ['nullable', 'required_with:bulk_unit', 'integer', 'min:1', 'max:100000'],
                 'promotion' => [
                     'nullable',
                     'array:price,starts_at,ends_at,kora_funding,supplier_funding,contract_reference,negative_margin_reason',

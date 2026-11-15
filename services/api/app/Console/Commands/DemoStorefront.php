@@ -65,8 +65,21 @@ final class DemoStorefront extends Command
         }
         $offers = [];
         $shopIds = [];
+        // Delivery zones of the demo (districts served), kept by code so the back office can still edit them.
+        foreach ($manifest['zones'] ?? [] as $z) {
+            $values = ['name' => json_encode($z['name']), 'districts' => json_encode($z['districts']), 'active' => true, 'updated_at' => $now];
+            DB::table('delivery_zones')->where('code', $z['code'])->exists()
+                ? DB::table('delivery_zones')->where('code', $z['code'])->update($values)
+                : DB::table('delivery_zones')->insert([...$values, 'id' => (string) Str::uuid(), 'code' => $z['code'], 'version' => 1, 'created_at' => $now]);
+        }
         foreach ($manifest['shops'] as $s) {
             $shop = (string) Str::uuid();
+            $avatar = null;
+            if (isset($s['avatar']) && is_file($base.'/'.$s['avatar'])) {
+                $asset = $media->upload(new UploadedFile($base.'/'.$s['avatar'], basename($s['avatar']), null, null, true), ['fr' => $s['name'], 'en' => $s['name']], $actor);
+                DB::table('media_assets')->where('id', $asset['id'])->update(['is_public' => true, 'rights_confirmed_at' => $now]);
+                $avatar = '/api/v1/media/'.$asset['id'].'/public';
+            }
             DB::table('shops')->insert([
                 'id' => $shop,
                 'supplier_id' => $supplier,
@@ -75,6 +88,7 @@ final class DemoStorefront extends Command
                 'description' => json_encode($s['description']),
                 'city' => $s['city'] ?? 'Douala',
                 'district' => $s['district'] ?? null,
+                'avatar_path' => $avatar,
                 'published' => true,
                 'status' => 'published',
                 'published_version' => 1,
@@ -112,10 +126,38 @@ final class DemoStorefront extends Command
                     'availability' => $p['availability'] ?? 'available',
                     'warranty' => json_encode($p['warranty'] ?? ['fr' => 'Garantie boutique 6 mois', 'en' => '6-month shop warranty']),
                     'image_path' => $media->publicPath($asset['id']),
+                    'bulk_unit' => $p['bulk']['unit'] ?? null,
+                    'bulk_unit_size' => $p['bulk']['unit_size'] ?? null,
+                    'bulk_min_units' => $p['bulk']['min_units'] ?? null,
                     'created_at' => $now,
                     'updated_at' => $now,
                 ]);
                 $offers[$p['slug']] = ['id' => $offer, 'product' => $product, 'media_id' => $asset['id'], 'media' => $media->publicPath($asset['id']), 'alt' => $p['alt']];
+                // Other shades/sizes of the same product: one variant + one offer each, with its own photo.
+                foreach ($p['variants'] ?? [] as $v) {
+                    $vAsset = $media->upload(new UploadedFile($base.'/'.$v['image'], basename($v['image']), null, null, true), $v['alt'] ?? $p['alt'], $actor);
+                    DB::table('media_assets')->where('id', $vAsset['id'])->update(['is_public' => true, 'rights_confirmed_at' => $now]);
+                    $vId = (string) Str::uuid();
+                    $vOffer = (string) Str::uuid();
+                    DB::table('variants')->insert(['id' => $vId, 'product_id' => $product, 'sku' => 'TEST-'.strtoupper($p['slug'].'-'.$v['key']), 'attributes' => json_encode((object) array_merge($p['attributes'] ?? [], $v['attributes'] ?? [])), 'created_at' => $now, 'updated_at' => $now]);
+                    DB::table('offers')->insert([
+                        'id' => $vOffer,
+                        'variant_id' => $vId,
+                        'shop_id' => $shop,
+                        'reference_price' => $v['price'] ?? $p['price'],
+                        'selling_price' => $v['price'] ?? $p['price'],
+                        'status' => 'published',
+                        'availability' => $v['availability'] ?? 'available',
+                        'warranty' => json_encode($p['warranty'] ?? ['fr' => 'Garantie boutique 6 mois', 'en' => '6-month shop warranty']),
+                        'image_path' => $media->publicPath($vAsset['id']),
+                        'bulk_unit' => $p['bulk']['unit'] ?? null,
+                        'bulk_unit_size' => $p['bulk']['unit_size'] ?? null,
+                        'bulk_min_units' => $p['bulk']['min_units'] ?? null,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
+                    $offers[$p['slug'].'-'.$v['key']] = ['id' => $vOffer, 'product' => $product, 'media_id' => $vAsset['id'], 'media' => $media->publicPath($vAsset['id']), 'alt' => $v['alt'] ?? $p['alt']];
+                }
                 $shopIds[$s['slug']] = $shop;
             }
         }
@@ -218,6 +260,7 @@ final class DemoStorefront extends Command
         DB::transaction(function () {
             $supplier = DB::table('suppliers')->where('name', self::SUPPLIER)->value('id');
             $shops = DB::table('shops')->where('supplier_id', $supplier)->pluck('id');
+            $avatars = DB::table('shops')->whereIn('id', $shops)->pluck('avatar_path');
             $offers = DB::table('offers')->whereIn('shop_id', $shops)->get(['id', 'variant_id', 'image_path']);
             $variants = $offers->pluck('variant_id');
             $products = DB::table('variants')->whereIn('id', $variants)->pluck('product_id');
@@ -235,8 +278,8 @@ final class DemoStorefront extends Command
             DB::table('products')->whereIn('id', $products)->delete();
             DB::table('shops')->whereIn('id', $shops)->delete();
             DB::table('categories')->whereIn('id', $categories)->whereNotExists(fn ($q) => $q->selectRaw('1')->from('products')->whereColumn('products.category_id', 'categories.id'))->delete();
-            foreach ($offers as $o) {
-                if (preg_match('~/media/([a-f0-9-]{36})/public$~', (string) $o->image_path, $m) && ($asset = DB::table('media_assets')->where('id', $m[1])->first())) {
+            foreach ([...$offers->pluck('image_path'), ...$avatars] as $path) {
+                if (preg_match('~/media/([a-f0-9-]{36})/public$~', (string) $path, $m) && ($asset = DB::table('media_assets')->where('id', $m[1])->first())) {
                     Storage::disk($asset->disk)->delete($asset->object_key);
                     DB::table('media_assets')->where('id', $asset->id)->delete();
                 }

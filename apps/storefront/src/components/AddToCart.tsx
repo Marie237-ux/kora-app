@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { copy, type Locale } from '../lib/copy';
 import { addToCart } from '../lib/cart';
 import { CartIcon, CheckIcon, PlusIcon } from './icons';
@@ -6,11 +6,12 @@ import { CartIcon, CheckIcon, PlusIcon } from './icons';
 /** Quick "+" on a tile, or the full button with quantity on a product page. Feedback is immediate. */
 export default function AddToCart({
   locale,
-  offerId,
+  offerId: offerIdProp,
   name,
   variant = 'plus',
   minimum = 1,
-  disabled = false,
+  disabled: disabledProp = false,
+  follow = false,
 }: {
   locale: Locale;
   offerId: string;
@@ -18,15 +19,30 @@ export default function AddToCart({
   variant?: 'plus' | 'cart' | 'pill' | 'full';
   minimum?: number;
   disabled?: boolean;
+  follow?: boolean;
 }) {
   const c = copy(locale);
   const [state, setState] = useState<'idle' | 'busy' | 'done' | 'error'>('idle');
   const [quantity, setQuantity] = useState(Math.max(1, minimum));
+  // On a product page, choosing another variant (shade, size…) switches the offer this button adds.
+  const [current, setCurrent] = useState({ offerId: offerIdProp, disabled: disabledProp });
+  useEffect(() => {
+    if (!follow) return;
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<{ offerId: string; disabled: boolean }>).detail;
+      setCurrent({ offerId: d.offerId, disabled: d.disabled });
+      setState('idle');
+    };
+    window.addEventListener('kora:variant', on);
+    return () => window.removeEventListener('kora:variant', on);
+  }, [follow]);
+  const offerId = current.offerId;
+  const disabled = current.disabled;
   async function add() {
     if (state === 'busy' || disabled) return;
     setState('busy');
     try {
-      await addToCart(locale, offerId, quantity);
+      await addToCart(locale, offerId, quantity, name);
       setState('done');
       window.setTimeout(() => setState('idle'), 1600);
     } catch {
@@ -37,8 +53,8 @@ export default function AddToCart({
   if (variant === 'pill') {
     return (
       <button type="button" className="cart-pill" data-state={state} onClick={add} disabled={disabled} aria-label={c.addToCart + ' — ' + name}>
-        {state === 'done' ? <CheckIcon /> : <CartIcon />}
-        <span>{state === 'done' ? c.added : state === 'error' ? c.addFailed : c.addShort}</span>
+        {state === 'busy' ? <i className="spin" aria-hidden="true" /> : state === 'done' ? <CheckIcon /> : <CartIcon />}
+        <span>{state === 'busy' ? c.adding : state === 'done' ? c.added : state === 'error' ? c.addFailed : c.addShort}</span>
       </button>
     );
   }
@@ -53,7 +69,7 @@ export default function AddToCart({
         aria-label={c.addToCart + ' — ' + name}
         title={state === 'error' ? c.addFailed : c.addToCart}
       >
-        {state === 'done' ? <CheckIcon /> : variant === 'cart' ? <CartIcon /> : <PlusIcon />}
+        {state === 'busy' ? <i className="spin" aria-hidden="true" /> : state === 'done' ? <CheckIcon /> : variant === 'cart' ? <CartIcon /> : <PlusIcon />}
       </button>
     );
   }
@@ -64,8 +80,8 @@ export default function AddToCart({
         <output>{quantity}</output>
         <button type="button" aria-label={c.increase} onClick={() => setQuantity(quantity + 1)}>+</button>
       </div>
-      <button type="button" className="btn btn-accent" style={{ flex: 1 }} onClick={add} disabled={disabled || state === 'busy'}>
-        {state === 'done' ? c.added : state === 'error' ? c.addFailed : c.addToCart}
+      <button type="button" className="pdp-add" data-state={state} onClick={add} disabled={disabled || state === 'busy'}>
+        {state === 'busy' ? <><i className="spin" aria-hidden="true" /> {c.adding}</> : state === 'done' ? c.added : state === 'error' ? c.addFailed : c.addToCart}
       </button>
     </div>
   );

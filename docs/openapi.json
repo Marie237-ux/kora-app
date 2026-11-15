@@ -66892,6 +66892,17 @@
                 "type": "null"
               }
             ]
+          },
+          "avatar": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Photo de profil de la boutique (chemin média public), sinon null."
           }
         },
         "required": [
@@ -66900,7 +66911,8 @@
           "name",
           "description",
           "city",
-          "district"
+          "district",
+          "avatar"
         ],
         "additionalProperties": false
       },
@@ -66981,6 +66993,17 @@
                     "type": "null"
                   }
                 ]
+              },
+              "avatar": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Photo de profil de la boutique (chemin média public), sinon null."
               }
             },
             "required": [
@@ -66988,7 +67011,8 @@
               "name",
               "slug",
               "city",
-              "district"
+              "district",
+              "avatar"
             ],
             "additionalProperties": false
           },
@@ -67006,6 +67030,286 @@
               }
             ],
             "description": "Prix boutique avant une promotion active (barré), sinon null."
+          },
+          "variants": {
+            "type": "array",
+            "description": "Fiche produit seulement : variantes publiées du même produit dans la même boutique.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "attributes": {
+                  "type": "object",
+                  "additionalProperties": true
+                },
+                "image": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "price": {
+                  "$ref": "#/components/schemas/Money"
+                },
+                "availability": {
+                  "type": "string",
+                  "enum": [
+                    "available",
+                    "unconfirmed",
+                    "unavailable"
+                  ]
+                },
+                "sku": {
+                  "type": "string"
+                },
+                "compare_at_price": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "attributes",
+                "image",
+                "price",
+                "availability",
+                "sku",
+                "compare_at_price"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "bulk": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "unit": {
+                    "type": "string",
+                    "enum": [
+                      "carton",
+                      "lot",
+                      "boite",
+                      "sac",
+                      "palette"
+                    ]
+                  },
+                  "unit_size": {
+                    "type": "integer",
+                    "minimum": 2
+                  },
+                  "min_units": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                },
+                "required": [
+                  "unit",
+                  "unit_size",
+                  "min_units"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Vente en gros : unité (carton, lot…), pièces par unité, minimum d’unités ; null si non vendu en gros."
+          },
+          "service": {
+            "type": "object",
+            "description": "Fiche produit seulement : service rattaché au produit, calculé par l’API.",
+            "properties": {
+              "ships_from": {
+                "type": "string",
+                "enum": [
+                  "warehouse",
+                  "shop"
+                ]
+              },
+              "delivery": {
+                "type": "object",
+                "properties": {
+                  "intro": {
+                    "type": "string"
+                  },
+                  "route": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "label": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "label",
+                        "text"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "terms": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "label": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "label",
+                        "text"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "intro",
+                  "route",
+                  "terms"
+                ],
+                "additionalProperties": false
+              },
+              "warranty": {
+                "type": "object",
+                "properties": {
+                  "months": {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "intro": {
+                    "type": "string"
+                  },
+                  "steps": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "label": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "label",
+                        "text"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "months",
+                  "title",
+                  "intro",
+                  "steps"
+                ],
+                "additionalProperties": false
+              },
+              "bulk": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "intro": {
+                        "type": "string"
+                      },
+                      "steps": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "label": {
+                              "type": "string"
+                            },
+                            "text": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "label",
+                            "text"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "intro",
+                      "steps"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "zones": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "districts": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "districts"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "ships_from",
+              "delivery",
+              "warranty",
+              "bulk",
+              "zones"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -67023,7 +67327,8 @@
           "image",
           "shop",
           "minimum_quantity",
-          "compare_at_price"
+          "compare_at_price",
+          "bulk"
         ],
         "additionalProperties": false
       },
@@ -67842,6 +68147,75 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/PromotionDraft"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "district": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "avatar_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bulk_unit": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "carton",
+                  "lot",
+                  "boite",
+                  "sac",
+                  "palette"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bulk_unit_size": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 2
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "bulk_min_units": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
               },
               {
                 "type": "null"

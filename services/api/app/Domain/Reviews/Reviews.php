@@ -208,7 +208,7 @@ final class Reviews
             ->where('r.product_id', $productId)
             ->where('r.status', 'published')
             ->orderByDesc('r.created_at')
-            ->get(['r.*', 'u.name']);
+            ->get(['r.*', 'u.name', 'u.avatar_path']);
 
         return [
             'summary' => [
@@ -223,6 +223,7 @@ final class Reviews
                     return [
                         'id' => $r->id,
                         'author' => $parts[0].(isset($parts[1]) ? ' '.mb_substr($parts[1], 0, 1).'.' : ''),
+                        'avatar' => $r->avatar_path ?: null,
                         'verified_purchase' => true,
                         'rating' => (int) $r->rating,
                         'title' => $r->title,
