@@ -125,9 +125,13 @@ final class Boards
         if (! empty($data['cover_pin_id'])) {
             $this->pin($board, $data['cover_pin_id']);
         }
+        // Cover photo: only an approved public image from the media library.
+        if (! empty($data['cover_path']) && ! app(\App\Domain\Media\MediaLibrary::class)->approvedPath($data['cover_path'])) {
+            $this->fail('cover_path', 'IMAGE_REQUIRED');
+        }
         $changes = array_intersect_key(
             $data,
-            array_flip(['title', 'description', 'kind', 'gift_date', 'hide_gift_purchases', 'cover_pin_id']),
+            array_flip(['title', 'description', 'kind', 'gift_date', 'hide_gift_purchases', 'cover_pin_id', 'cover_path']),
         );
         if (($changes['kind'] ?? $board->kind) !== 'gift') {
             $changes['gift_date'] = null;
@@ -343,6 +347,43 @@ final class Boards
         return $this->dto($this->change($board, $actor, $kind.'_reordered'), $actor);
     }
 
+    /**
+     * What a public board shows on its card and page: its author (name and photo only), up to four product images for
+     * the cover, how many pinned products are still sold and their current total (today's prices, wished quantities).
+     */
+    public function showcase(object $board, bool $listing = false): array
+    {
+        $pins = DB::table('board_pins')->where('board_id', $board->id)->orderBy('position')->orderBy('id')->get(['offer_id', 'wished_quantity']);
+        $catalogue = app(PublicCatalogue::class);
+        $rows = $pins->isEmpty() ? collect() : $catalogue->query()->whereIn('offers.id', $pins->pluck('offer_id'))->get()->keyBy('id');
+        $live = $pins->filter(fn ($p) => $rows->has($p->offer_id))->map(fn ($p) => [$p, $catalogue->dto($rows[$p->offer_id], app()->getLocale()), $rows[$p->offer_id]])->values();
+        $sold = $live->filter(fn ($x) => $x[1]['availability'] !== 'unavailable');
+        $owner = DB::table('users')->where('id', $board->owner_id)->first(['name', 'avatar_path']);
+        $data = [
+            'cover' => $board->cover_path ?? null,
+            'author' => ['name' => $owner->name ?? '', 'avatar' => $owner->avatar_path ?? null, 'key' => substr(hash('sha256', 'author:'.$board->owner_id), 0, 12)],
+            'covers' => $live->map(fn ($x) => $x[1]['image'])->filter()->take(4)->values()->all(),
+            'available_count' => $sold->count(),
+            'total' => [
+                'amount' => (int) $sold->sum(fn ($x) => $x[1]['price']['amount'] * max(1, (int) $x[0]->wished_quantity)),
+                'currency' => 'XAF',
+            ],
+        ];
+        if (! $listing) {
+            return $data;
+        }
+        $names = DB::table('categories')->pluck('name', 'slug')->map(fn ($n) => json_decode((string) $n, true)[app()->getLocale()] ?? '');
+
+        return [
+            ...$data,
+            // Listing only: what the filters work on (the author key is an opaque hash, never the account id).
+            'aisles' => $live->map(fn ($x) => $x[2]->category_slug)->filter()->unique()->sort()->values()->map(fn ($slug) => ['slug' => $slug, 'name' => $names[$slug] ?? $slug])->all(),
+            'shops' => $live->map(fn ($x) => ['slug' => $x[2]->shop_slug, 'name' => $x[2]->shop_name, 'district' => $x[2]->shop_district, 'city' => $x[2]->shop_city ?? 'Douala'])->unique('slug')->values()->all(),
+            'on_sale_count' => $sold->filter(fn ($x) => (int) $x[2]->regular_price > (int) $x[2]->selling_price)->count(),
+            'all_in_stock' => $live->isNotEmpty() && $live->every(fn ($x) => $x[1]['availability'] === 'available'),
+        ];
+    }
+
     public function dto(object $board, ?User $actor = null, bool $public = false): array
     {
         $pins = DB::table('board_pins')->where('board_id', $board->id)->orderBy('position')->orderBy('id')->get();
@@ -368,6 +409,7 @@ final class Boards
             'gift_date' => $board->gift_date,
             'hide_gift_purchases' => (bool) $board->hide_gift_purchases,
             'cover_pin_id' => $board->cover_pin_id,
+            'cover' => $board->cover_path ?? null,
             'role' => $public ? 'public_reader' : $this->role($board, $actor),
             'sections' => DB::table('board_sections')
                 ->where('board_id', $board->id)

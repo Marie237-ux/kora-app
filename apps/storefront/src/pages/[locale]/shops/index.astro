@@ -8,6 +8,8 @@
 import Site from '../../../layouts/Site.astro';
 import CatalogueScript from '../../../components/CatalogueScript.astro';
 import ShopCard, { type ShopListing } from '../../../components/ShopCard.astro';
+import CityPicker from '../../../components/CityPicker.astro';
+import { visitorCity } from '../../../lib/city';
 import { copy } from '../../../lib/copy';
 import { api, localeOf, safe } from '../../../lib/server';
 const locale = localeOf(Astro.params.locale);
@@ -22,6 +24,8 @@ const many = (key: string) => [...new Set(url.getAll(key).filter(Boolean))];
 const catsSel = many('category');
 const districtsSel = many('district');
 const citiesSel = many('city');
+const myCity = visitorCity(Astro.url, Astro.cookies);
+const onlyLocal = Boolean(myCity) && url.get('local') === '1';
 const promo = url.get('promo') === '1';
 const sorts = ['name', 'products', 'deals', 'newest'];
 const sort = sorts.includes(url.get('sort') ?? '') ? (url.get('sort') as string) : 'name';
@@ -35,7 +39,8 @@ const query = new URLSearchParams();
 if (q) query.set('q', q);
 if (catsSel.length) query.set('category', catsSel.join(','));
 if (districtsSel.length) query.set('district', districtsSel.join(','));
-if (citiesSel.length) query.set('city', citiesSel.join(','));
+if (onlyLocal) query.set('city', myCity);
+else if (citiesSel.length) query.set('city', citiesSel.join(','));
 if (promo) query.set('on_sale', '1');
 query.set('sort', sort);
 query.set('per_page', per);
@@ -74,6 +79,7 @@ const active: { label: string; href: string }[] = [];
 if (q) active.push({ label: '« ' + q + ' »', href: without('q') });
 for (const v of catsSel) active.push({ label: label(facets.categories, v), href: without('category', v) });
 for (const v of districtsSel) active.push({ label: v, href: without('district', v) });
+if (onlyLocal) active.push({ label: c.onlyMyCity + ' : ' + myCity, href: without('local') });
 for (const v of citiesSel) active.push({ label: v, href: without('city', v) });
 if (promo) active.push({ label: c.shopsWithDeals, href: without('promo') });
 const countLabel = (n: number) => n + ' ' + (n > 1 ? c.shopsWord : c.shopWord);
@@ -109,6 +115,8 @@ const countLabel = (n: number) => n + ' ' + (n > 1 ? c.shopsWord : c.shopWord);
             <input id="shops-q" type="search" name="q" value={q} placeholder={c.shopsSearch} maxlength="80" />
           </div>
 
+          <CityPicker locale={locale} myCity={myCity} onlyLocal={onlyLocal} counts={Object.fromEntries(facets.cities.map((o) => [o.value, o.count]))} unit={[c.shopWord, c.shopsWord]} />
+
           {facets.categories.length > 0 && (
             <details class="fgroup" open>
               <summary>{c.categories}</summary>
@@ -123,13 +131,13 @@ const countLabel = (n: number) => n + ' ' + (n > 1 ? c.shopsWord : c.shopWord);
 
           {facets.districts.length > 0 && (
             <details class="fgroup" open>
-              <summary>{c.district}</summary>
+              <summary>{c.shopDistrict}</summary>
               <div class="fchips">{facets.districts.map((o) => <label><input type="checkbox" name="district" value={o.value} checked={districtsSel.includes(o.value)} data-auto /><span>{o.label}<small>{o.count}</small></span></label>)}</div>
             </details>
           )}
           {facets.cities.length > 0 && (
             <details class="fgroup" open={citiesSel.length > 0 || facets.cities.length > 1}>
-              <summary>{c.city}</summary>
+              <summary>{c.shopCity}</summary>
               <div class="fchips">{facets.cities.map((o) => <label><input type="checkbox" name="city" value={o.value} checked={citiesSel.includes(o.value)} data-auto /><span>{o.label}<small>{o.count}</small></span></label>)}</div>
             </details>
           )}
@@ -177,7 +185,7 @@ const countLabel = (n: number) => n + ' ' + (n > 1 ? c.shopsWord : c.shopWord);
       ) : shops.length ? (
         <>
           <div class="shops-grid">
-            {shops.map((s) => <ShopCard shop={s} locale={locale} />)}
+            {shops.map((s) => <ShopCard shop={s} locale={locale} myCity={myCity} />)}
           </div>
           {meta.last_page > 1 && (
             <nav class="cat-pages" aria-label={c.page}>

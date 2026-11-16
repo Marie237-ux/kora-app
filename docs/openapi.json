@@ -18825,22 +18825,160 @@
         "x-resource-owner": "public",
         "parameters": [
           {
-            "name": "locale",
+            "name": "q",
             "in": "query",
+            "required": false,
+            "description": "Recherche : titre, description, rayons, auteur.",
+            "schema": {
+              "type": "string",
+              "maxLength": 80
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "description": "Rayons (séparés par des virgules).",
+            "schema": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          {
+            "name": "shop",
+            "in": "query",
+            "required": false,
+            "description": "Boutiques (slugs).",
+            "schema": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          {
+            "name": "district",
+            "in": "query",
+            "required": false,
+            "description": "Quartiers des boutiques.",
+            "schema": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          {
+            "name": "author",
+            "in": "query",
+            "required": false,
+            "description": "Auteurs (clés opaques données par les facettes).",
+            "schema": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "description": "Taille : small, medium, large.",
+            "schema": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          {
+            "name": "on_sale",
+            "in": "query",
+            "required": false,
+            "description": "Avec au moins un produit en promotion.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "in_stock",
+            "in": "query",
+            "required": false,
+            "description": "Tous les produits en stock.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "price_min",
+            "in": "query",
+            "required": false,
+            "description": "Budget total minimum (XAF).",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "price_max",
+            "in": "query",
+            "required": false,
+            "description": "Budget total maximum (XAF).",
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Tri.",
             "schema": {
               "type": "string",
               "enum": [
-                "fr",
-                "en"
+                "newest",
+                "price_asc",
+                "price_desc",
+                "products"
               ]
             }
           },
           {
             "name": "page",
             "in": "query",
+            "required": false,
+            "description": "Page.",
             "schema": {
               "type": "integer",
               "minimum": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "description": "Tableaux par page.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "12",
+                "24",
+                "48"
+              ]
+            }
+          },
+          {
+            "name": "city",
+            "in": "query",
+            "required": false,
+            "description": "Villes des boutiques.",
+            "schema": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          {
+            "name": "local_city",
+            "in": "query",
+            "required": false,
+            "description": "Seulement les tableaux entièrement livrables dans cette ville.",
+            "schema": {
+              "type": "string",
+              "maxLength": 80
             }
           }
         ],
@@ -18860,7 +18998,202 @@
                       }
                     },
                     "meta": {
-                      "$ref": "#/components/schemas/PageMeta"
+                      "type": "object",
+                      "required": [
+                        "page",
+                        "last_page",
+                        "total",
+                        "facets"
+                      ],
+                      "properties": {
+                        "page": {
+                          "type": "integer"
+                        },
+                        "last_page": {
+                          "type": "integer"
+                        },
+                        "total": {
+                          "type": "integer"
+                        },
+                        "facets": {
+                          "type": "object",
+                          "required": [
+                            "categories",
+                            "shops",
+                            "districts",
+                            "authors",
+                            "sizes",
+                            "on_sale",
+                            "in_stock",
+                            "price",
+                            "cities"
+                          ],
+                          "properties": {
+                            "categories": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "value",
+                                  "label",
+                                  "count"
+                                ],
+                                "properties": {
+                                  "value": {
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "count": {
+                                    "type": "integer"
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            },
+                            "shops": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "value",
+                                  "label",
+                                  "count"
+                                ],
+                                "properties": {
+                                  "value": {
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "count": {
+                                    "type": "integer"
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            },
+                            "districts": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "value",
+                                  "label",
+                                  "count"
+                                ],
+                                "properties": {
+                                  "value": {
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "count": {
+                                    "type": "integer"
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            },
+                            "authors": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "value",
+                                  "label",
+                                  "count"
+                                ],
+                                "properties": {
+                                  "value": {
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "count": {
+                                    "type": "integer"
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            },
+                            "sizes": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "value",
+                                  "label",
+                                  "count"
+                                ],
+                                "properties": {
+                                  "value": {
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "count": {
+                                    "type": "integer"
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            },
+                            "on_sale": {
+                              "type": "integer"
+                            },
+                            "in_stock": {
+                              "type": "integer"
+                            },
+                            "price": {
+                              "type": "object",
+                              "required": [
+                                "min",
+                                "max"
+                              ],
+                              "properties": {
+                                "min": {
+                                  "type": "integer"
+                                },
+                                "max": {
+                                  "type": "integer"
+                                }
+                              },
+                              "additionalProperties": false
+                            },
+                            "cities": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "value",
+                                  "label",
+                                  "count"
+                                ],
+                                "properties": {
+                                  "value": {
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "count": {
+                                    "type": "integer"
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -18930,7 +19263,7 @@
                   "type": "object",
                   "properties": {
                     "data": {
-                      "$ref": "#/components/schemas/Board"
+                      "$ref": "#/components/schemas/PublicBoard"
                     }
                   },
                   "required": [
@@ -19435,6 +19768,17 @@
                       {
                         "type": "string",
                         "format": "uuid"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "cover_path": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 200
                       },
                       {
                         "type": "null"
@@ -23253,6 +23597,10 @@
                   },
                   "active": {
                     "type": "boolean"
+                  },
+                  "city": {
+                    "type": "string",
+                    "maxLength": 80
                   }
                 },
                 "required": [
@@ -23391,6 +23739,10 @@
                   },
                   "active": {
                     "type": "boolean"
+                  },
+                  "city": {
+                    "type": "string",
+                    "maxLength": 80
                   }
                 },
                 "required": [
@@ -67700,12 +68052,40 @@
                       ],
                       "additionalProperties": false
                     }
+                  },
+                  "modes": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "key",
+                        "label",
+                        "text"
+                      ],
+                      "properties": {
+                        "key": {
+                          "type": "string",
+                          "enum": [
+                            "local",
+                            "shipping"
+                          ]
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false
+                    }
                   }
                 },
                 "required": [
                   "intro",
                   "route",
-                  "terms"
+                  "terms",
+                  "modes"
                 ],
                 "additionalProperties": false
               },
@@ -67816,6 +68196,10 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "zones_city": {
+                "type": "string",
+                "description": "Ville des quartiers desservis par les livreurs KORA."
               }
             },
             "required": [
@@ -67823,7 +68207,8 @@
               "delivery",
               "warranty",
               "bulk",
-              "zones"
+              "zones",
+              "zones_city"
             ],
             "additionalProperties": false
           }
@@ -74011,6 +74396,17 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "cover": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Photo de couverture du tableau (chemin média public), sinon null."
           }
         },
         "required": [
@@ -74029,7 +74425,8 @@
           "purchase_tracking_available",
           "recipient_delivery_available",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "cover"
         ],
         "additionalProperties": false
       },
@@ -74125,6 +74522,136 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "author": {
+            "type": "object",
+            "required": [
+              "name",
+              "avatar",
+              "key"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "avatar": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "key": {
+                "type": "string",
+                "description": "Clé publique opaque du créateur."
+              }
+            },
+            "additionalProperties": false
+          },
+          "covers": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {
+              "type": "string"
+            },
+            "description": "Images des produits épinglés (jusqu’à 4) pour la couverture."
+          },
+          "available_count": {
+            "type": "integer",
+            "description": "Produits épinglés encore en vente."
+          },
+          "total": {
+            "type": "object",
+            "required": [
+              "amount",
+              "currency"
+            ],
+            "properties": {
+              "amount": {
+                "type": "integer"
+              },
+              "currency": {
+                "type": "string",
+                "enum": [
+                  "XAF"
+                ]
+              }
+            },
+            "additionalProperties": false,
+            "description": "Total au prix du jour des produits encore en vente."
+          },
+          "cover": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Photo de couverture du tableau (chemin média public), sinon null."
+          },
+          "aisles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "slug",
+                "name"
+              ],
+              "properties": {
+                "slug": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "shops": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "slug",
+                "name",
+                "district",
+                "city"
+              ],
+              "properties": {
+                "slug": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "district": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "city": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "on_sale_count": {
+            "type": "integer"
+          },
+          "all_in_stock": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -74133,7 +74660,16 @@
           "description",
           "kind",
           "pin_count",
-          "updated_at"
+          "updated_at",
+          "author",
+          "covers",
+          "available_count",
+          "total",
+          "cover",
+          "aisles",
+          "shops",
+          "on_sale_count",
+          "all_in_stock"
         ],
         "additionalProperties": false
       },
@@ -74467,12 +75003,16 @@
             "items": {
               "type": "string"
             }
+          },
+          "city": {
+            "type": "string"
           }
         },
         "required": [
           "id",
           "name",
-          "districts"
+          "districts",
+          "city"
         ],
         "additionalProperties": false
       },
@@ -74518,6 +75058,9 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "city": {
+            "type": "string"
           }
         },
         "required": [
@@ -74527,7 +75070,8 @@
           "districts",
           "active",
           "version",
-          "updated_at"
+          "updated_at",
+          "city"
         ],
         "additionalProperties": false
       },
@@ -97362,6 +97906,290 @@
         "additionalProperties": false,
         "description": "Unités défectueuses renvoyées au fournisseur et sa réponse ; un avoir éventuel passe par les dettes fournisseurs."
       },
+      "ShopListing": {
+        "type": "object",
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "description",
+          "city",
+          "district",
+          "avatar",
+          "cover",
+          "product_count",
+          "on_sale_count",
+          "aisles"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "district": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "avatar": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Photo de profil de la boutique (chemin média public), sinon null."
+          },
+          "cover": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Photo de couverture de la boutique (chemin média public), sinon null."
+          },
+          "product_count": {
+            "type": "integer",
+            "description": "Produits publiés (une fiche par produit)."
+          },
+          "on_sale_count": {
+            "type": "integer",
+            "description": "Produits en promotion en ce moment."
+          },
+          "aisles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "slug",
+                "name"
+              ],
+              "properties": {
+                "slug": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicBoard": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "collection",
+              "gift"
+            ]
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "private",
+              "unlisted",
+              "public"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "gift_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hide_gift_purchases": {
+            "type": "boolean"
+          },
+          "cover_pin_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "editor",
+              "viewer",
+              "public_reader"
+            ]
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BoardSection"
+            }
+          },
+          "pins": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BoardPin"
+            }
+          },
+          "purchase_tracking_available": {
+            "type": "boolean",
+            "const": false
+          },
+          "recipient_delivery_available": {
+            "type": "boolean",
+            "const": false
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cover": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Photo de couverture du tableau (chemin média public), sinon null."
+          },
+          "author": {
+            "type": "object",
+            "required": [
+              "name",
+              "avatar",
+              "key"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "avatar": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "key": {
+                "type": "string",
+                "description": "Clé publique opaque du créateur."
+              }
+            },
+            "additionalProperties": false
+          },
+          "covers": {
+            "type": "array",
+            "maxItems": 4,
+            "items": {
+              "type": "string"
+            },
+            "description": "Images des produits épinglés (jusqu’à 4) pour la couverture."
+          },
+          "available_count": {
+            "type": "integer",
+            "description": "Produits épinglés encore en vente."
+          },
+          "total": {
+            "type": "object",
+            "required": [
+              "amount",
+              "currency"
+            ],
+            "properties": {
+              "amount": {
+                "type": "integer"
+              },
+              "currency": {
+                "type": "string",
+                "enum": [
+                  "XAF"
+                ]
+              }
+            },
+            "additionalProperties": false,
+            "description": "Total au prix du jour des produits encore en vente."
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "kind",
+          "visibility",
+          "version",
+          "gift_date",
+          "hide_gift_purchases",
+          "cover_pin_id",
+          "role",
+          "sections",
+          "pins",
+          "purchase_tracking_available",
+          "recipient_delivery_available",
+          "created_at",
+          "updated_at",
+          "cover",
+          "author",
+          "covers",
+          "available_count",
+          "total"
+        ],
+        "additionalProperties": false
+      },
       "CatalogueFacets": {
         "type": "object",
         "properties": {
@@ -97564,99 +98392,6 @@
           "categories",
           "characteristics"
         ],
-        "additionalProperties": false
-      },
-      "ShopListing": {
-        "type": "object",
-        "required": [
-          "id",
-          "slug",
-          "name",
-          "description",
-          "city",
-          "district",
-          "avatar",
-          "cover",
-          "product_count",
-          "on_sale_count",
-          "aisles"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "slug": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "city": {
-            "type": "string"
-          },
-          "district": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "avatar": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Photo de profil de la boutique (chemin média public), sinon null."
-          },
-          "cover": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Photo de couverture de la boutique (chemin média public), sinon null."
-          },
-          "product_count": {
-            "type": "integer",
-            "description": "Produits publiés (une fiche par produit)."
-          },
-          "on_sale_count": {
-            "type": "integer",
-            "description": "Produits en promotion en ce moment."
-          },
-          "aisles": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": [
-                "slug",
-                "name"
-              ],
-              "properties": {
-                "slug": {
-                  "type": "string"
-                },
-                "name": {
-                  "type": "string"
-                }
-              },
-              "additionalProperties": false
-            }
-          }
-        },
         "additionalProperties": false
       }
     },

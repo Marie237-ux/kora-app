@@ -127,6 +127,7 @@ final class BoardsController extends OperationalController
                 'title' => ['required', 'string', 'max:150'],
                 'description' => ['present', 'nullable', 'string', 'max:2000'],
                 'cover_pin_id' => ['present', 'nullable', 'uuid'],
+                'cover_path' => ['sometimes', 'nullable', 'string', 'max:200'],
             ]),
         ];
         $d['description'] ??= '';
@@ -208,36 +209,116 @@ final class BoardsController extends OperationalController
         );
     }
 
-    public function publicIndex(Request $http)
+    /**
+     * Inspirations: public boards (published explicitly by their owner). Each card carries its cover photo, author,
+     * product images, what is still sold and its total at today's prices, the aisles and shops it draws from.
+     * Filters: text, aisles, shops, districts, authors, budget (total), size, deals, all in stock; sort and pages.
+     * Each filter's counts ignore that filter's own selection, as in the catalogue.
+     */
+    public function publicIndex(Request $http, Boards $boards)
     {
-        $q = DB::table('boards')
+        $in = $http->validate([
+            'q' => ['nullable', 'string', 'max:80'],
+            'category' => ['nullable', 'string', 'max:500'],
+            'shop' => ['nullable', 'string', 'max:500'],
+            'district' => ['nullable', 'string', 'max:500'],
+            'city' => ['nullable', 'string', 'max:500'],
+            // Only boards whose products can all be delivered in this city (no shipping needed).
+            'local_city' => ['nullable', 'string', 'max:80'],
+            'author' => ['nullable', 'string', 'max:500'],
+            'size' => ['nullable', 'string', 'max:40'],
+            'on_sale' => ['nullable', 'boolean'],
+            'in_stock' => ['nullable', 'boolean'],
+            'price_min' => ['nullable', 'integer', 'min:0'],
+            'price_max' => ['nullable', 'integer', 'min:0'],
+            'sort' => ['nullable', 'in:newest,price_asc,price_desc,products'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'in:12,24,48'],
+        ]);
+        $list = fn (?string $v) => array_values(array_filter(array_map('trim', explode(',', (string) $v)), fn ($x) => $x !== ''));
+        $rows = DB::table('boards')
             ->where('visibility', 'public')
             ->whereNull('archived_at')
             ->orderByDesc('updated_at')
             ->orderBy('id')
-            ->select(['id', 'title', 'description', 'kind', 'updated_at'])
-            ->selectSub(
-                DB::table('board_pins')->selectRaw('COUNT(*)')->whereColumn('board_id', 'boards.id'),
-                'pin_count',
-            );
+            ->limit(2000)
+            ->get(['id', 'owner_id', 'title', 'description', 'kind', 'cover_path', 'updated_at']);
+        $norm = fn (?string $v) => \Illuminate\Support\Str::lower(\Illuminate\Support\Str::ascii((string) $v));
+        $q = $norm(trim((string) ($in['q'] ?? '')));
+        $cards = $rows->map(fn ($b) => ['id' => $b->id, 'title' => $b->title, 'description' => $b->description, 'kind' => $b->kind, 'updated_at' => Records::iso($b->updated_at), ...$boards->showcase($b, true)])
+            ->filter(fn ($c) => $q === '' || str_contains($norm($c['title'].' '.$c['description'].' '.implode(' ', array_column($c['aisles'], 'name')).' '.$c['author']['name']), $q))
+            ->values();
+        $sizeOf = fn ($c) => $c['available_count'] <= 3 ? 'small' : ($c['available_count'] <= 6 ? 'medium' : 'large');
+        $sel = ['category' => $list($in['category'] ?? null), 'shop' => $list($in['shop'] ?? null), 'district' => $list($in['district'] ?? null), 'city' => $list($in['city'] ?? null), 'author' => $list($in['author'] ?? null), 'size' => $list($in['size'] ?? null)];
+        $passes = function ($c, ?string $skip = null) use ($sel, $in, $sizeOf) {
+            $hit = fn (string $key, array $values) => $skip === $key || ! $sel[$key] || array_intersect($values, $sel[$key]);
 
-        return $this->page(
-            $q,
-            $http,
-            fn ($b) => [
-                'id' => $b->id,
-                'title' => $b->title,
-                'description' => $b->description,
-                'kind' => $b->kind,
-                'pin_count' => (int) $b->pin_count,
-                'updated_at' => Records::iso($b->updated_at),
+            return $hit('category', array_column($c['aisles'], 'slug'))
+                && $hit('shop', array_column($c['shops'], 'slug'))
+                && $hit('district', array_filter(array_column($c['shops'], 'district')))
+                && $hit('city', array_column($c['shops'], 'city'))
+                && ($skip === 'local' || empty($in['local_city']) || ($c['shops'] && collect($c['shops'])->every(fn ($s) => $s['city'] === $in['local_city'])))
+                && $hit('author', [$c['author']['key']])
+                && $hit('size', [$sizeOf($c)])
+                && ($skip === 'on_sale' || empty($in['on_sale']) || $c['on_sale_count'] > 0)
+                && ($skip === 'in_stock' || empty($in['in_stock']) || $c['all_in_stock'])
+                && ($skip === 'price' || ! isset($in['price_min']) || $c['total']['amount'] >= (int) $in['price_min'])
+                && ($skip === 'price' || ! isset($in['price_max']) || $c['total']['amount'] <= (int) $in['price_max']);
+        };
+        $facet = function (string $skip, callable $values, ?callable $label = null) use ($cards, $passes) {
+            $counts = [];
+            $labels = [];
+            foreach ($cards->filter(fn ($c) => $passes($c, $skip)) as $c) {
+                foreach ($values($c) as $value => $name) {
+                    $counts[$value] = ($counts[$value] ?? 0) + 1;
+                    $labels[$value] = $name;
+                }
+            }
+
+            return collect($counts)->map(fn ($n, $v) => ['value' => (string) $v, 'label' => (string) $labels[$v], 'count' => $n])->sortBy('label')->values();
+        };
+        $result = $cards->filter(fn ($c) => $passes($c))->values();
+        $result = match ($in['sort'] ?? 'newest') {
+            'price_asc' => $result->sortBy(fn ($c) => $c['total']['amount'])->values(),
+            'price_desc' => $result->sortByDesc(fn ($c) => $c['total']['amount'])->values(),
+            'products' => $result->sortByDesc(fn ($c) => $c['available_count'])->values(),
+            default => $result,
+        };
+        $priced = $cards->filter(fn ($c) => $passes($c, 'price'))->pluck('total.amount');
+        $per = (int) ($in['per_page'] ?? 12);
+        $total = $result->count();
+        $last = max(1, (int) ceil($total / $per));
+        $page = min($last, (int) ($in['page'] ?? 1));
+        $sizes = ['small' => app()->getLocale() === 'en' ? '1 to 3 products' : '1 à 3 produits', 'medium' => app()->getLocale() === 'en' ? '4 to 6 products' : '4 à 6 produits', 'large' => app()->getLocale() === 'en' ? '7 products or more' : '7 produits et plus'];
+
+        return [
+            'data' => $result->slice(($page - 1) * $per, $per)->values(),
+            'meta' => [
+                'page' => $page,
+                'last_page' => $last,
+                'total' => $total,
+                'facets' => [
+                    'categories' => $facet('category', fn ($c) => array_column($c['aisles'], 'name', 'slug')),
+                    'shops' => $facet('shop', fn ($c) => array_column($c['shops'], 'name', 'slug')),
+                    'districts' => $facet('district', fn ($c) => collect($c['shops'])->pluck('district')->filter()->unique()->mapWithKeys(fn ($d) => [$d => $d])->all()),
+                    'cities' => $facet('city', fn ($c) => collect($c['shops'])->pluck('city')->filter()->unique()->mapWithKeys(fn ($d) => [$d => $d])->all()),
+                    'authors' => $facet('author', fn ($c) => [$c['author']['key'] => $c['author']['name']]),
+                    'sizes' => $facet('size', fn ($c) => [$sizeOf($c) => $sizes[$sizeOf($c)]])->sortBy(fn ($o) => array_search($o['value'], array_keys($sizes)))->values(),
+                    'on_sale' => $cards->filter(fn ($c) => $passes($c, 'on_sale') && $c['on_sale_count'] > 0)->count(),
+                    'in_stock' => $cards->filter(fn ($c) => $passes($c, 'in_stock') && $c['all_in_stock'])->count(),
+                    'price' => ['min' => (int) ($priced->min() ?? 0), 'max' => (int) ($priced->max() ?? 0)],
+                ],
             ],
-        );
+        ];
     }
 
     public function publicShow(string $id, Boards $boards)
     {
-        return ['data' => app(ReadSnapshot::class)->run(fn () => $boards->dto($boards->publicAccess($id), null, true))];
+        return ['data' => app(ReadSnapshot::class)->run(function () use ($id, $boards) {
+            $board = $boards->publicAccess($id);
+
+            return [...$boards->dto($board, null, true), ...$boards->showcase($board)];
+        })];
     }
 
     public function shared(string $id, string $token, Boards $boards)

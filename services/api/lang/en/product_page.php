@@ -1,8 +1,12 @@
 <?php
 
-// Texts that come with a product on its page (App\\Domain\\Catalogue\\ProductService). :shop and :district are the product's shop.
+// Texts that come with a product on its page (App\\Domain\\Catalogue\\ProductService). :shop, :district and :city are the product's shop.
 return [
-    'delivery_intro' => 'Your item ships from the KORA warehouse when it is in stock there, or from the shop that sells it. Either way, KORA prepares it, delivers it and keeps you posted all the way to your door.',
+    'delivery_intro' => 'Your item ships from the KORA warehouse when it is in stock there, or from the shop that sells it. Wherever you are in Cameroon, KORA prepares it, sends it and keeps you posted until you receive it.',
+    'modes' => [
+        ['Delivery in :city', 'By a KORA courier, in the slot you choose, tracked live. Fee based on your district.'],
+        ['Shipping across Cameroon', 'Yaoundé, Bafoussam, Garoua, Kribi… The parcel travels with a partner carrier, tracked to the agency or your door. Time and fee depend on your city.'],
+    ],
     'route_warehouse' => [
         ['In stock at KORA', 'Prepared in the KORA warehouse, ready to go'],
         ['Delivery', 'By a KORA courier, tracked live'],
@@ -14,9 +18,9 @@ return [
         ['Arrival', 'At your home, in the slot you chose'],
     ],
     'terms' => [
-        ['Area', 'All of Douala'],
-        ['Fee', 'Based on your district, shown before payment'],
-        ['Slot', 'You choose it when ordering'],
+        ['Area', 'Delivery in :city, shipping across Cameroon'],
+        ['Fee', 'Based on your district or city, shown before payment'],
+        ['Method', 'Delivery or shipping: you choose when paying'],
         ['Tracking', 'Live, to your door'],
     ],
     'warranty_title' => 'shop warranty, followed up by KORA.',

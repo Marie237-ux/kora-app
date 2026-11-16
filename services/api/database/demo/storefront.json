@@ -2915,6 +2915,383 @@
       "district": "Makepe",
       "avatar": "images/profil-makepe-beaute.jpg",
       "cover": "images/couverture-makepe-beaute.jpg"
+    },
+    {
+      "slug": "mokolo-pagnes",
+      "name": "Mokolo Pagnes & Mode",
+      "city": "Yaoundé",
+      "district": "Mokolo",
+      "avatar": "images/profil-mokolo-pagnes.jpg",
+      "cover": "images/couverture-mokolo-pagnes.jpg",
+      "description": {
+        "fr": "Pagnes, sacs et chaussures du marché Mokolo, à Yaoundé.",
+        "en": "Fabrics, bags and shoes from the Mokolo market in Yaoundé."
+      },
+      "products": [
+        {
+          "slug": "sac-epaule-cuir-rouge-mokolo",
+          "category": "sacs",
+          "price": 17500,
+          "image": "images/sac-epaule-rouge.png",
+          "name": {
+            "fr": "Sac épaule cuir rouge",
+            "en": "Red leather shoulder bag"
+          },
+          "description": {
+            "fr": "Un sac porté épaule en cuir lisse rouge, fabriqué au Cameroun, qui donne du caractère à une tenue simple.\n\nLa fermeture aimantée s’ouvre d’une main, la doublure en coton protège vos affaires et la bandoulière réglable permet de le porter à l’épaule ou en travers du corps. Son petit format contient l’essentiel : téléphone, portefeuille, clés et un rouge à lèvres. Le cuir se patine joliment avec le temps.",
+            "en": "A smooth red leather shoulder bag made in Cameroon that lifts a simple outfit.\n\nThe magnetic closure opens with one hand, the cotton lining protects your things and the adjustable strap lets you wear it on the shoulder or across the body. Its small size holds the essentials: phone, wallet, keys and a lipstick. The leather develops a lovely patina over time."
+          },
+          "alt": {
+            "fr": "Sac à main rouge à anse",
+            "en": "Red handbag with handle"
+          },
+          "attributes": {
+            "couleur": "rouge",
+            "matiere": "cuir",
+            "format": "epaule",
+            "taille": "s",
+            "impermeable": false,
+            "origine": "cameroun"
+          }
+        },
+        {
+          "slug": "baskets-blanches-cuir-mokolo",
+          "category": "chaussures",
+          "price": 26000,
+          "image": "images/baskets-blanches.png",
+          "name": {
+            "fr": "Baskets blanches en cuir",
+            "en": "White leather sneakers"
+          },
+          "description": {
+            "fr": "La basket blanche en cuir, intemporelle et facile à associer, avec une finition soignée qui dure.\n\nLe cuir grainé résiste mieux aux marques, la semelle est cousue plutôt que simplement collée et les lacets cirés tiennent bien le nœud. Modèle mixte, du 36 au 46. Un coup de chiffon humide suffit pour la garder blanche.",
+            "en": "The timeless white leather sneaker, easy to pair and finished to last.\n\nThe grained leather hides marks better, the sole is stitched rather than just glued and the waxed laces hold their knot. Unisex, sizes 36 to 46. A wipe with a damp cloth keeps them white."
+          },
+          "alt": {
+            "fr": "Basket blanche en cuir",
+            "en": "White leather sneaker"
+          },
+          "attributes": {
+            "couleur": "blanc",
+            "pointure": "36-46",
+            "usage": "ville",
+            "genre": "mixte",
+            "origine": "afrique"
+          },
+          "bulk": {
+            "unit": "lot",
+            "unit_size": 10,
+            "min_units": 1
+          }
+        },
+        {
+          "slug": "sac-a-dos-urbain-orange-mokolo",
+          "category": "sacs",
+          "price": 17900,
+          "image": "images/sac-a-dos-orange.png",
+          "name": {
+            "fr": "Sac à dos urbain 22 L, orange",
+            "en": "Urban backpack 22 L, orange"
+          },
+          "description": {
+            "fr": "Un sac à dos de ville pensé pour les journées chargées à Yaoundé : 22 litres de rangement, une toile déperlante qui supporte les averses et une couleur orange qu’on repère tout de suite.\n\nLe compartiment principal accueille un format cahier A4, un pull et une gourde. La poche avant zippée garde à portée de main le téléphone, les clés et le chargeur. Le dos matelassé et les bretelles réglables répartissent le poids pour les trajets à pied ou en moto-taxi.",
+            "en": "A city backpack for busy days in Yaoundé: 22 litres of storage, water-repellent canvas that copes with sudden showers and a bright orange you spot at a glance.\n\nThe main compartment takes A4 notebooks, a sweater and a bottle. The zipped front pocket keeps your phone, keys and charger within reach. The padded back and adjustable straps spread the weight for walks and moto-taxi rides."
+          },
+          "alt": {
+            "fr": "Sac à dos orange vu de face",
+            "en": "Orange backpack, front view"
+          },
+          "attributes": {
+            "couleur": "orange",
+            "matiere": "toile",
+            "format": "dos",
+            "taille": "m",
+            "impermeable": true,
+            "origine": "import"
+          },
+          "bulk": {
+            "unit": "lot",
+            "unit_size": 10,
+            "min_units": 2
+          }
+        }
+      ]
+    },
+    {
+      "slug": "nlongkak-electronique",
+      "name": "Nlongkak Électronique",
+      "city": "Yaoundé",
+      "district": "Nlongkak",
+      "avatar": "images/profil-nlongkak-electronique.jpg",
+      "cover": "images/couverture-nlongkak-electronique.jpg",
+      "description": {
+        "fr": "Téléphonie, audio et objets connectés, garantis en boutique à Nlongkak.",
+        "en": "Phones, audio and connected devices, with an in-store warranty in Nlongkak."
+      },
+      "products": [
+        {
+          "slug": "ecouteurs-sans-fil-noirs-nlongkak",
+          "category": "audio",
+          "price": 21500,
+          "image": "images/ecouteurs-noirs.png",
+          "name": {
+            "fr": "Écouteurs sans fil à réduction de bruit",
+            "en": "Noise-cancelling wireless earbuds"
+          },
+          "description": {
+            "fr": "Des écouteurs sans fil compacts avec réduction de bruit active, pour s’isoler du bruit de la circulation ou des transports.\n\nIls offrent jusqu’à 30 heures d’écoute avec le boîtier de charge et résistent à la transpiration pour le sport. Le boîtier se glisse dans une poche, et les embouts fournis s’adaptent à la plupart des oreilles.",
+            "en": "Compact wireless earbuds with active noise cancelling, to shut out traffic and transport noise.\n\nThey give up to 30 hours of listening with the charging case and resist sweat for workouts. The case slips into a pocket, and the supplied tips fit most ears."
+          },
+          "alt": {
+            "fr": "Écouteurs noirs dans leur boîtier ouvert",
+            "en": "Black earbuds in their open case"
+          },
+          "attributes": {
+            "couleur": "noir",
+            "type": "ecouteurs",
+            "autonomie": "10-30",
+            "reduction_bruit": true,
+            "etanche": true
+          },
+          "bulk": {
+            "unit": "boite",
+            "unit_size": 20,
+            "min_units": 1
+          }
+        },
+        {
+          "slug": "enceinte-portable-noire-nlongkak",
+          "category": "audio",
+          "price": 23900,
+          "image": "images/enceinte-portable.png",
+          "name": {
+            "fr": "Enceinte portable étanche",
+            "en": "Waterproof portable speaker"
+          },
+          "description": {
+            "fr": "Une enceinte portable étanche au son puissant, à emporter à la plage, au bord de la piscine ou en balade.\n\nCertifiée IP67, elle résiste à la poussière et à l’immersion. Elle offre environ 5 heures d’autonomie et se transporte facilement grâce à sa dragonne intégrée, à accrocher à un sac ou à une branche.",
+            "en": "A powerful waterproof portable speaker to take to the beach, the pool or on outings.\n\nIP67 rated, it withstands dust and immersion. It offers about 5 hours of battery life and is easy to carry thanks to its built-in strap, to hang on a bag or a branch."
+          },
+          "alt": {
+            "fr": "Enceinte portable noire",
+            "en": "Black portable speaker"
+          },
+          "attributes": {
+            "couleur": "noir",
+            "type": "enceinte",
+            "autonomie": "moins-10",
+            "reduction_bruit": false,
+            "etanche": true
+          }
+        },
+        {
+          "slug": "montre-connectee-blanche-nlongkak",
+          "category": "montres",
+          "price": 31000,
+          "image": "images/montre-connectee.png",
+          "name": {
+            "fr": "Montre connectée, bracelet blanc",
+            "en": "Smartwatch, white strap"
+          },
+          "description": {
+            "fr": "Une montre connectée légère avec un bracelet en silicone blanc, pour suivre sa journée sans sortir son téléphone.\n\nSon écran de 1,8 pouce affiche les notifications, permet de répondre aux appels en Bluetooth et suit le sommeil et le rythme cardiaque. Elle tient environ 7 jours sur une charge. Modèle mixte, bracelet doux et facile à nettoyer.",
+            "en": "A light smartwatch with a white silicone strap, to follow your day without taking out your phone.\n\nIts 1.8-inch screen shows notifications, lets you take Bluetooth calls and tracks sleep and heart rate. It lasts about 7 days on a charge. Unisex, with a soft strap that is easy to clean."
+          },
+          "alt": {
+            "fr": "Montre connectée à bracelet blanc",
+            "en": "Smartwatch with white strap"
+          },
+          "attributes": {
+            "couleur": "blanc",
+            "type": "connectee",
+            "bracelet": "silicone",
+            "genre": "mixte"
+          }
+        }
+      ]
+    },
+    {
+      "slug": "tamdja-maison",
+      "name": "Tamdja Maison",
+      "city": "Bafoussam",
+      "district": "Tamdja",
+      "avatar": "images/profil-tamdja-maison.jpg",
+      "cover": "images/couverture-tamdja-maison.jpg",
+      "description": {
+        "fr": "Vaisselle, décoration et petit électroménager, à Bafoussam.",
+        "en": "Tableware, decor and small appliances in Bafoussam."
+      },
+      "products": [
+        {
+          "slug": "bouilloire-inox-1-7-l-tamdja",
+          "category": "electromenager",
+          "price": 13900,
+          "image": "images/bouilloire-inox.png",
+          "name": {
+            "fr": "Bouilloire inox 1,7 L",
+            "en": "Stainless kettle 1.7 L"
+          },
+          "description": {
+            "fr": "Une bouilloire en acier brossé de 1,7 L qui fait bouillir l’eau vite grâce à ses 2 000 W.\n\nLa poignée noire reste froide au toucher, le couvercle s’ouvre d’une main et l’arrêt automatique coupe l’appareil dès l’ébullition ou s’il est vide. Idéale pour le thé, le café ou préparer un biberon. Garantie 12 mois.",
+            "en": "A 1.7 L brushed-steel kettle that boils water fast with 2,000 W.\n\nThe black handle stays cool, the lid opens with one hand and auto shut-off turns it off as soon as it boils or if it is empty. Ideal for tea, coffee or a baby bottle. 12-month warranty."
+          },
+          "alt": {
+            "fr": "Bouilloire électrique en inox",
+            "en": "Stainless electric kettle"
+          },
+          "attributes": {
+            "couleur": "argent",
+            "puissance": "plus-1000",
+            "piece": "cuisine",
+            "garantie": "12"
+          },
+          "bulk": {
+            "unit": "carton",
+            "unit_size": 6,
+            "min_units": 2
+          },
+          "warranty": {
+            "fr": "Garantie boutique 12 mois",
+            "en": "12-month shop warranty"
+          }
+        },
+        {
+          "slug": "vase-terracotta-tamdja",
+          "category": "decoration",
+          "price": 8500,
+          "image": "images/vase-terracotta.png",
+          "name": {
+            "fr": "Vase terracotta et fleurs séchées",
+            "en": "Terracotta vase with dried flowers"
+          },
+          "description": {
+            "fr": "Un vase en céramique mate couleur terracotta, fabriqué au Cameroun, livré avec un bouquet de fleurs séchées.\n\nHaut de 32 cm, il habille une console, une table basse ou une étagère. Les fleurs séchées durent des mois sans entretien, et le vase peut aussi accueillir des fleurs fraîches.",
+            "en": "A matte terracotta ceramic vase made in Cameroon, delivered with a bouquet of dried flowers.\n\nAt 32 cm high it dresses a console, a coffee table or a shelf. The dried flowers last for months with no care, and the vase can also hold fresh flowers."
+          },
+          "alt": {
+            "fr": "Vase rond terracotta avec fleurs séchées",
+            "en": "Round terracotta vase with dried flowers"
+          },
+          "attributes": {
+            "couleur": "orange",
+            "matiere": "ceramique",
+            "piece": "salon",
+            "origine": "cameroun"
+          }
+        },
+        {
+          "slug": "lampe-de-chevet-laiton-tamdja",
+          "category": "decoration",
+          "price": 22000,
+          "image": "images/lampe-chevet.png",
+          "name": {
+            "fr": "Lampe de chevet laiton",
+            "en": "Brass bedside lamp"
+          },
+          "description": {
+            "fr": "Une lampe de chevet au pied en laiton tourné et à l’abat-jour en tissu crème, qui diffuse une lumière douce et chaleureuse.\n\nHaute de 48 cm, elle trouve sa place sur une table de nuit comme sur un bureau. Le laiton apporte une touche dorée élégante, et l’abat-jour adoucit la lumière pour lire sans éblouir. Fonctionne avec une ampoule E27.",
+            "en": "A bedside lamp with a turned brass base and a cream fabric shade that gives a soft, warm light.\n\nAt 48 cm high it fits a bedside table as well as a desk. The brass adds an elegant golden touch, and the shade softens the light for glare-free reading. Takes an E27 bulb."
+          },
+          "alt": {
+            "fr": "Lampe à pied laiton et abat-jour crème",
+            "en": "Brass lamp with cream shade"
+          },
+          "attributes": {
+            "couleur": "dore",
+            "matiere": "laiton",
+            "piece": "chambre",
+            "origine": "afrique"
+          }
+        }
+      ]
+    },
+    {
+      "slug": "kribi-beaute",
+      "name": "Kribi Beauté",
+      "city": "Kribi",
+      "district": "Centre",
+      "avatar": "images/profil-kribi-beaute.jpg",
+      "cover": "images/couverture-kribi-beaute.jpg",
+      "description": {
+        "fr": "Parfums et soins choisis en boutique, au bord de la mer à Kribi.",
+        "en": "Perfumes and care chosen in store, by the sea in Kribi."
+      },
+      "products": [
+        {
+          "slug": "eau-de-parfum-ambree-100-kribi",
+          "category": "parfums",
+          "price": 33500,
+          "image": "images/parfum-ambre.png",
+          "name": {
+            "fr": "Eau de parfum ambrée 100 ml",
+            "en": "Amber eau de parfum 100 ml"
+          },
+          "description": {
+            "fr": "Une eau de parfum mixte, chaude et enveloppante, construite autour de l’ambre.\n\nL’ambre s’ouvre sur une vanille douce puis se pose sur un fond de bois de santal crémeux. Le flacon de 100 ml au bouchon doré a sa place sur une coiffeuse. Une concentration eau de parfum, pour un sillage qui tient la journée.",
+            "en": "A warm, enveloping unisex eau de parfum built around amber.\n\nAmber opens onto soft vanilla, then settles on a creamy sandalwood base. The 100 ml bottle with a gold cap looks good on a dressing table. Eau de parfum strength, for a trail that lasts the day."
+          },
+          "alt": {
+            "fr": "Flacon de parfum ambré",
+            "en": "Amber perfume bottle"
+          },
+          "attributes": {
+            "famille": "ambree",
+            "contenance": "100",
+            "genre": "mixte"
+          }
+        },
+        {
+          "slug": "eau-de-toilette-fraiche-100-kribi",
+          "category": "parfums",
+          "price": 16500,
+          "image": "images/parfum-dore.png",
+          "name": {
+            "fr": "Eau de toilette fraîche 100 ml",
+            "en": "Fresh eau de toilette 100 ml"
+          },
+          "description": {
+            "fr": "Une eau de toilette fraîche et mixte, parfaite pour le climat chaud de Kribi.\n\nLa bergamote et le citron vert apportent une fraîcheur vive, posée sur un fond de vétiver. Plus légère qu’une eau de parfum, elle se vaporise à volonté dans la journée. Flacon de 100 ml au bouchon argent.",
+            "en": "A fresh unisex eau de toilette, perfect for Kribi’s warm climate.\n\nBergamot and lime bring a lively freshness over a vetiver base. Lighter than an eau de parfum, you can spray it as often as you like during the day. 100 ml bottle with a silver cap."
+          },
+          "alt": {
+            "fr": "Flacon de parfum doré à bouchon argent",
+            "en": "Golden perfume bottle with silver cap"
+          },
+          "attributes": {
+            "famille": "fraiche",
+            "contenance": "100",
+            "genre": "mixte"
+          },
+          "bulk": {
+            "unit": "carton",
+            "unit_size": 12,
+            "min_units": 1
+          }
+        },
+        {
+          "slug": "eau-de-parfum-boisee-50-kribi",
+          "category": "parfums",
+          "price": 27500,
+          "image": "images/parfum-degrade.png",
+          "name": {
+            "fr": "Eau de parfum boisée 50 ml",
+            "en": "Woody eau de parfum 50 ml"
+          },
+          "description": {
+            "fr": "Une eau de parfum boisée et épicée pour homme, au caractère affirmé.\n\nLe cèdre s’associe au poivre noir, puis à une note de cuir qui reste sur la peau. Le flacon dégradé de 50 ml se transporte facilement.",
+            "en": "A woody, spicy eau de parfum for men with a bold character.\n\nCedar meets black pepper, then a leather note that stays on the skin. The 50 ml gradient bottle is easy to carry."
+          },
+          "alt": {
+            "fr": "Flacon de parfum dégradé noir et ambre",
+            "en": "Black-to-amber gradient perfume bottle"
+          },
+          "attributes": {
+            "famille": "boisee",
+            "contenance": "50",
+            "genre": "homme"
+          }
+        }
+      ]
     }
   ],
   "scenes": [
@@ -2929,8 +3306,8 @@
         "en": "Back to school, well equipped."
       },
       "description": {
-        "fr": "Des sacs solides pour les trajets de tous les jours, livrés partout à Douala.",
-        "en": "Sturdy bags for everyday journeys, delivered anywhere in Douala."
+        "fr": "Des sacs solides pour les trajets de tous les jours, livrés ou expédiés partout au Cameroun.",
+        "en": "Sturdy bags for everyday journeys, delivered or shipped anywhere in Cameroon."
       },
       "cta": {
         "fr": "Découvrir le sac",
@@ -3140,6 +3517,74 @@
         "fr": "Intérieur de la boutique Makepe Beauté",
         "en": "Makepe Beauté shop interior"
       }
+    },
+    {
+      "type": "image_text",
+      "title": {
+        "fr": "Mokolo Pagnes & Mode",
+        "en": "Mokolo Pagnes & Mode"
+      },
+      "text": {
+        "fr": "Pagnes, sacs et chaussures du marché Mokolo, à Yaoundé.",
+        "en": "Fabrics, bags and shoes from the Mokolo market, Yaoundé."
+      },
+      "link": "/shops/mokolo-pagnes",
+      "alt": {
+        "fr": "Intérieur de la boutique Mokolo Pagnes & Mode",
+        "en": "Mokolo Pagnes & Mode shop interior"
+      },
+      "image_file": "images/profil-mokolo-pagnes.jpg"
+    },
+    {
+      "type": "image_text",
+      "title": {
+        "fr": "Nlongkak Électronique",
+        "en": "Nlongkak Électronique"
+      },
+      "text": {
+        "fr": "Téléphonie et audio, garantis en boutique à Yaoundé.",
+        "en": "Phones and audio, with an in-store warranty in Yaoundé."
+      },
+      "link": "/shops/nlongkak-electronique",
+      "alt": {
+        "fr": "Intérieur de la boutique Nlongkak Électronique",
+        "en": "Nlongkak Électronique shop interior"
+      },
+      "image_file": "images/profil-nlongkak-electronique.jpg"
+    },
+    {
+      "type": "image_text",
+      "title": {
+        "fr": "Tamdja Maison",
+        "en": "Tamdja Maison"
+      },
+      "text": {
+        "fr": "Vaisselle et décoration, à Bafoussam.",
+        "en": "Tableware and decor in Bafoussam."
+      },
+      "link": "/shops/tamdja-maison",
+      "alt": {
+        "fr": "Intérieur de la boutique Tamdja Maison",
+        "en": "Tamdja Maison shop interior"
+      },
+      "image_file": "images/profil-tamdja-maison.jpg"
+    },
+    {
+      "type": "image_text",
+      "title": {
+        "fr": "Kribi Beauté",
+        "en": "Kribi Beauté"
+      },
+      "text": {
+        "fr": "Parfums et soins, au bord de la mer à Kribi.",
+        "en": "Perfumes and care by the sea in Kribi."
+      },
+      "link": "/shops/kribi-beaute",
+      "alt": {
+        "fr": "Intérieur de la boutique Kribi Beauté",
+        "en": "Kribi Beauté shop interior"
+      },
+      "image_file": "images/profil-kribi-beaute.jpg"
     }
   ],
   "flash": {
@@ -3197,10 +3642,25 @@
           "en": "A smiling customer showing her shopping bags"
         },
         "text": {
-          "fr": "Nos boutiques. Les commerçants de Douala vérifiés par KORA.",
-          "en": "Our shops. Douala merchants checked by KORA."
+          "fr": "Nos boutiques. Les commerçants du Cameroun vérifiés par KORA.",
+          "en": "Our shops. Cameroon’s merchants checked by KORA."
         },
         "link": "/shops"
+      }
+    ],
+    "inspirations": [
+      {
+        "type": "banner",
+        "image_file": "images/inspirations-entete.jpg",
+        "alt": {
+          "fr": "Une cliente ravie, son téléphone et un petit sac cadeau à la main",
+          "en": "A delighted customer holding her phone and a small gift bag"
+        },
+        "text": {
+          "fr": "Inspirations. Des sélections de produits à ajouter au panier en une fois.",
+          "en": "Inspirations. Product selections to add to the cart in one go."
+        },
+        "link": "/inspirations"
       }
     ]
   },
@@ -3218,7 +3678,8 @@
         "Deïdo",
         "Bali",
         "New Bell"
-      ]
+      ],
+      "city": "Douala"
     },
     {
       "code": "DEMO-EST",
@@ -3233,7 +3694,8 @@
         "Kotto",
         "Ndokoti",
         "Logbessou"
-      ]
+      ],
+      "city": "Douala"
     },
     {
       "code": "DEMO-OUEST",
@@ -3246,7 +3708,8 @@
         "Sodiko",
         "Mabanda",
         "Grand Hangar"
-      ]
+      ],
+      "city": "Douala"
     },
     {
       "code": "DEMO-NORD",
@@ -3259,7 +3722,167 @@
         "Cité des Palmiers",
         "Ndogbong",
         "PK8"
+      ],
+      "city": "Douala"
+    },
+    {
+      "code": "DEMO-YDE-CENTRE",
+      "city": "Yaoundé",
+      "name": {
+        "fr": "Yaoundé Centre",
+        "en": "Central Yaoundé"
+      },
+      "districts": [
+        "Centre-ville",
+        "Mokolo",
+        "Briqueterie",
+        "Nlongkak",
+        "Elig-Essono",
+        "Mvog-Ada"
       ]
+    },
+    {
+      "code": "DEMO-YDE-SUD",
+      "city": "Yaoundé",
+      "name": {
+        "fr": "Yaoundé Sud",
+        "en": "South Yaoundé"
+      },
+      "districts": [
+        "Biyem-Assi",
+        "Mendong",
+        "Obili",
+        "Mvan",
+        "Ekounou",
+        "Odza"
+      ]
+    },
+    {
+      "code": "DEMO-YDE-NORD",
+      "city": "Yaoundé",
+      "name": {
+        "fr": "Yaoundé Nord",
+        "en": "North Yaoundé"
+      },
+      "districts": [
+        "Bastos",
+        "Etoudi",
+        "Emana",
+        "Tsinga",
+        "Mballa II",
+        "Ngousso"
+      ]
+    },
+    {
+      "code": "DEMO-BAF",
+      "city": "Bafoussam",
+      "name": {
+        "fr": "Bafoussam",
+        "en": "Bafoussam"
+      },
+      "districts": [
+        "Tamdja",
+        "Djeleng",
+        "Kamkop",
+        "Banengo",
+        "Famla",
+        "Tougang"
+      ]
+    },
+    {
+      "code": "DEMO-KRI",
+      "city": "Kribi",
+      "name": {
+        "fr": "Kribi",
+        "en": "Kribi"
+      },
+      "districts": [
+        "Centre",
+        "Dombé",
+        "Mpangou",
+        "Bwambé",
+        "Talla",
+        "Afan Mabé"
+      ]
+    }
+  ],
+  "boards": [
+    {
+      "title": "Meubler mon premier appartement",
+      "description": "Tout pour s’installer : salon, cuisine, coin bureau et petits objets qui changent tout. Choisissez ce qu’il vous manque et ajoutez le reste plus tard.",
+      "cover": "images/tableau-appartement.jpg",
+      "products": [
+        "fauteuil-cuir-cognac",
+        "lampe-de-chevet-laiton",
+        "lampe-de-chevet-laiton-tamdja",
+        "vase-terracotta",
+        "vase-terracotta-tamdja",
+        "bouilloire-inox-1-7-l",
+        "bouilloire-inox-1-7-l-tamdja",
+        "blender-inox-1-5-l",
+        "ventilateur-sur-pied-40",
+        "enceinte-portable-noire",
+        "enceinte-portable-noire-nlongkak",
+        "ordinateur-portable-15",
+        "casque-argent-reduction-bruit",
+        "montre-acier-cadran-blanc"
+      ]
+    },
+    {
+      "title": "Prête pour le week-end",
+      "description": "Un sac, de bonnes baskets et une touche de parfum : l’essentiel pour sortir à Douala.",
+      "products": [
+        "sac-epaule-cuir-rouge",
+        "baskets-retro-multicolores",
+        "eau-de-parfum-florale-50",
+        "rouge-a-levres-mat-rouge",
+        "montre-connectee-blanche"
+      ],
+      "cover": "images/tableau-weekend.jpg"
+    },
+    {
+      "title": "Mon coin bureau",
+      "description": "Tout pour travailler au calme à la maison : ordinateur, casque à réduction de bruit et une lampe douce.",
+      "products": [
+        "ordinateur-portable-15",
+        "casque-argent-reduction-bruit",
+        "lampe-de-chevet-laiton",
+        "montre-acier-cadran-blanc",
+        "sac-a-dos-classique-blanc"
+      ],
+      "cover": "images/tableau-bureau.jpg"
+    },
+    {
+      "title": "Petit salon cosy",
+      "description": "Un fauteuil en cuir, de la terre cuite et une lumière chaude pour un salon où l’on a envie de rester.",
+      "products": [
+        "fauteuil-cuir-cognac",
+        "vase-terracotta",
+        "lampe-de-chevet-laiton",
+        "enceinte-portable-noire"
+      ],
+      "cover": "images/tableau-salon.jpg"
+    },
+    {
+      "title": "Cuisine du quotidien",
+      "description": "Les appareils qui servent tous les jours, choisis pour durer, et un ventilateur pour les après-midi chauds.",
+      "products": [
+        "blender-inox-1-5-l",
+        "bouilloire-inox-1-7-l",
+        "ventilateur-sur-pied-40"
+      ],
+      "cover": "images/tableau-cuisine.jpg"
+    },
+    {
+      "title": "Rentrée sans stress",
+      "description": "Le sac, les écouteurs et les baskets qui tiennent toute l’année scolaire.",
+      "products": [
+        "sac-a-dos-urbain-orange",
+        "ecouteurs-sans-fil-noirs",
+        "baskets-blanches-cuir",
+        "casque-bluetooth-lilas"
+      ],
+      "cover": "images/tableau-rentree.jpg"
     }
   ]
 }

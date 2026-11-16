@@ -254,7 +254,7 @@ const L = fr
       termsTitle: 'Les conditions',
       zonesTitle: 'Quartiers desservis',
       retailPer: '/ unité',
-      retailPoints: (min: number) => ['Dès ' + min + (min > 1 ? ' pièces' : ' pièce'), 'Paiement en ligne', 'Livraison suivie dans Douala'],
+      retailPoints: (min: number) => ['Dès ' + min + (min > 1 ? ' pièces' : ' pièce'), 'Paiement en ligne', 'Livraison ou expédition partout au Cameroun'],
       retailGo: 'Choisir la quantité',
       bulkPrice: 'Sur devis',
       bulkPoints: ['Prix selon la quantité', 'Devis écrit, à accepter avant de payer', 'Paiement par le parcours habituel'],
@@ -288,7 +288,7 @@ const L = fr
         'Vous suivez chaque étape du dossier et échangez avec l’équipe dans la messagerie.',
       ],
       facts: [
-        ['Zone', 'Douala'],
+        ['Zone', 'Tout le Cameroun'],
         ['Frais', 'Selon votre quartier, affichés avant le paiement'],
         ['Créneau', 'Vous choisissez votre créneau à la commande'],
         ['Suivi', 'Suivi en direct jusqu’à votre porte'],
@@ -394,7 +394,7 @@ const L = fr
       termsTitle: 'The terms',
       zonesTitle: 'Districts served',
       retailPer: '/ unit',
-      retailPoints: (min: number) => ['From ' + min + (min > 1 ? ' pieces' : ' piece'), 'Online payment', 'Tracked delivery in Douala'],
+      retailPoints: (min: number) => ['From ' + min + (min > 1 ? ' pieces' : ' piece'), 'Online payment', 'Delivery or shipping across Cameroon'],
       retailGo: 'Choose the quantity',
       bulkPrice: 'On quote',
       bulkPoints: ['Price based on quantity', 'Written quote, accepted before paying', 'Paid through the usual checkout'],
@@ -428,7 +428,7 @@ const L = fr
         'You follow every step of the case and talk with the team in the messages.',
       ],
       facts: [
-        ['Area', 'Douala'],
+        ['Area', 'All of Cameroon'],
         ['Fee', 'Based on your district, shown before payment'],
         ['Slot', 'You choose your delivery slot when ordering'],
         ['Tracking', 'Live tracking to your door'],
@@ -672,7 +672,7 @@ const L = fr
                   {service.zones.length > 0 && (
                     <div class="dz" data-zones data-served={L.servedIn('{d}', '{z}')} data-no={L.notServed} data-ask={home + '/request-product'} data-ask-label={L.askIt}>
                       <div class="dz-head">
-                        <h3 class="dv-title">{L.zonesTitle}</h3>
+                        <h3 class="dv-title">{L.zonesTitle} · {service.zones_city}</h3>
                         <label class="dz-search">
                           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
                           <span class="sr-only">{L.districtSearch}</span>

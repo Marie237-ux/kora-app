@@ -16,13 +16,17 @@ interface Props {
     availability: 'available' | 'unconfirmed' | 'unavailable';
     price: { amount: number };
     compare_at_price?: number | null;
-    shop: { name: string; slug: string };
+    shop: { name: string; slug: string; city?: string };
     minimum_quantity: number;
   };
   locale: Locale;
   categoryName?: string;
+  /** The visitor's city ("I am in…"), to say delivered locally or shipped. */
+  myCity?: string;
 }
-const { offer, locale, categoryName } = Astro.props;
+const { offer, locale, categoryName, myCity = '' } = Astro.props;
+const shopCity = offer.shop.city ?? '';
+const local = Boolean(myCity && shopCity && myCity === shopCity);
 const c = copy(locale);
 const href = '/' + locale + '/products/' + offer.id;
 const was = offer.compare_at_price && offer.compare_at_price > offer.price.amount ? offer.compare_at_price : null;
@@ -41,7 +45,8 @@ const off = was ? Math.round((1 - offer.price.amount / was) * 100) : 0;
   <div class="kcard-body">
     {categoryName && <span class="kcard-cat">{categoryName}</span>}
     <h3><a href={href}>{offer.name}</a></h3>
-    <p class="kcard-shop">{c.soldBy} <a href={'/' + locale + '/shops/' + offer.shop.slug}>{offer.shop.name}</a></p>
+    <p class="kcard-shop">{c.soldBy} <a href={'/' + locale + '/shops/' + offer.shop.slug}>{offer.shop.name}</a>{shopCity && !myCity && <span class="kcard-city"> · {shopCity}</span>}</p>
+    {myCity && shopCity && <p class={'kcard-ship' + (local ? ' local' : '')}>{local ? c.deliveredInYourCity : c.shippedFrom + ' ' + shopCity}</p>}
     <p class="kcard-prices">
       <strong class="kcard-price">{money(offer.price.amount, locale)}</strong>
       {was && <s class="kcard-was"><span class="sr-only">{c.wasPrice}</span>{money(was, locale)}</s>}

@@ -24,8 +24,10 @@ interface Props {
   /** Text chosen in the back office for this card (home page); otherwise the shop's description. */
   text?: string;
   class?: string;
+  /** The visitor's city, to say delivered locally or shipped. */
+  myCity?: string;
 }
-const { shop: s, locale, text, class: extra = '' } = Astro.props;
+const { shop: s, locale, text, class: extra = '', myCity = '' } = Astro.props;
 const c = copy(locale);
 const href = '/' + locale + '/shops/' + s.slug;
 ---
@@ -46,7 +48,8 @@ const href = '/' + locale + '/shops/' + s.slug;
       <a href={href}>{s.name}</a>
       <span class="vendor-badge" role="img" aria-label={c.verified}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.5 12.3 3.6 3.6 7.4-7.6" /></svg></span>
     </h3>
-    <span class="vendor-handle">@{s.slug}{s.district && <> · {s.district}</>}</span>
+    <span class="vendor-handle">@{s.slug} · {s.district ? s.district + ', ' : ''}{s.city}</span>
+    {myCity && <span class={'kcard-ship' + (myCity === s.city ? ' local' : '')}>{myCity === s.city ? c.deliveredInYourCity : c.shippedFrom + ' ' + s.city}</span>}
     <p>{text || s.description}</p>
     {s.aisles.length > 0 && (
       <div class="shop-aisles-box">

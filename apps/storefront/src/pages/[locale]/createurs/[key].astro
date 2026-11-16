@@ -1,0 +1,52 @@
+---
+/**
+ * A creator's public profile: name, photo and only the boards they chose to publish (nothing private, no account
+ * id: the key is an opaque hash given by the API). Same board cards as Inspirations, with pagination.
+ */
+import Site from '../../../layouts/Site.astro';
+import BoardCard, { type BoardCardData } from '../../../components/BoardCard.astro';
+import { copy } from '../../../lib/copy';
+import { api, localeOf, safe } from '../../../lib/server';
+const locale = localeOf(Astro.params.locale);
+if (!locale) return new Response(null, { status: 404 });
+const key = (Astro.params.key ?? '').replace(/[^a-f0-9]/g, '').slice(0, 12);
+if (!key) return new Response(null, { status: 404 });
+const c = copy(locale);
+const home = '/' + locale;
+const page = Math.max(1, Number.parseInt(Astro.url.searchParams.get('page') ?? '1', 10) || 1);
+type Res = { data: (BoardCardData & { author: { name: string; avatar: string | null; key: string } })[]; meta: { page: number; last_page: number; total: number } };
+const res = await safe(api(locale).request<Res>('/api/v1/boards/public?author=' + key + '&per_page=12&page=' + page), { data: [], meta: { page: 1, last_page: 1, total: 0 } } as Res);
+const boards = res.value.data;
+if (!res.failed && boards.length === 0 && page === 1) return new Response(null, { status: 404 });
+const author = boards[0]?.author ?? { name: '', avatar: null, key };
+const products = boards.reduce((n, b) => n + b.available_count, 0);
+const meta = res.value.meta;
+const pageLink = (n: number) => home + '/createurs/' + key + (n > 1 ? '?page=' + n : '');
+---
+
+<Site locale={locale} title={author.name} active="inspirations">
+  <section class="cr-head">
+    <div class="wrap cr-head-in">
+      <nav class="crumbs" aria-label={c.breadcrumb}>
+        <a href={home}>{c.home}</a><span aria-hidden="true">/</span>
+        <a href={home + '/inspirations'}>{c.inspirations}</a><span aria-hidden="true">/</span>
+        <span aria-current="page">{author.name}</span>
+      </nav>
+      <span class="cr-av" aria-hidden="true">{author.avatar ? <img src={author.avatar} alt="" /> : author.name.slice(0, 1)}</span>
+      <h1>{author.name}</h1>
+      <p class="cr-stats"><strong>{meta.total}</strong> {meta.total > 1 ? c.boardsWord : c.boardWord} · <strong>{products}</strong> {products > 1 ? c.productsCount : c.productOne}</p>
+    </div>
+  </section>
+  <section class="wrap cr-body">
+    {res.failed ? (
+      <p class="notice error" role="alert">{c.dataUnavailable}</p>
+    ) : (
+      <div class="bdl cr-grid">{boards.map((b) => <BoardCard board={b} locale={locale} hideAuthor />)}</div>
+    )}
+    <nav class="cat-pages" aria-label={c.page}>
+      {meta.page > 1 ? <a class="cat-step" href={pageLink(meta.page - 1)}>← {c.previousPage}</a> : <span class="cat-step off">← {c.previousPage}</span>}
+      <span class="cat-nums">{Array.from({ length: meta.last_page }, (_, i) => i + 1).map((n) => <a href={pageLink(n)} aria-current={n === meta.page ? 'page' : undefined}>{n}</a>)}</span>
+      {meta.page < meta.last_page ? <a class="cat-step" href={pageLink(meta.page + 1)}>{c.nextPage} →</a> : <span class="cat-step off">{c.nextPage} →</span>}
+    </nav>
+  </section>
+</Site>

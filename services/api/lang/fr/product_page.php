@@ -1,8 +1,13 @@
 <?php
 
-// Texts that come with a product on its page (App\\Domain\\Catalogue\\ProductService). :shop and :district are the product's shop.
+// Texts that come with a product on its page (App\\Domain\\Catalogue\\ProductService). :shop, :district and :city are the product's shop.
 return [
-    'delivery_intro' => 'Votre article part de l’entrepôt KORA quand il y est en stock, ou de la boutique qui le vend. Dans les deux cas, c’est KORA qui le prépare, vous le livre et vous tient informé jusqu’à votre porte.',
+    'delivery_intro' => 'Votre article part de l’entrepôt KORA quand il y est en stock, ou de la boutique qui le vend. Où que vous soyez au Cameroun, c’est KORA qui le prépare, l’envoie et vous tient informé jusqu’à la réception.',
+    // Chosen after the cart, when paying: delivery in the shop's city, or shipping to another city.
+    'modes' => [
+        ['Livraison à :city', 'Par un livreur KORA, au créneau que vous choisissez, suivie en direct. Frais selon votre quartier.'],
+        ['Expédition partout au Cameroun', 'Yaoundé, Bafoussam, Garoua, Kribi… Le colis part par un transporteur partenaire, suivi jusqu’à l’agence ou votre porte. Délai et frais selon votre ville.'],
+    ],
     'route_warehouse' => [
         ['En stock chez KORA', 'Préparé dans l’entrepôt KORA, prêt à partir'],
         ['Livraison', 'Par un livreur KORA, suivi en direct'],
@@ -14,9 +19,9 @@ return [
         ['Réception', 'Chez vous, au créneau que vous avez choisi'],
     ],
     'terms' => [
-        ['Zone', 'Tout Douala'],
-        ['Frais', 'Selon votre quartier, affichés avant le paiement'],
-        ['Créneau', 'Vous le choisissez à la commande'],
+        ['Zone', 'Livraison à :city, expédition dans tout le Cameroun'],
+        ['Frais', 'Selon votre quartier ou votre ville, affichés avant le paiement'],
+        ['Mode', 'Livraison ou expédition : vous choisissez au paiement'],
         ['Suivi', 'En direct, jusqu’à votre porte'],
     ],
     'warranty_title' => 'de garantie boutique, suivie par KORA.',

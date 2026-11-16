@@ -104,8 +104,8 @@ const fr = {
   promotionHint:
     'Le prix d’achat est résolu sur le prix public convenu. Le financement doit couvrir exactement la remise.',
   price: 'Prix promotionnel (FCFA)',
-  starts_at: 'Début (heure de Douala)',
-  ends_at: 'Fin (heure de Douala)',
+  starts_at: 'Début (heure du Cameroun)',
+  ends_at: 'Fin (heure du Cameroun)',
   kora_funding: 'Part KORA par unité (FCFA)',
   supplier_funding: 'Part fournisseur par unité (FCFA)',
   contract_reference: 'Référence de l’accord',
@@ -262,8 +262,8 @@ const en: typeof fr = {
   promotionHint:
     'Purchase cost is resolved from the agreed public price. Funding must cover the exact discount.',
   price: 'Promotional price (FCFA)',
-  starts_at: 'Starts (Douala time)',
-  ends_at: 'Ends (Douala time)',
+  starts_at: 'Starts (Cameroon time)',
+  ends_at: 'Ends (Cameroon time)',
   kora_funding: 'KORA funding per unit (FCFA)',
   supplier_funding: 'Supplier funding per unit (FCFA)',
   contract_reference: 'Agreement reference',

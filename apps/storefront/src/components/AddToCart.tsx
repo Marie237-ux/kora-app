@@ -4,6 +4,10 @@ import { addToCart } from '../lib/cart';
 import { CartIcon, CheckIcon, PlusIcon } from './icons';
 
 /** Quick "+" on a tile, or the full button with quantity on a product page. Feedback is immediate. */
+const RetryIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M20 12a8 8 0 1 1-2.34-5.66" /><path d="M20 4v5h-5" /></svg>
+);
+
 export default function AddToCart({
   locale,
   offerId: offerIdProp,
@@ -52,9 +56,9 @@ export default function AddToCart({
   }
   if (variant === 'pill') {
     return (
-      <button type="button" className="cart-pill" data-state={state} onClick={add} disabled={disabled} aria-label={c.addToCart + ' — ' + name}>
-        {state === 'busy' ? <i className="spin" aria-hidden="true" /> : state === 'done' ? <CheckIcon /> : <CartIcon />}
-        <span>{state === 'busy' ? c.adding : state === 'done' ? c.added : state === 'error' ? c.addFailed : c.addShort}</span>
+      <button type="button" className="cart-pill" data-state={state} onClick={add} disabled={disabled} aria-label={state === 'error' ? c.addFailed : c.addToCart + ' — ' + name} title={state === 'error' ? c.addFailed : undefined}>
+        {state === 'busy' ? <i className="spin" aria-hidden="true" /> : state === 'done' ? <CheckIcon /> : state === 'error' ? <RetryIcon /> : <CartIcon />}
+        <span>{state === 'busy' ? c.adding : state === 'done' ? c.added : state === 'error' ? c.addRetry : c.addShort}</span>
       </button>
     );
   }

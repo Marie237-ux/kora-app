@@ -1,0 +1,399 @@
+---
+/**
+ * One public board, like a Pinterest board page: header with the cover photo in a rounded frame, title, author,
+ * counts and actions; then a toolbar to find one's way in a large board (furnishing a house can mean dozens of
+ * products) — search, aisle chips with counts, sort, "available only" — all instant, in the page. Pins are the
+ * usual product cards with a round check to build one's selection; a bar adds the selection to the cart.
+ * A product no longer sold stays on the board, greyed, with the price when it was pinned (spec §11).
+ */
+import Site from '../../../layouts/Site.astro';
+import ShareMenu from '../../../components/ShareMenu.astro';
+import ProductCard from '../../../components/ProductCard.astro';
+import { ApiError } from '@kora/api-client';
+import { copy, money } from '../../../lib/copy';
+import { api, localeOf, safe } from '../../../lib/server';
+const locale = localeOf(Astro.params.locale);
+if (!locale) return new Response(null, { status: 404 });
+const c = copy(locale);
+const k = api(locale);
+const home = '/' + locale;
+type Offer = {
+  id: string; name: string; image: string | null; category: string; availability: 'available' | 'unconfirmed' | 'unavailable';
+  price: { amount: number }; compare_at_price?: number | null; shop: { name: string; slug: string; city?: string }; minimum_quantity: number;
+};
+type Pin = { id: string; offer_id: string; wished_quantity: number; caption: string | null; saved_name: string; price_at_save: { amount: number }; offer: Offer | null };
+type Board = {
+  id: string; title: string; description: string; pins: Pin[]; covers: string[]; cover: string | null;
+  author: { name: string; avatar: string | null; key?: string }; available_count: number; total: { amount: number };
+};
+let board: Board;
+try {
+  board = (await k.request<{ data: Board }>('/api/v1/boards/public/' + encodeURIComponent(Astro.params.id ?? ''))).data;
+} catch (e) {
+  if (e instanceof ApiError && e.status === 404) return new Response(null, { status: 404 });
+  throw e;
+}
+const names = Object.fromEntries((await safe(k.categories(), { data: [] })).value.data.map((x) => [x.slug, x.name]));
+const pins = board.pins.filter((p) => p.offer);
+const live = pins.filter((p) => p.offer!.availability !== 'unavailable');
+const gone = board.pins.filter((p) => !p.offer || p.offer.availability === 'unavailable');
+const qty = (p: Pin) => Math.max(1, p.wished_quantity, p.offer!.minimum_quantity);
+// Aisle chips: the aisles of the pinned products, most present first.
+const aisles = Object.entries(live.reduce<Record<string, number>>((m, p) => ((m[p.offer!.category] = (m[p.offer!.category] ?? 0) + 1), m), {}))
+  .sort((a, b) => b[1] - a[1])
+  .map(([slug, n]) => ({ slug, n, name: names[slug] ?? slug }));
+const shops = [...new Set(live.map((p) => p.offer!.shop.name))];
+// Header gallery: the board's cover photo, then the first image of every pinned product (never a product's other
+// photos — one product can have twenty). Arrows and swipe scroll the strip; a thumbnail shows that image large.
+const gallery = [
+  ...(board.cover ? [{ src: board.cover, cut: false, name: board.title }] : []),
+  ...live.filter((p) => p.offer!.image).map((p) => ({ src: p.offer!.image!, cut: true, name: p.offer!.name })),
+];
+const first = gallery[0] ?? null;
+---
+
+<Site locale={locale} title={board.title} active="inspirations">
+  <section class={'cat-hero pdp-hero' + (board.cover ? ' has-photo' : '')}>
+    {board.cover && <img class="cat-photo" src={board.cover} alt="" decoding="async" />}
+    <div class="wrap cat-hero-inner">
+      <div class="cat-hero-text">
+        <nav class="crumbs" aria-label={c.breadcrumb}>
+          <a href={home}>{c.home}</a><span aria-hidden="true">/</span>
+          <a href={home + '/inspirations'}>{c.inspirations}</a><span aria-hidden="true">/</span>
+          <span aria-current="page">{board.title}</span>
+        </nav>
+        <p class="pdp-hero-title">{c.inspirations}</p>
+        <p>{c.boardHeroText}</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="bd-head">
+    <div class="wrap bd-head-row">
+      <div class="bd-gallery">
+        <div class={'bd-cover' + (first?.cut ? ' cut' : '')} data-bd-main data-tilt>
+          {first && <img src={first.src} alt={first.name} decoding="async" fetchpriority="high" />}
+          {gallery.length > 1 && (
+            <>
+              <button type="button" class="bd-arrow prev" data-bd-step="-1" aria-label={c.previousPage}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6" /></svg></button>
+              <button type="button" class="bd-arrow next" data-bd-step="1" aria-label={c.nextPage}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg></button>
+              <span class="bd-counter" data-bd-counter>1 / {gallery.length}</span>
+            </>
+          )}
+        </div>
+        {gallery.length > 1 && (
+          <div class="bd-rail">
+            <div class="bd-thumbs" data-bd-thumbs>
+              {gallery.map((g, i) => (
+                <button type="button" class={g.cut ? 'cut' : ''} data-bd-thumb={g.src} data-cut={g.cut ? '1' : ''} aria-current={i === 0 ? 'true' : undefined} aria-label={g.name}>
+                  <img src={g.src} alt="" loading={i < 6 ? 'eager' : 'lazy'} decoding="async" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+      <div class="bd-info">
+        <h1>{board.title}</h1>
+        {board.description && <p class="bd-desc">{board.description}</p>}
+        <a class="bd-author" href={board.author.key ? home + '/createurs/' + board.author.key : undefined}>
+          <span class="insp-av" aria-hidden="true">{board.author.avatar ? <img src={board.author.avatar} alt="" /> : board.author.name.slice(0, 1)}</span>
+          <span>{c.by} <strong>{board.author.name}</strong></span>
+        </a>
+        <dl class="bd-stats">
+          <div><dt>{c.productsCount}</dt><dd>{live.length}</dd></div>
+          <div><dt>{c.shops}</dt><dd>{shops.length}</dd></div>
+          {board.total.amount > 0 && <div><dt>{c.allFor}</dt><dd>{money(board.total.amount, locale)}</dd></div>}
+        </dl>
+        <div class="bd-actions">
+          {live.length > 0 && <button type="button" class="btn btn-accent" data-pick-add data-busy={c.adding} data-done={c.addedSelection} data-fail={c.addFailed}>{c.addSelection}</button>}
+          <ShareMenu locale={locale} title={board.title} label={c.shareBoard} />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap bd-body" data-board>
+    {live.length > 0 && (
+      <div class="bd-tools">
+        <label class="bd-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+          <span class="sr-only">{c.searchInBoard}</span>
+          <input type="search" placeholder={c.searchInBoard} autocomplete="off" data-bd-q />
+        </label>
+        <label class="cat-select bd-sort"><span>{c.sortBy}</span>
+          <select data-bd-sort>
+            <option value="board">{c.sortBoardOrder}</option>
+            <option value="price_asc">{c.sortPriceAsc}</option>
+            <option value="price_desc">{c.sortPriceDesc}</option>
+            <option value="name">{c.sortName}</option>
+          </select>
+        </label>
+        {aisles.length > 1 && (
+          <div class="bd-chips" role="group" aria-label={c.categories}>
+            <button type="button" aria-pressed="true" data-bd-aisle="">{c.allCategories} <small>{live.length}</small></button>
+            {aisles.map((a) => <button type="button" aria-pressed="false" data-bd-aisle={a.slug}>{a.name} <small>{a.n}</small></button>)}
+          </div>
+        )}
+        <div class="bd-selbar">
+          <p data-bd-count data-of={c.ofWord} data-shown={c.shownWord}><strong>{live.length}</strong> {c.productsCount}</p>
+          <div class="bd-seg" role="group" aria-label={c.inMySelection}>
+            <button type="button" data-bd-all><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="m8 12.5 3 3 5-6" /></svg>{c.selectAll}</button>
+            <button type="button" data-bd-none><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /></svg>{c.selectNone}</button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {live.length > 0 && (
+      <div class="bd-grid" data-bd-grid>
+        {live.map((p, i) => {
+          const o = p.offer!;
+          const changed = p.price_at_save.amount > 0 && p.price_at_save.amount !== o.price.amount;
+          const text = [o.name, o.shop.name, names[o.category] ?? '', o.shop.city ?? ''].join(' ');
+          return (
+            <div class="bd-pin" data-pin={o.id} data-aisle={o.category} data-text={text} data-price={o.price.amount * qty(p)} data-unit={o.price.amount} data-qty={qty(p)} data-name={o.name} data-order={i}>
+              <label class="bd-check" title={c.inMySelection}>
+                <input type="checkbox" checked data-pick />
+                <span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m6 12.5 4 4 8-9" /></svg></span>
+                <span class="sr-only">{c.inMySelection} — {o.name}</span>
+              </label>
+              <ProductCard offer={o} locale={locale} categoryName={names[o.category]} />
+              {(changed || p.caption || qty(p) > 1) && (
+                <p class="bd-pin-note">{qty(p) > 1 && <span>× {qty(p)}</span>}{changed && <span class={o.price.amount < p.price_at_save.amount ? 'down' : 'up'}>{(o.price.amount < p.price_at_save.amount ? c.cheaperSincePin : c.dearerSincePin).replace('{n}', money(Math.abs(p.price_at_save.amount - o.price.amount), locale))}</span>}{p.caption && <span>« {p.caption} »</span>}</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    )}
+    <p class="bd-empty" data-bd-empty hidden>{c.boardNoMatch}</p>
+    <nav class="cat-pages bd-pages" aria-label={c.page} data-bd-pages data-prev={c.previousPage} data-next={c.nextPage} data-label={c.page} hidden></nav>
+
+    {gone.length > 0 && (
+      <div class="pin-gone-box">
+        <h2>{c.noLongerSold}</h2>
+        <ul class="pin-gone">
+          {gone.map((p) => (
+            <li>
+              <span class="pin-gone-img" aria-hidden="true">{p.offer?.image && <img src={p.offer.image} alt="" loading="lazy" />}</span>
+              <span><strong>{p.offer?.name ?? p.saved_name}</strong><small>{c.priceWhenPinned} {money(p.price_at_save.amount, locale)}</small></span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
+    {board.pins.length === 0 && <div class="cat-empty"><h2>{c.boardEmpty}</h2></div>}
+  </section>
+
+  {live.length > 0 && (
+    <div class="pick-bar" data-pick-bar>
+      <div class="pick-bar-in">
+        <p><strong data-pick-count>{live.length}</strong>/<span>{live.length}</span> · <b data-pick-total>{money(live.reduce((t, p) => t + p.offer!.price.amount * qty(p), 0), locale)}</b></p>
+        <button type="button" class="btn btn-accent" data-pick-add data-busy={c.adding} data-done={c.addedSelection} data-fail={c.addFailed}><span class="lg">{c.addSelection}</span><span class="sm">{c.addToCartShort}</span></button>
+      </div>
+    </div>
+  )}
+
+  <script>
+    import { addToCart } from '../../../lib/cart';
+    import { money } from '../../../lib/copy';
+    const locale = (document.documentElement.lang.slice(0, 2) === 'en' ? 'en' : 'fr') as 'fr' | 'en';
+    const all = () => [...document.querySelectorAll<HTMLElement>('[data-pin]')];
+    const box = (p: HTMLElement) => p.querySelector<HTMLInputElement>('[data-pick]')!;
+    const picked = () => all().filter((p) => box(p).checked);
+    const norm = (v: string) => v.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    let aisle = '';
+    // Thumbnail strip: scrolls with the mouse wheel and by dragging (a short drag does not count as a click).
+    const strip = document.querySelector<HTMLElement>('[data-bd-thumbs]');
+    let dragged = false;
+    if (strip) {
+      strip.addEventListener('wheel', (e) => {
+        if (strip.scrollWidth <= strip.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+        const max = strip.scrollWidth - strip.clientWidth;
+        if ((e.deltaY < 0 && strip.scrollLeft <= 0) || (e.deltaY > 0 && strip.scrollLeft >= max - 1)) return;
+        e.preventDefault();
+        strip.scrollBy({ left: e.deltaY * 1.4 });
+      }, { passive: false });
+      let startX = 0;
+      let startLeft = 0;
+      let down = false;
+      strip.addEventListener('pointerdown', (e) => {
+        if (e.pointerType !== 'mouse') return;
+        down = true;
+        dragged = false;
+        startX = e.clientX;
+        startLeft = strip.scrollLeft;
+      });
+      addEventListener('pointermove', (e) => {
+        if (!down) return;
+        const dx = e.clientX - startX;
+        if (Math.abs(dx) > 5) {
+          dragged = true;
+          strip.classList.add('dragging');
+        }
+        if (dragged) strip.scrollLeft = startLeft - dx;
+      });
+      addEventListener('pointerup', () => {
+        down = false;
+        strip.classList.remove('dragging');
+      });
+      strip.addEventListener('click', (e) => {
+        if (dragged) {
+          e.stopPropagation();
+          e.preventDefault();
+          dragged = false;
+        }
+      }, true);
+    }
+    // Large image follows the mouse like the product photo: slight 3D tilt and drift, back to rest on leave.
+    if (matchMedia('(hover: hover) and (prefers-reduced-motion: no-preference)').matches) {
+      document.addEventListener('pointermove', (e) => {
+        const tilt = (e.target as HTMLElement).closest<HTMLElement>('[data-tilt]');
+        document.querySelectorAll<HTMLElement>('[data-tilt].is-moving').forEach((t) => {
+          if (t !== tilt) {
+            t.classList.remove('is-moving');
+            for (const k of ['--rx', '--ry', '--tx', '--ty']) t.style.removeProperty(k);
+          }
+        });
+        if (!tilt || (e.target as HTMLElement).closest('.bd-arrow')) return;
+        const r = tilt.getBoundingClientRect();
+        const x = (e.clientX - r.left) / r.width - 0.5;
+        const y = (e.clientY - r.top) / r.height - 0.5;
+        tilt.style.setProperty('--rx', (-y * 8).toFixed(2) + 'deg');
+        tilt.style.setProperty('--ry', (x * 10).toFixed(2) + 'deg');
+        tilt.style.setProperty('--tx', (x * 26).toFixed(1) + 'px');
+        tilt.style.setProperty('--ty', (y * 20).toFixed(1) + 'px');
+        tilt.classList.add('is-moving');
+      });
+    }
+
+    function refresh() {
+      const sel = picked();
+      const total = sel.reduce((t, p) => t + Number(p.dataset.price), 0);
+      document.querySelector('[data-pick-count]')!.textContent = String(sel.length);
+      document.querySelector('[data-pick-total]')!.textContent = money(total, locale);
+      document.querySelectorAll<HTMLButtonElement>('[data-pick-add]').forEach((b) => (b.disabled = sel.length === 0));
+      all().forEach((p) => p.classList.toggle('off', !box(p).checked));
+    }
+    // Search, aisle and sort: instant, in the page (a board holds at most a few hundred products).
+    function apply() {
+      const q = norm(document.querySelector<HTMLInputElement>('[data-bd-q]')?.value.trim() ?? '');
+      const grid = document.querySelector<HTMLElement>('[data-bd-grid]');
+      if (!grid) return;
+      let shown = 0;
+      for (const p of all()) {
+        const on = (!aisle || p.dataset.aisle === aisle) && (!q || norm(p.dataset.text ?? '').includes(q));
+        p.dataset.match = on ? '1' : '';
+        if (on) shown++;
+      }
+      const mode = document.querySelector<HTMLSelectElement>('[data-bd-sort]')?.value ?? 'board';
+      const by = (p: HTMLElement) => (mode === 'price_asc' ? Number(p.dataset.unit) : mode === 'price_desc' ? -Number(p.dataset.unit) : Number(p.dataset.order));
+      all().sort((a, b) => (mode === 'name' ? (a.dataset.name ?? '').localeCompare(b.dataset.name ?? '', locale) : by(a) - by(b))).forEach((p) => grid.append(p));
+      const count = document.querySelector<HTMLElement>('[data-bd-count]');
+      if (count) count.querySelector('strong')!.textContent = String(shown);
+      document.querySelector<HTMLElement>('[data-bd-empty]')!.hidden = shown > 0;
+      page = 1;
+      paginate();
+    }
+    // Pages of PER products among the ones that match (search, aisle), in the chosen order.
+    const PER = 12;
+    let page = 1;
+    function paginate(scroll = false) {
+      const matches = all().filter((p) => p.dataset.match === '1');
+      const last = Math.max(1, Math.ceil(matches.length / PER));
+      page = Math.min(page, last);
+      all().forEach((p) => (p.hidden = true));
+      matches.slice((page - 1) * PER, page * PER).forEach((p) => (p.hidden = false));
+      const nav = document.querySelector<HTMLElement>('[data-bd-pages]');
+      if (nav) {
+        nav.hidden = last < 2;
+        const d = nav.dataset;
+        const nums = Array.from({ length: last }, (_, i) => i + 1).filter((n) => n === 1 || n === last || Math.abs(n - page) <= 1);
+        nav.innerHTML =
+          (page > 1 ? `<button type="button" class="cat-step" data-bd-page="${page - 1}">← ${d.prev}</button>` : `<span class="cat-step off">← ${d.prev}</span>`) +
+          '<span class="cat-nums">' + nums.map((n, i) => (i > 0 && n - nums[i - 1] > 1 ? '<span aria-hidden="true">…</span>' : '') + `<button type="button" data-bd-page="${n}" ${n === page ? 'aria-current="page"' : ''} aria-label="${d.label} ${n}">${n}</button>`).join('') + '</span>' +
+          (page < last ? `<button type="button" class="cat-step" data-bd-page="${page + 1}">${d.next} →</button>` : `<span class="cat-step off">${d.next} →</span>`);
+      }
+      if (scroll) document.querySelector('.bd-tools')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    document.addEventListener('input', (e) => (e.target as HTMLElement).matches('[data-bd-q]') && apply());
+    document.addEventListener('change', (e) => {
+      const t = e.target as HTMLElement;
+      if (t.matches('[data-bd-sort]')) apply();
+      if (t.matches('[data-pick]')) refresh();
+    });
+    document.addEventListener('click', async (e) => {
+      const t = e.target as HTMLElement;
+      const chip = t.closest<HTMLButtonElement>('[data-bd-aisle]');
+      if (chip) {
+        aisle = chip.dataset.bdAisle ?? '';
+        document.querySelectorAll('[data-bd-aisle]').forEach((b) => b.setAttribute('aria-pressed', String(b === chip)));
+        apply();
+        return;
+      }
+      const pg = t.closest<HTMLButtonElement>('[data-bd-page]');
+      if (pg) {
+        page = Number(pg.dataset.bdPage);
+        paginate(true);
+        return;
+      }
+      // Header gallery: arrows on the large image go to the previous / next image (looping); a thumbnail shows its
+      // image large. The strip follows so the current thumbnail stays in view.
+      const step = t.closest<HTMLElement>('[data-bd-step]');
+      let thumb = t.closest<HTMLButtonElement>('[data-bd-thumb]');
+      if (step) {
+        const list = [...document.querySelectorAll<HTMLButtonElement>('[data-bd-thumb]')];
+        const at = list.findIndex((b) => b.hasAttribute('aria-current'));
+        thumb = list[(at + Number(step.dataset.bdStep) + list.length) % list.length];
+      }
+      if (thumb) {
+        const list = [...document.querySelectorAll<HTMLButtonElement>('[data-bd-thumb]')];
+        const counter = document.querySelector('[data-bd-counter]');
+        if (counter) counter.textContent = list.indexOf(thumb) + 1 + ' / ' + list.length;
+        const strip = document.querySelector<HTMLElement>('[data-bd-thumbs]');
+        if (strip) strip.scrollTo({ left: thumb.offsetLeft - strip.clientWidth / 2 + thumb.clientWidth / 2, behavior: 'smooth' });
+        const main = document.querySelector<HTMLElement>('[data-bd-main]');
+        const img = main?.querySelector('img');
+        if (main && img) {
+          main.classList.add('swap');
+          setTimeout(() => {
+            img.src = thumb.dataset.bdThumb ?? '';
+            img.alt = thumb.getAttribute('aria-label') ?? '';
+            main.classList.toggle('cut', thumb.dataset.cut === '1');
+            main.classList.remove('swap');
+          }, 160);
+        }
+        document.querySelectorAll('[data-bd-thumb]').forEach((b) => (b === thumb ? b.setAttribute('aria-current', 'true') : b.removeAttribute('aria-current')));
+        return;
+      }
+      // Select all / none act on every product that matches the search and aisle (on all pages).
+      if (t.closest('[data-bd-all]') || t.closest('[data-bd-none]')) {
+        const on = Boolean(t.closest('[data-bd-all]'));
+        all().filter((p) => p.dataset.match === '1').forEach((p) => (box(p).checked = on));
+        refresh();
+        return;
+      }
+      const btn = t.closest<HTMLButtonElement>('[data-pick-add]');
+      if (!btn || btn.disabled) return;
+      const buttons = [...document.querySelectorAll<HTMLButtonElement>('[data-pick-add]')];
+      const labels = buttons.map((b) => b.innerHTML);
+      buttons.forEach((b) => { b.disabled = true; b.innerHTML = '<i class="spin" aria-hidden="true"></i> ' + (b.dataset.busy ?? ''); });
+      try {
+        for (const p of picked()) await addToCart(locale, p.dataset.pin ?? '', Number(p.dataset.qty) || 1, p.dataset.name ?? '');
+        buttons.forEach((b) => (b.textContent = b.dataset.done ?? ''));
+        window.dispatchEvent(new CustomEvent('kora:open-cart'));
+      } catch {
+        buttons.forEach((b) => (b.textContent = b.dataset.fail ?? ''));
+      }
+      setTimeout(() => buttons.forEach((b, i) => { b.innerHTML = labels[i]; b.disabled = false; }), 2200);
+    });
+    // The bottom bar only shows once the header's own "add" button has scrolled out of view.
+    const headerAdd = document.querySelector('.bd-actions');
+    const bar = document.querySelector('[data-pick-bar]');
+    if (headerAdd && bar) new IntersectionObserver(([e]) => bar.classList.toggle('show', !e.isIntersecting && e.boundingClientRect.top < 0)).observe(headerAdd);
+    all().forEach((p) => (p.dataset.match = '1'));
+    paginate();
+    refresh();
+  </script>
+</Site>

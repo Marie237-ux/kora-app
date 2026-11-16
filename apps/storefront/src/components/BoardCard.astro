@@ -1,0 +1,43 @@
+---
+/**
+ * Public board card (Inspirations, creator profile): cover photo with two pinned products beside it, title, product
+ * count and total at today's prices, and the author — whose name and photo open their public profile.
+ */
+import { copy, money, type Locale } from '../lib/copy';
+export type BoardCardData = {
+  id: string; title: string; cover: string | null; covers: string[]; available_count: number; on_sale_count: number;
+  total: { amount: number }; author: { name: string; avatar: string | null; key?: string };
+};
+interface Props {
+  board: BoardCardData;
+  locale: Locale;
+  /** Hide the author line (on the author's own profile). */
+  hideAuthor?: boolean;
+}
+const { board: b, locale, hideAuthor = false } = Astro.props;
+const c = copy(locale);
+const home = '/' + locale;
+const href = home + '/inspirations/' + b.id;
+const side = b.covers.slice(b.cover ? 0 : 1, (b.cover ? 0 : 1) + 2);
+const main = b.cover ?? b.covers[0] ?? null;
+---
+
+<article class="bdl-card">
+  <a class="bdl-cover" href={href} tabindex="-1" aria-hidden="true">
+    <span class={'bdl-main' + (b.cover ? '' : ' cut')}>{main && <img src={main} alt="" loading="lazy" decoding="async" />}</span>
+    {side.map((src) => <span class="bdl-side"><img src={src} alt="" loading="lazy" decoding="async" /></span>)}
+    {side.length < 2 && Array.from({ length: 2 - side.length }, () => <span class="bdl-side" />)}
+    {b.on_sale_count > 0 && <span class="bdl-deal">{b.on_sale_count} {c.onSaleShort}</span>}
+  </a>
+  <div class="bdl-body">
+    <a class="bdl-title" href={href}>{b.title}</a>
+    <span class="bdl-meta">{b.available_count} {b.available_count > 1 ? c.productsCount : c.productOne}{b.total.amount > 0 && <> · {money(b.total.amount, locale)}</>}</span>
+    {!hideAuthor && (b.author.key ? (
+      <a class="bdl-author" href={home + '/createurs/' + b.author.key}>
+        <span class="insp-av" aria-hidden="true">{b.author.avatar ? <img src={b.author.avatar} alt="" loading="lazy" /> : b.author.name.slice(0, 1)}</span>{b.author.name}
+      </a>
+    ) : (
+      <span class="bdl-author"><span class="insp-av" aria-hidden="true">{b.author.avatar ? <img src={b.author.avatar} alt="" loading="lazy" /> : b.author.name.slice(0, 1)}</span>{b.author.name}</span>
+    ))}
+  </div>
+</article>

@@ -13,6 +13,8 @@ import FilterChars from './FilterChars.astro';
 import CatalogueScript from './CatalogueScript.astro';
 import { copy, money, type Locale } from '../lib/copy';
 import { api, safe } from '../lib/server';
+import CityPicker from './CityPicker.astro';
+import { visitorCity } from '../lib/city';
 interface Props {
   locale: Locale;
   shop?: { slug: string; name: string } | null;
@@ -37,6 +39,9 @@ const stock = url.get('stock') === '1';
 const many = (key: string) => [...new Set(url.getAll(key).filter(Boolean))];
 const shopsSel = shop ? [] : many('shop');
 const citiesSel = many('city');
+// Where the visitor receives the order: "local" keeps only that city's shops (others are shipped).
+const myCity = visitorCity(Astro.url, Astro.cookies);
+const onlyLocal = Boolean(myCity) && url.get('local') === '1';
 const districtsSel = many('district');
 
 type Option = { value: string; label: string; count: number };
@@ -61,7 +66,8 @@ const chars = facets.characteristics.map((ch) => ({ ...ch, selected: many('c_' +
 
 const query = new URLSearchParams(base);
 if (shopsSel.length) query.set('shop', shopsSel.join(','));
-if (citiesSel.length) query.set('city', citiesSel.join(','));
+if (onlyLocal) query.set('city', myCity);
+else if (citiesSel.length) query.set('city', citiesSel.join(','));
 if (districtsSel.length) query.set('district', districtsSel.join(','));
 if (min !== null) query.set('price_min', String(min));
 if (max !== null) query.set('price_max', String(max));
@@ -112,6 +118,7 @@ if (currentAisle) active.push({ label: currentAisle.name, href: without('categor
 if (min !== null || max !== null) active.push({ label: (min !== null ? money(min, locale) : money(pmin, locale)) + ' – ' + (max !== null ? money(max, locale) : money(pmax, locale)), href: link((p) => { p.delete('min'); p.delete('max'); }) });
 if (promo) active.push({ label: c.onSale, href: without('promo') });
 if (stock) active.push({ label: c.inStockOnly, href: without('stock') });
+if (onlyLocal) active.push({ label: c.onlyMyCity + ' : ' + myCity, href: without('local') });
 for (const v of citiesSel) active.push({ label: v, href: without('city', v) });
 for (const v of districtsSel) active.push({ label: v, href: without('district', v) });
 for (const v of shopsSel) active.push({ label: facets.shops.find((s) => s.value === v)?.label ?? v, href: without('shop', v) });
@@ -159,6 +166,8 @@ for (const ch of chars) for (const v of ch.selected) active.push({ label: ch.lab
           )}
           {focused && <FilterChars chars={chars} openAll={true} />}
 
+          <CityPicker locale={locale} myCity={myCity} onlyLocal={onlyLocal} counts={Object.fromEntries(facets.cities.map((o) => [o.value, o.count]))} unit={[c.productOne, c.productsCount]} />
+
           <details class="fgroup" open>
             <summary>{c.categories}</summary>
             <div class="fpills">
@@ -190,13 +199,13 @@ for (const ch of chars) for (const v of ch.selected) active.push({ label: ch.lab
 
           {facets.cities.length > 0 && (
             <details class="fgroup" open={!focused || citiesSel.length > 0}>
-              <summary>{c.city}</summary>
+              <summary>{c.shopCity}</summary>
               <div class="fchips">{facets.cities.map((o) => <label><input type="checkbox" name="city" value={o.value} checked={citiesSel.includes(o.value)} data-auto /><span>{o.label}<small>{o.count}</small></span></label>)}</div>
             </details>
           )}
           {facets.districts.length > 0 && (
             <details class="fgroup" open={!focused || districtsSel.length > 0}>
-              <summary>{c.district}</summary>
+              <summary>{c.shopDistrict}</summary>
               <div class="fchips">{facets.districts.map((o) => <label><input type="checkbox" name="district" value={o.value} checked={districtsSel.includes(o.value)} data-auto /><span>{o.label}<small>{o.count}</small></span></label>)}</div>
             </details>
           )}
@@ -253,7 +262,7 @@ for (const ch of chars) for (const v of ch.selected) active.push({ label: ch.lab
       ) : offers.length ? (
         <>
           <div class="cat-grid">
-            {offers.map((o) => <ProductCard offer={o as any} locale={locale} categoryName={names[o.category]} />)}
+            {offers.map((o) => <ProductCard offer={o as any} locale={locale} categoryName={names[o.category]} myCity={myCity} />)}
           </div>
           {meta.last_page > 1 && (
             <nav class="cat-pages" aria-label={c.page}>

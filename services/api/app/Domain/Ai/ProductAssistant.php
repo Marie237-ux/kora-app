@@ -22,7 +22,7 @@ final class ProductAssistant
     public const FIELDS = ['name', 'description', 'category', 'attributes', 'alt_text'];
 
     private const SYSTEM = <<<'TXT'
-    Tu aides l'équipe KORA (boutique en ligne à Douala, Cameroun) à rédiger la fiche d'un produit, en français et en anglais.
+    Tu aides l'équipe KORA (marketplace des boutiques du Cameroun) à rédiger la fiche d'un produit, en français et en anglais.
     Règles impératives :
     - Propose uniquement les champs demandés, à partir des faits fournis. N'invente rien : ni prix, ni stock, ni disponibilité, ni garantie, ni promotion, ni certification, ni compatibilité.
     - Une valeur déduite d'une photo ou supposée reste "uncertain" ; seule une valeur écrite dans les faits ou le texte fournisseur peut être "confirmed".

@@ -9,6 +9,7 @@ use App\Models\HeroScene;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Http\UploadedFile;
+use App\Domain\Procurement\Records;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -67,7 +68,7 @@ final class DemoStorefront extends Command
         $shopIds = [];
         // Delivery zones of the demo (districts served), kept by code so the back office can still edit them.
         foreach ($manifest['zones'] ?? [] as $z) {
-            $values = ['name' => json_encode($z['name']), 'districts' => json_encode($z['districts']), 'active' => true, 'updated_at' => $now];
+            $values = ['name' => json_encode($z['name']), 'city' => $z['city'] ?? 'Douala', 'districts' => json_encode($z['districts']), 'active' => true, 'updated_at' => $now];
             DB::table('delivery_zones')->where('code', $z['code'])->exists()
                 ? DB::table('delivery_zones')->where('code', $z['code'])->update($values)
                 : DB::table('delivery_zones')->insert([...$values, 'id' => (string) Str::uuid(), 'code' => $z['code'], 'version' => 1, 'created_at' => $now]);
@@ -225,9 +226,29 @@ final class DemoStorefront extends Command
                 $blocks[] = $block;
             }
             $cms = app(Cms::class);
-            $titles = ['home' => ['fr' => 'Accueil', 'en' => 'Home'], 'catalogue' => ['fr' => 'Catalogue', 'en' => 'Catalogue'], 'product' => ['fr' => 'Fiche produit', 'en' => 'Product page'], 'shops' => ['fr' => 'Nos boutiques', 'en' => 'Our shops']];
+            $titles = ['home' => ['fr' => 'Accueil', 'en' => 'Home'], 'catalogue' => ['fr' => 'Catalogue', 'en' => 'Catalogue'], 'product' => ['fr' => 'Fiche produit', 'en' => 'Product page'], 'shops' => ['fr' => 'Nos boutiques', 'en' => 'Our shops'], 'inspirations' => ['fr' => 'Inspirations', 'en' => 'Inspirations']];
             $draft = $cms->saveDraft('page', $pageSlug, ['title' => $titles[$pageSlug] ?? ['fr' => $pageSlug, 'en' => $pageSlug], 'content' => ['blocks' => $blocks]], $actor);
             $cms->publish($draft['id'], [], $actor);
+        }
+        if (! empty($manifest['boards'])) {
+            // Inspirations: boards curated by the KORA team, published explicitly (public), with real demo products.
+            $curator = User::firstOrCreate(['email' => 'selections@kora.local'], ['name' => 'Équipe KORA', 'password' => Str::random(40)]);
+            $boardsDomain = app(\App\Domain\Boards\Boards::class);
+            foreach ($manifest['boards'] as $b) {
+                $board = $boardsDomain->create(['title' => $b['title'], 'description' => $b['description'] ?? '', 'kind' => 'collection', 'hide_gift_purchases' => false], $curator);
+                foreach ($b['products'] as $slug) {
+                    if (isset($offers[$slug])) {
+                        $boardsDomain->addPin(Records::row('boards', $board['id']), ['offer_id' => $offers[$slug]['id'], 'wished_quantity' => 1], $curator);
+                    }
+                }
+                $cover = null;
+                if (isset($b['cover']) && is_file($base.'/'.$b['cover'])) {
+                    $asset = $media->upload(new UploadedFile($base.'/'.$b['cover'], basename($b['cover']), null, null, true), ['fr' => $b['title'], 'en' => $b['title']], $actor);
+                    DB::table('media_assets')->where('id', $asset['id'])->update(['is_public' => true, 'rights_confirmed_at' => now()]);
+                    $cover = '/api/v1/media/'.$asset['id'].'/public';
+                }
+                DB::table('boards')->where('id', $board['id'])->update(['visibility' => 'public', 'cover_path' => $cover]);
+            }
         }
         if (! empty($manifest['flash'])) {
             // Flash sale: a CMS campaign on the home page (dates, title, products, shown/hidden from the back office),
@@ -293,6 +314,23 @@ final class DemoStorefront extends Command
                 }
             }
             DB::table('suppliers')->where('id', $supplier)->delete();
+            // The KORA team's demo boards go with the test set (rebuilt from the manifest).
+            $curator = DB::table('users')->where('email', 'selections@kora.local')->value('id');
+            if ($curator) {
+                $ids = DB::table('boards')->where('owner_id', $curator)->pluck('id');
+                foreach (DB::table('boards')->whereIn('id', $ids)->pluck('cover_path') as $path) {
+                    if (preg_match('~/media/([a-f0-9-]{36})/public$~', (string) $path, $m) && ($asset = DB::table('media_assets')->where('id', $m[1])->first())) {
+                        Storage::disk($asset->disk)->delete($asset->object_key);
+                        DB::table('media_assets')->where('id', $asset->id)->delete();
+                    }
+                }
+                $pinIds = DB::table('board_pins')->whereIn('board_id', $ids)->pluck('id');
+                DB::table('board_pin_notes')->whereIn('pin_id', $pinIds)->delete();
+                foreach (['board_events', 'board_invitations', 'board_members', 'board_pins', 'board_sections'] as $table) {
+                    DB::table($table)->whereIn('board_id', $ids)->delete();
+                }
+                DB::table('boards')->whereIn('id', $ids)->delete();
+            }
             // CMS versions are immutable history: the home page simply gets a new published version.
             $actor = DB::table('users')->where('email', 'demo-content@kora.local')->value('id');
             if ($actor) {

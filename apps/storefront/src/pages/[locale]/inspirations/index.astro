@@ -1,0 +1,268 @@
+---
+/**
+ * Inspirations (spec §11): public boards — routines, rooms, outfits, back to school… — published explicitly by their
+ * owner (for now the KORA team, later creators). Pinterest-like board cards (cover photo with two
+ * of the pinned products beside it, title, product count and total at today's prices, author) and the same filter panel as the catalogue — search,
+ * aisles, budget, shops, districts, authors, size, deals, stock — with real counts from /api/v1/boards/public.
+ * Updates in place (shared catalogue script). Header photo: banner of the CMS page "inspirations" (back office).
+ */
+import Site from '../../../layouts/Site.astro';
+import CatalogueScript from '../../../components/CatalogueScript.astro';
+import CityPicker from '../../../components/CityPicker.astro';
+import BoardCard from '../../../components/BoardCard.astro';
+import { visitorCity } from '../../../lib/city';
+import { copy, money } from '../../../lib/copy';
+import { api, localeOf, safe } from '../../../lib/server';
+const locale = localeOf(Astro.params.locale);
+if (!locale) return new Response(null, { status: 404 });
+const c = copy(locale);
+const k = api(locale);
+const home = '/' + locale;
+const basePath = home + '/inspirations';
+const url = Astro.url.searchParams;
+const q = (url.get('q') ?? '').slice(0, 80);
+const many = (key: string) => [...new Set(url.getAll(key).filter(Boolean))];
+const catsSel = many('category');
+const shopsSel = many('shop');
+const districtsSel = many('district');
+const myCity = visitorCity(Astro.url, Astro.cookies);
+const onlyLocal = Boolean(myCity) && url.get('local') === '1';
+const authorsSel = many('author');
+const sizesSel = many('size');
+const promo = url.get('promo') === '1';
+const stock = url.get('stock') === '1';
+const int = (v: string | null) => (v && /^\d{1,9}$/.test(v) ? Number(v) : null);
+const min = int(url.get('min'));
+const max = int(url.get('max'));
+const sorts = ['newest', 'price_asc', 'price_desc', 'products'];
+const sort = sorts.includes(url.get('sort') ?? '') ? (url.get('sort') as string) : 'newest';
+const per = ['12', '24', '48'].includes(url.get('per') ?? '') ? (url.get('per') as string) : '12';
+const page = Math.max(1, Number.parseInt(url.get('page') ?? '1', 10) || 1);
+
+type Option = { value: string; label: string; count: number };
+type Card = {
+  id: string; title: string; description: string; cover: string | null; covers: string[]; available_count: number;
+  total: { amount: number }; author: { name: string; avatar: string | null; key: string }; on_sale_count: number; aisles: { slug: string; name: string }[];
+  shops: { slug: string; name: string; city: string }[];
+};
+type Facets = { categories: Option[]; shops: Option[]; districts: Option[]; cities: Option[]; authors: Option[]; sizes: Option[]; on_sale: number; in_stock: number; price: { min: number; max: number } };
+type Res = { data: Card[]; meta: { page: number; last_page: number; total: number; facets: Facets } };
+type CmsPage = { data: { page: { blocks: { type: string; media_id?: string }[] } | null; media: Record<string, string> } };
+const query = new URLSearchParams();
+if (q) query.set('q', q);
+if (catsSel.length) query.set('category', catsSel.join(','));
+if (shopsSel.length) query.set('shop', shopsSel.join(','));
+if (districtsSel.length) query.set('district', districtsSel.join(','));
+if (onlyLocal) query.set('local_city', myCity);
+if (authorsSel.length) query.set('author', authorsSel.join(','));
+if (sizesSel.length) query.set('size', sizesSel.join(','));
+if (promo) query.set('on_sale', '1');
+if (stock) query.set('in_stock', '1');
+if (min !== null) query.set('price_min', String(min));
+if (max !== null) query.set('price_max', String(max));
+query.set('sort', sort);
+query.set('per_page', per);
+query.set('page', String(page));
+const empty: Res = { data: [], meta: { page: 1, last_page: 1, total: 0, facets: { categories: [], shops: [], districts: [], cities: [], authors: [], sizes: [], on_sale: 0, in_stock: 0, price: { min: 0, max: 0 } } } };
+const [res, cms] = await Promise.all([
+  safe(k.request<Res>('/api/v1/boards/public?' + query.toString()), empty),
+  safe(k.request<CmsPage>('/api/v1/content/pages/inspirations'), { data: { page: null, media: {} } } as CmsPage),
+]);
+const boards = res.value.data;
+const meta = res.value.meta;
+const facets = meta.facets;
+const headerBlock = cms.value.data.page?.blocks.find((b) => b.type === 'banner' && b.media_id);
+const headerImage = headerBlock?.media_id ? cms.value.data.media[headerBlock.media_id] ?? null : null;
+
+const current = new URLSearchParams(url);
+current.delete('page');
+const link = (mutate: (p: URLSearchParams) => void) => {
+  const p = new URLSearchParams(current);
+  mutate(p);
+  const s = p.toString();
+  return basePath + (s ? '?' + s : '');
+};
+const without = (key: string, value?: string) =>
+  link((p) => {
+    const keep = value === undefined ? [] : p.getAll(key).filter((v) => v !== value);
+    p.delete(key);
+    keep.forEach((v) => p.append(key, v));
+  });
+const pageLink = (n: number) => link((p) => (n > 1 ? p.set('page', String(n)) : p.delete('page')));
+const pages = Array.from({ length: meta.last_page }, (_, i) => i + 1).filter((n) => n === 1 || n === meta.last_page || Math.abs(n - meta.page) <= 1);
+const label = (list: Option[], v: string) => list.find((o) => o.value === v)?.label ?? v;
+const active: { label: string; href: string }[] = [];
+if (q) active.push({ label: '« ' + q + ' »', href: without('q') });
+for (const v of catsSel) active.push({ label: label(facets.categories, v), href: without('category', v) });
+for (const v of shopsSel) active.push({ label: label(facets.shops, v), href: without('shop', v) });
+for (const v of districtsSel) active.push({ label: v, href: without('district', v) });
+if (onlyLocal) active.push({ label: c.onlyMyCity + ' : ' + myCity, href: without('local') });
+for (const v of authorsSel) active.push({ label: label(facets.authors, v), href: without('author', v) });
+for (const v of sizesSel) active.push({ label: label(facets.sizes, v), href: without('size', v) });
+if (promo) active.push({ label: c.withDeals, href: without('promo') });
+if (stock) active.push({ label: c.allInStock, href: without('stock') });
+if (min !== null || max !== null) active.push({ label: money(min ?? facets.price.min, locale) + ' – ' + money(max ?? facets.price.max, locale), href: link((p) => { p.delete('min'); p.delete('max'); }) });
+
+const pmin = facets.price.min;
+const pmax = facets.price.max;
+const pstep = pmax > 100000 ? 5000 : 500;
+const lo = Math.max(pmin, Math.min(min ?? pmin, pmax));
+const hi = Math.min(pmax, Math.max(max ?? pmax, pmin));
+const pct = (v: number) => (pmax > pmin ? Math.round(((v - pmin) / (pmax - pmin)) * 1000) / 10 : 0);
+---
+
+<Site locale={locale} title={c.inspirations} active="inspirations">
+  <section class={'cat-hero insp-hero' + (headerImage ? ' has-photo' : '')}>
+    {headerImage && <img class="cat-photo" src={headerImage} alt="" decoding="async" fetchpriority="high" />}
+    <div class="wrap cat-hero-inner">
+      <div class="cat-hero-text">
+        <nav class="crumbs" aria-label={c.breadcrumb}>
+          <a href={home}>{c.home}</a><span aria-hidden="true">/</span><span aria-current="page">{c.inspirations}</span>
+        </nav>
+        <h1>{q ? c.resultsFor + ' « ' + q + ' »' : c.inspirations}</h1>
+        {!q && <p>{c.inspIntro}</p>}
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap cat-body shops-layout" data-cat data-path={basePath} data-loading={c.updatingResults}>
+    <aside class="cat-filters" aria-label={c.filters}>
+      <details open data-key="panel">
+        <summary>
+          <span>{c.filters}</span>
+          {active.length > 0 && <span class="cat-count">{active.length}</span>}
+          {active.length > 0 && <a class="fclear" href={basePath}>{c.clearAll}</a>}
+          <span class="fclose" aria-hidden="true"></span>
+        </summary>
+        <form id="cat-form" class="cat-form" action={basePath} method="get">
+          <div class="cat-search" role="search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+            <label class="sr-only" for="insp-q">{c.search}</label>
+            <input id="insp-q" type="search" name="q" value={q} placeholder={c.inspSearch} maxlength="80" />
+          </div>
+
+          <CityPicker locale={locale} myCity={myCity} onlyLocal={onlyLocal} counts={Object.fromEntries(facets.cities.map((o) => [o.value, o.count]))} unit={[c.boardWord, c.boardsWord]} />
+
+          {facets.categories.length > 0 && (
+            <details class="fgroup" open>
+              <summary>{c.categories}</summary>
+              <div class="fchips">{facets.categories.map((o) => <label><input type="checkbox" name="category" value={o.value} checked={catsSel.includes(o.value)} data-auto /><span>{o.label}<small>{o.count}</small></span></label>)}</div>
+            </details>
+          )}
+
+          {pmax > pmin && (
+            <details class="fgroup" open>
+              <summary>{c.boardBudget}</summary>
+              <div class="fslider" style={'--a:' + pct(lo) + '%;--b:' + pct(hi) + '%'}>
+                <span class="fslider-track"><i></i></span>
+                <input type="range" min={pmin} max={pmax} step={pstep} value={lo} data-range="min" aria-label={c.priceMin} />
+                <input type="range" min={pmin} max={pmax} step={pstep} value={hi} data-range="max" aria-label={c.priceMax} />
+              </div>
+              <div class="frange">
+                <label><span>{c.priceMin}</span><input type="number" name="min" inputmode="numeric" min="0" step={pstep} value={min ?? ''} placeholder={String(pmin)} /><em>FCFA</em></label>
+                <label><span>{c.priceMax}</span><input type="number" name="max" inputmode="numeric" min="0" step={pstep} value={max ?? ''} placeholder={String(pmax)} /><em>FCFA</em></label>
+              </div>
+            </details>
+          )}
+
+          <details class="fgroup" open>
+            <summary>{c.goodDeals}</summary>
+            <label class="fswitch"><input type="checkbox" name="promo" value="1" checked={promo} data-auto /><span>{c.withDeals}<small>{facets.on_sale}</small></span><b aria-hidden="true"><em></em></b></label>
+            <label class="fswitch"><input type="checkbox" name="stock" value="1" checked={stock} data-auto /><span>{c.allInStock}<small>{facets.in_stock}</small></span><b aria-hidden="true"><em></em></b></label>
+          </details>
+
+          {facets.sizes.length > 0 && (
+            <details class="fgroup" open>
+              <summary>{c.boardSize}</summary>
+              <div class="fchips">{facets.sizes.map((o) => <label><input type="checkbox" name="size" value={o.value} checked={sizesSel.includes(o.value)} data-auto /><span>{o.label}<small>{o.count}</small></span></label>)}</div>
+            </details>
+          )}
+          {facets.shops.length > 0 && (
+            <details class="fgroup" open={shopsSel.length > 0}>
+              <summary>{c.shops}</summary>
+              <div class="fchips">{facets.shops.map((o) => <label><input type="checkbox" name="shop" value={o.value} checked={shopsSel.includes(o.value)} data-auto /><span>{o.label}<small>{o.count}</small></span></label>)}</div>
+            </details>
+          )}
+          {facets.districts.length > 0 && (
+            <details class="fgroup" open={districtsSel.length > 0}>
+              <summary>{c.shopDistrict}</summary>
+              <div class="fchips">{facets.districts.map((o) => <label><input type="checkbox" name="district" value={o.value} checked={districtsSel.includes(o.value)} data-auto /><span>{o.label}<small>{o.count}</small></span></label>)}</div>
+            </details>
+          )}
+          {facets.authors.length > 0 && (
+            <details class="fgroup" open={authorsSel.length > 0}>
+              <summary>{c.boardAuthors}</summary>
+              <div class="fchips">{facets.authors.map((o) => <label><input type="checkbox" name="author" value={o.value} checked={authorsSel.includes(o.value)} data-auto /><span>{o.label}<small>{o.count}</small></span></label>)}</div>
+            </details>
+          )}
+          <noscript><button type="submit" class="btn btn-dark btn-small">{c.applyFilters}</button></noscript>
+        </form>
+        <div class="fapply">
+          <button type="button" class="btn btn-dark" data-show-results>{c.showBoards.replace('{n}', String(meta.total))}</button>
+        </div>
+      </details>
+    </aside>
+
+    <div class="cat-main" id="cat-results">
+      <div class="cat-bar">
+        <p><strong>{meta.total}</strong> {meta.total > 1 ? c.boardsWord : c.boardWord}</p>
+        <div class="cat-bar-tools">
+          <button type="button" class="cat-ftoggle" data-open-filters aria-controls="cat-form">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></svg>
+            {c.filters}{active.length > 0 && <span class="cat-count">{active.length}</span>}
+          </button>
+          <label class="cat-select"><span>{c.perPage}</span>
+            <select name="per" form="cat-form" data-auto>
+              {['12', '24', '48'].map((n) => <option value={n} selected={per === n}>{n}</option>)}
+            </select>
+          </label>
+          <label class="cat-select"><span>{c.sortBy}</span>
+            <select name="sort" form="cat-form" data-auto>
+              <option value="newest" selected={sort === 'newest'}>{c.sortNewestBoards}</option>
+              <option value="price_asc" selected={sort === 'price_asc'}>{c.sortBudgetAsc}</option>
+              <option value="price_desc" selected={sort === 'price_desc'}>{c.sortBudgetDesc}</option>
+              <option value="products" selected={sort === 'products'}>{c.sortMostProducts}</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <p class="cat-mcount"><strong>{meta.total}</strong> {meta.total > 1 ? c.boardsWord : c.boardWord}</p>
+      {active.length > 0 && (
+        <div class="cat-active">
+          {active.map((f) => <a href={f.href} aria-label={c.removeFilter + ' ' + f.label}>{f.label}<span aria-hidden="true">×</span></a>)}
+          <a class="cat-clear" href={basePath}>{c.resetFilters}</a>
+        </div>
+      )}
+
+      {res.failed ? (
+        <p class="notice error" role="alert">{c.dataUnavailable} <a href={Astro.url.pathname + Astro.url.search}>{c.retry}</a></p>
+      ) : boards.length ? (
+        <div class="bdl">{boards.map((b) => <BoardCard board={b} locale={locale} />)}</div>
+      ) : (
+        <div class="cat-empty">
+          <img src="/brand/logo-ink.png" alt="" width="120" height="52" />
+          <h2>{active.length ? c.inspNoMatch : c.inspNone}</h2>
+          {active.length > 0 && <div><a class="btn btn-line btn-small" href={basePath}>{c.resetFilters}</a></div>}
+        </div>
+      )}
+
+      {boards.length > 0 && (
+        <nav class="cat-pages" aria-label={c.page}>
+          {meta.page > 1 ? <a class="cat-step" href={pageLink(meta.page - 1)}>← {c.previousPage}</a> : <span class="cat-step off">← {c.previousPage}</span>}
+          <span class="cat-nums">
+            {pages.map((n, i) => (
+              <>
+                {i > 0 && n - pages[i - 1] > 1 && <span aria-hidden="true">…</span>}
+                <a href={pageLink(n)} aria-current={n === meta.page ? 'page' : undefined} aria-label={c.page + ' ' + n}>{n}</a>
+              </>
+            ))}
+          </span>
+          {meta.page < meta.last_page ? <a class="cat-step" href={pageLink(meta.page + 1)}>{c.nextPage} →</a> : <span class="cat-step off">{c.nextPage} →</span>}
+        </nav>
+      )}
+
+      <p class="sr-only" role="status" aria-live="polite">{meta.total} {meta.total > 1 ? c.boardsWord : c.boardWord}</p>
+    </div>
+  </section>
+  <CatalogueScript />
+</Site>

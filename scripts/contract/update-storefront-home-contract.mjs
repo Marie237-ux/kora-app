@@ -382,3 +382,147 @@ console.log('Storefront home contract updated.');
   };
   writeFileSync(file, JSON.stringify(api7, null, 2) + '\n');
 }
+
+// Inspirations: public boards carry their author, cover images, available products and current total; search by text.
+{
+  const api8 = JSON.parse(readFileSync(file, 'utf8'));
+  const s8 = api8.components.schemas;
+  const showcase = {
+    author: { type: 'object', required: ['name', 'avatar'], properties: { name: { type: 'string' }, avatar: { anyOf: [{ type: 'string' }, { type: 'null' }] } }, additionalProperties: false },
+    covers: { type: 'array', maxItems: 4, items: { type: 'string' }, description: 'Images des produits épinglés (jusqu’à 4) pour la couverture.' },
+    available_count: { type: 'integer', description: 'Produits épinglés encore en vente.' },
+    total: { type: 'object', required: ['amount', 'currency'], properties: { amount: { type: 'integer' }, currency: { type: 'string', enum: ['XAF'] } }, additionalProperties: false, description: 'Total au prix du jour des produits encore en vente.' },
+  };
+  const sum = s8.PublicBoardSummary;
+  for (const [k, v] of Object.entries(showcase)) if (!sum.properties[k]) { sum.properties[k] = v; sum.required = [...(sum.required ?? []), k]; }
+  s8.PublicBoard = { ...s8.Board, properties: { ...s8.Board.properties, ...showcase }, required: [...new Set([...(s8.Board.required ?? []), ...Object.keys(showcase)])] };
+  api8.paths['/api/v1/boards/public/{id}'].get.responses['200'].content['application/json'].schema.properties.data = { $ref: '#/components/schemas/PublicBoard' };
+  const params = api8.paths['/api/v1/boards/public'].get.parameters ?? [];
+  if (!params.some((p) => p.name === 'q')) params.push({ name: 'q', in: 'query', required: false, description: 'Recherche dans le titre et la description.', schema: { type: 'string', maxLength: 80 } });
+  api8.paths['/api/v1/boards/public'].get.parameters = params;
+  writeFileSync(file, JSON.stringify(api8, null, 2) + '\n');
+}
+
+// Board cover photo (chosen by the owner): on boards, public cards and public pages; editable with the board.
+{
+  const api9 = JSON.parse(readFileSync(file, 'utf8'));
+  const s9 = api9.components.schemas;
+  const cover = { anyOf: [{ type: 'string' }, { type: 'null' }], description: 'Photo de couverture du tableau (chemin média public), sinon null.' };
+  for (const name of ['Board', 'PublicBoard', 'PublicBoardSummary']) {
+    if (s9[name] && !s9[name].properties.cover) { s9[name].properties.cover = cover; s9[name].required = [...(s9[name].required ?? []), 'cover']; }
+  }
+  const upd = api9.paths['/api/v1/boards/{id}']?.put?.requestBody?.content?.['application/json']?.schema;
+  if (upd?.properties && !upd.properties.cover_path) upd.properties.cover_path = { anyOf: [{ type: 'string', maxLength: 200 }, { type: 'null' }] };
+  writeFileSync(file, JSON.stringify(api9, null, 2) + '\n');
+}
+
+// Inspirations listing: aisles, shops, deals and stock per board; filters, facets, sort and pages.
+{
+  const a10 = JSON.parse(readFileSync(file, 'utf8'));
+  const s10 = a10.components.schemas;
+  const ref = (n) => ({ type: 'object', required: ['slug', 'name'], properties: { slug: { type: 'string' }, name: { type: 'string' } }, additionalProperties: false });
+  const extra = {
+    aisles: { type: 'array', items: ref() },
+    shops: { type: 'array', items: { type: 'object', required: ['slug', 'name', 'district'], properties: { slug: { type: 'string' }, name: { type: 'string' }, district: { anyOf: [{ type: 'string' }, { type: 'null' }] } }, additionalProperties: false } },
+    on_sale_count: { type: 'integer' },
+    all_in_stock: { type: 'boolean' },
+  };
+  const sum = s10.PublicBoardSummary;
+  for (const [k, v] of Object.entries(extra)) if (!sum.properties[k]) { sum.properties[k] = v; sum.required.push(k); }
+  const option = { type: 'object', required: ['value', 'label', 'count'], properties: { value: { type: 'string' }, label: { type: 'string' }, count: { type: 'integer' } }, additionalProperties: false };
+  const get = a10.paths['/api/v1/boards/public'].get;
+  const q = (name, schema, description) => ({ name, in: 'query', required: false, description, schema });
+  get.parameters = [
+    q('q', { type: 'string', maxLength: 80 }, 'Recherche : titre, description, rayons, auteur.'),
+    q('category', { type: 'string', maxLength: 500 }, 'Rayons (séparés par des virgules).'),
+    q('shop', { type: 'string', maxLength: 500 }, 'Boutiques (slugs).'),
+    q('district', { type: 'string', maxLength: 500 }, 'Quartiers des boutiques.'),
+    q('author', { type: 'string', maxLength: 500 }, 'Auteurs (clés opaques données par les facettes).'),
+    q('size', { type: 'string', maxLength: 40 }, 'Taille : small, medium, large.'),
+    q('on_sale', { type: 'boolean' }, 'Avec au moins un produit en promotion.'),
+    q('in_stock', { type: 'boolean' }, 'Tous les produits en stock.'),
+    q('price_min', { type: 'integer', minimum: 0 }, 'Budget total minimum (XAF).'),
+    q('price_max', { type: 'integer', minimum: 0 }, 'Budget total maximum (XAF).'),
+    q('sort', { type: 'string', enum: ['newest', 'price_asc', 'price_desc', 'products'] }, 'Tri.'),
+    q('page', { type: 'integer', minimum: 1 }, 'Page.'),
+    q('per_page', { type: 'string', enum: ['12', '24', '48'] }, 'Tableaux par page.'),
+  ];
+  get.responses['200'].content['application/json'].schema.properties.meta = {
+    type: 'object',
+    required: ['page', 'last_page', 'total', 'facets'],
+    properties: {
+      page: { type: 'integer' }, last_page: { type: 'integer' }, total: { type: 'integer' },
+      facets: {
+        type: 'object',
+        required: ['categories', 'shops', 'districts', 'authors', 'sizes', 'on_sale', 'in_stock', 'price'],
+        properties: {
+          categories: { type: 'array', items: option }, shops: { type: 'array', items: option }, districts: { type: 'array', items: option },
+          authors: { type: 'array', items: option }, sizes: { type: 'array', items: option },
+          on_sale: { type: 'integer' }, in_stock: { type: 'integer' },
+          price: { type: 'object', required: ['min', 'max'], properties: { min: { type: 'integer' }, max: { type: 'integer' } }, additionalProperties: false },
+        },
+        additionalProperties: false,
+      },
+    },
+    additionalProperties: false,
+  };
+  writeFileSync(file, JSON.stringify(a10, null, 2) + '\n');
+}
+
+// National scope: delivery in the shop's city or shipping across Cameroon (chosen at payment); zones belong to a city.
+{
+  const a11 = JSON.parse(readFileSync(file, 'utf8'));
+  const svc = a11.components.schemas.Offer.properties.service;
+  const target = svc.anyOf ? svc.anyOf.find((x) => x.properties) : svc;
+  const dl = target.properties.delivery;
+  if (!dl.properties.modes) {
+    dl.properties.modes = { type: 'array', items: { type: 'object', required: ['key', 'label', 'text'], properties: { key: { type: 'string', enum: ['local', 'shipping'] }, label: { type: 'string' }, text: { type: 'string' } }, additionalProperties: false } };
+    dl.required = [...(dl.required ?? []), 'modes'];
+  }
+  if (!target.properties.zones_city) {
+    target.properties.zones_city = { type: 'string', description: 'Ville des quartiers desservis par les livreurs KORA.' };
+    target.required = [...(target.required ?? []), 'zones_city'];
+  }
+  writeFileSync(file, JSON.stringify(a11, null, 2) + '\n');
+}
+
+// Inspirations by city: the shops of a board carry their city; filter by city or "all deliverable in my city".
+{
+  const a12 = JSON.parse(readFileSync(file, 'utf8'));
+  const get = a12.paths['/api/v1/boards/public'].get;
+  const q = (name, schema, description) => ({ name, in: 'query', required: false, description, schema });
+  if (!get.parameters.some((p) => p.name === 'city')) get.parameters.push(q('city', { type: 'string', maxLength: 500 }, 'Villes des boutiques.'));
+  if (!get.parameters.some((p) => p.name === 'local_city')) get.parameters.push(q('local_city', { type: 'string', maxLength: 80 }, 'Seulement les tableaux entièrement livrables dans cette ville.'));
+  const shop = a12.components.schemas.PublicBoardSummary.properties.shops.items;
+  if (!shop.properties.city) { shop.properties.city = { type: 'string' }; shop.required.push('city'); }
+  const f = get.responses['200'].content['application/json'].schema.properties.meta.properties.facets;
+  if (!f.properties.cities) { f.properties.cities = f.properties.districts; f.required.push('cities'); }
+  writeFileSync(file, JSON.stringify(a12, null, 2) + '\n');
+}
+
+// Delivery zones belong to a city (Douala, Yaoundé…): public and managed zones carry it; a zone can be saved with it.
+{
+  const a13 = JSON.parse(readFileSync(file, 'utf8'));
+  for (const name of ['DeliveryZonePublic', 'DeliveryZone']) {
+    const z = a13.components.schemas[name];
+    if (z && !z.properties.city) { z.properties.city = { type: 'string' }; z.required = [...(z.required ?? []), 'city']; }
+  }
+  for (const [path, item] of Object.entries(a13.paths)) {
+    if (!path.includes('delivery') || !path.includes('zone')) continue;
+    for (const op of Object.values(item)) {
+      const body = op?.requestBody?.content?.['application/json']?.schema;
+      if (body?.properties?.districts && !body.properties.city) body.properties.city = { type: 'string', maxLength: 80 };
+    }
+  }
+  writeFileSync(file, JSON.stringify(a13, null, 2) + '\n');
+}
+
+// Creator profile: the author of a public board carries an opaque key (link to /createurs/{key}).
+{
+  const a14 = JSON.parse(readFileSync(file, 'utf8'));
+  for (const name of ['PublicBoardSummary', 'PublicBoard']) {
+    const au = a14.components.schemas[name]?.properties?.author;
+    if (au && !au.properties.key) { au.properties.key = { type: 'string', description: 'Clé publique opaque du créateur.' }; au.required = [...(au.required ?? []), 'key']; }
+  }
+  writeFileSync(file, JSON.stringify(a14, null, 2) + '\n');
+}

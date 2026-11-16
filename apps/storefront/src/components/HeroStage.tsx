@@ -25,7 +25,7 @@ export type Scene = {
   shop: null | { name: string; slug: string };
 };
 
-/** The last words of a title carry the accent colour, as on KORA's boards ("Tout Douala, livré chez vous."). */
+/** The last words of a title carry the accent colour, as on KORA's boards ("Tout le Cameroun, livré chez vous."). */
 function Title({ text }: { text: string }) {
   const words = text.trim().split(/\s+/);
   const cut = Math.max(1, words.length - (words.length > 3 ? 2 : 1));

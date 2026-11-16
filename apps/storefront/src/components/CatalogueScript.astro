@@ -42,7 +42,7 @@
       card.append(label);
       veil.append(card);
       results.append(veil);
-      results.querySelectorAll('.cat-grid, .shops-grid, .cat-pages, .cat-active').forEach((el) => el.setAttribute('inert', ''));
+      results.querySelectorAll('.cat-grid, .shops-grid, .bdl, .cat-pages, .cat-active').forEach((el) => el.setAttribute('inert', ''));
     }
     try {
       const res = await fetch(target.href, { headers: { Accept: 'text/html' }, signal: ctrl.signal });
@@ -56,14 +56,14 @@
       const scroll = form?.scrollTop ?? 0;
       const open = new Map<string, boolean>();
       const keyOf = (d: HTMLDetailsElement) => d.dataset.key ?? d.querySelector('summary')?.textContent?.trim().replace(/\d+$/, '') ?? '';
-      body.querySelectorAll<HTMLDetailsElement>('.cat-filters details').forEach((d) => open.set(keyOf(d), d.open));
+      body.querySelectorAll<HTMLDetailsElement>('.cat-filters details:not(.cpick)').forEach((d) => open.set(keyOf(d), d.open));
       const focused = document.activeElement as HTMLInputElement | null;
       const focusKey = focused && body.contains(focused) && focused.name ? [focused.name, focused.value] : null;
       body.replaceWith(nextBody);
       const hero = document.querySelector('.cat-hero-text');
       if (hero && nextHero) hero.replaceWith(nextHero);
       document.title = doc.title;
-      nextBody.querySelectorAll<HTMLDetailsElement>('.cat-filters details').forEach((d) => {
+      nextBody.querySelectorAll<HTMLDetailsElement>('.cat-filters details:not(.cpick)').forEach((d) => {
         const key = keyOf(d);
         if (open.has(key)) d.open = open.get(key)!;
       });
@@ -147,4 +147,45 @@
   if (phone.matches) panel()?.removeAttribute('open');
   // Back on a wide screen the panel is a sidebar again, always open.
   phone.addEventListener('change', () => (phone.matches ? panel()?.removeAttribute('open') : panel()?.setAttribute('open', '')));
+
+  // City picker: remember the choice (cookie read by every page) before the results are fetched; empty = anywhere.
+  document.addEventListener('change', (e) => {
+    const el = e.target as HTMLInputElement;
+    if (el.name !== 'ma' || el.type !== 'radio') return;
+    const age = el.value ? 60 * 60 * 24 * 365 : 0;
+    document.cookie = 'kora_city=' + encodeURIComponent(el.value) + ';path=/;max-age=' + age + ';samesite=lax';
+    el.closest<HTMLDetailsElement>('details.cpick')?.removeAttribute('open');
+  }, true);
+  // City picker: type to narrow the list, Enter picks the first match; a click outside closes it.
+  document.addEventListener('input', (e) => {
+    const field = e.target as HTMLInputElement;
+    if (!field.matches('[data-city-search]')) return;
+    const norm = (v: string) => v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const q = norm(field.value.trim());
+    const list = field.closest('.cpick-panel');
+    let shown = 0;
+    list?.querySelectorAll<HTMLElement>('[data-city]').forEach((o) => {
+      const on = !q || norm(o.dataset.city ?? '').includes(q);
+      o.hidden = !on;
+      if (on) shown++;
+    });
+    list?.querySelectorAll<HTMLElement>('.cpick-group').forEach((g) => (g.hidden = Boolean(q)));
+    const none = list?.querySelector<HTMLElement>('[data-city-none]');
+    if (none) none.hidden = shown > 0;
+  });
+  document.addEventListener('keydown', (e) => {
+    const field = e.target as HTMLInputElement;
+    if (e.key !== 'Enter' || !field.matches('[data-city-search]')) return;
+    e.preventDefault();
+    field.closest('.cpick-panel')?.querySelector<HTMLInputElement>('[data-city]:not([hidden]) input')?.click();
+  });
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll<HTMLDetailsElement>('details.cpick[open]').forEach((d) => {
+      if (!d.contains(e.target as Node)) d.open = false;
+    });
+  });
+  document.addEventListener('toggle', (e) => {
+    const d = e.target as HTMLDetailsElement;
+    if (d.matches?.('details.cpick') && d.open) setTimeout(() => d.querySelector<HTMLInputElement>('[data-city-search]')?.focus(), 30);
+  }, true);
 </script>

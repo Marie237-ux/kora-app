@@ -17,7 +17,8 @@ final class ProductService
     public function for(array $offer): array
     {
         $fromWarehouse = $this->inventory->warehouseAvailable($offer['id']) > 0;
-        $place = ['shop' => $offer['shop']['name'], 'district' => $offer['shop']['district'] ?? $offer['shop']['city'] ?? 'Douala'];
+        $city = $offer['shop']['city'] ?? 'Douala';
+        $place = ['shop' => $offer['shop']['name'], 'district' => $offer['shop']['district'] ?? $city, 'city' => $city];
         $rows = fn (string $key) => array_map(
             fn ($row) => ['label' => $row[0], 'text' => $row[1]],
             __('product_page.'.$key, $place),
@@ -29,6 +30,8 @@ final class ProductService
             'delivery' => [
                 'intro' => __('product_page.delivery_intro', $place),
                 'route' => $rows($fromWarehouse ? 'route_warehouse' : 'route_shop'),
+                // Local delivery in the shop's city, or shipping to another city: chosen at payment.
+                'modes' => array_map(fn ($m, $key) => ['key' => $key, ...$m], $rows('modes'), ['local', 'shipping']),
                 'terms' => $rows('terms'),
             ],
             'warranty' => [
@@ -41,7 +44,9 @@ final class ProductService
                 'intro' => __('product_page.bulk_intro', $place),
                 'steps' => $rows('bulk_steps'),
             ] : null,
-            'zones' => DB::table('delivery_zones')->where('active', true)->orderBy('code')->get()
+            // Districts served by KORA couriers in the shop's city (zones are set per city in the back office).
+            'zones_city' => $city,
+            'zones' => DB::table('delivery_zones')->where('active', true)->where('city', $city)->orderBy('code')->get()
                 ->map(fn ($z) => [
                     'name' => json_decode($z->name, true)[app()->getLocale()] ?? json_decode($z->name, true)['fr'] ?? $z->code,
                     'districts' => json_decode($z->districts, true) ?? [],

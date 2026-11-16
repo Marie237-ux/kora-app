@@ -9846,6 +9846,12 @@ export interface components {
                         label: string;
                         text: string;
                     }[];
+                    modes: {
+                        /** @enum {string} */
+                        key: "local" | "shipping";
+                        label: string;
+                        text: string;
+                    }[];
                 };
                 warranty: {
                     months: number | null;
@@ -9867,6 +9873,8 @@ export interface components {
                     name: string;
                     districts: string[];
                 }[];
+                /** @description Ville des quartiers desservis par les livreurs KORA. */
+                zones_city: string;
             };
         };
         Translations: {
@@ -11195,6 +11203,8 @@ export interface components {
             created_at: string;
             /** Format: date-time */
             updated_at: string;
+            /** @description Photo de couverture du tableau (chemin média public), sinon null. */
+            cover: string | null;
         };
         BoardSummary: {
             /** Format: uuid */
@@ -11224,6 +11234,36 @@ export interface components {
             pin_count: number;
             /** Format: date-time */
             updated_at: string;
+            author: {
+                name: string;
+                avatar: string | null;
+                /** @description Clé publique opaque du créateur. */
+                key: string;
+            };
+            /** @description Images des produits épinglés (jusqu’à 4) pour la couverture. */
+            covers: string[];
+            /** @description Produits épinglés encore en vente. */
+            available_count: number;
+            /** @description Total au prix du jour des produits encore en vente. */
+            total: {
+                amount: number;
+                /** @enum {string} */
+                currency: "XAF";
+            };
+            /** @description Photo de couverture du tableau (chemin média public), sinon null. */
+            cover: string | null;
+            aisles: {
+                slug: string;
+                name: string;
+            }[];
+            shops: {
+                slug: string;
+                name: string;
+                district: string | null;
+                city: string;
+            }[];
+            on_sale_count: number;
+            all_in_stock: boolean;
         };
         BoardPinResult: {
             board: components["schemas"]["Board"];
@@ -11312,6 +11352,7 @@ export interface components {
             id: string;
             name: string;
             districts: string[];
+            city: string;
         };
         DeliveryZone: {
             /** Format: uuid */
@@ -11326,6 +11367,7 @@ export interface components {
             version: number;
             /** Format: date-time */
             updated_at: string;
+            city: string;
         };
         CollectionPoint: {
             /** Format: uuid */
@@ -16129,6 +16171,70 @@ export interface components {
             /** Format: date-time */
             created_at: string;
         };
+        ShopListing: {
+            id: string;
+            slug: string;
+            name: string;
+            description: string;
+            city: string;
+            district: string | null;
+            /** @description Photo de profil de la boutique (chemin média public), sinon null. */
+            avatar: string | null;
+            /** @description Photo de couverture de la boutique (chemin média public), sinon null. */
+            cover: string | null;
+            /** @description Produits publiés (une fiche par produit). */
+            product_count: number;
+            /** @description Produits en promotion en ce moment. */
+            on_sale_count: number;
+            aisles: {
+                slug: string;
+                name: string;
+            }[];
+        };
+        PublicBoard: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            description: string;
+            /** @enum {string} */
+            kind: "collection" | "gift";
+            /** @enum {string} */
+            visibility: "private" | "unlisted" | "public";
+            version: number;
+            gift_date: string | null;
+            hide_gift_purchases: boolean;
+            cover_pin_id: string | null;
+            /** @enum {string} */
+            role: "owner" | "editor" | "viewer" | "public_reader";
+            sections: components["schemas"]["BoardSection"][];
+            pins: components["schemas"]["BoardPin"][];
+            /** @constant */
+            purchase_tracking_available: false;
+            /** @constant */
+            recipient_delivery_available: false;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** @description Photo de couverture du tableau (chemin média public), sinon null. */
+            cover: string | null;
+            author: {
+                name: string;
+                avatar: string | null;
+                /** @description Clé publique opaque du créateur. */
+                key: string;
+            };
+            /** @description Images des produits épinglés (jusqu’à 4) pour la couverture. */
+            covers: string[];
+            /** @description Produits épinglés encore en vente. */
+            available_count: number;
+            /** @description Total au prix du jour des produits encore en vente. */
+            total: {
+                amount: number;
+                /** @enum {string} */
+                currency: "XAF";
+            };
+        };
         CatalogueFacets: {
             total: number;
             price: {
@@ -16168,26 +16274,6 @@ export interface components {
                     label: string;
                     count: number;
                 }[];
-            }[];
-        };
-        ShopListing: {
-            id: string;
-            slug: string;
-            name: string;
-            description: string;
-            city: string;
-            district: string | null;
-            /** @description Photo de profil de la boutique (chemin média public), sinon null. */
-            avatar: string | null;
-            /** @description Photo de couverture de la boutique (chemin média public), sinon null. */
-            cover: string | null;
-            /** @description Produits publiés (une fiche par produit). */
-            product_count: number;
-            /** @description Produits en promotion en ce moment. */
-            on_sale_count: number;
-            aisles: {
-                slug: string;
-                name: string;
             }[];
         };
     };
@@ -26161,8 +26247,36 @@ export interface operations {
     get_boards_public: {
         parameters: {
             query?: {
-                locale?: "fr" | "en";
+                /** @description Recherche : titre, description, rayons, auteur. */
+                q?: string;
+                /** @description Rayons (séparés par des virgules). */
+                category?: string;
+                /** @description Boutiques (slugs). */
+                shop?: string;
+                /** @description Quartiers des boutiques. */
+                district?: string;
+                /** @description Auteurs (clés opaques données par les facettes). */
+                author?: string;
+                /** @description Taille : small, medium, large. */
+                size?: string;
+                /** @description Avec au moins un produit en promotion. */
+                on_sale?: boolean;
+                /** @description Tous les produits en stock. */
+                in_stock?: boolean;
+                /** @description Budget total minimum (XAF). */
+                price_min?: number;
+                /** @description Budget total maximum (XAF). */
+                price_max?: number;
+                /** @description Tri. */
+                sort?: "newest" | "price_asc" | "price_desc" | "products";
+                /** @description Page. */
                 page?: number;
+                /** @description Tableaux par page. */
+                per_page?: "12" | "24" | "48";
+                /** @description Villes des boutiques. */
+                city?: string;
+                /** @description Seulement les tableaux entièrement livrables dans cette ville. */
+                local_city?: string;
             };
             header?: never;
             path?: never;
@@ -26178,7 +26292,49 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["PublicBoardSummary"][];
-                        meta: components["schemas"]["PageMeta"];
+                        meta: {
+                            page: number;
+                            last_page: number;
+                            total: number;
+                            facets: {
+                                categories: {
+                                    value: string;
+                                    label: string;
+                                    count: number;
+                                }[];
+                                shops: {
+                                    value: string;
+                                    label: string;
+                                    count: number;
+                                }[];
+                                districts: {
+                                    value: string;
+                                    label: string;
+                                    count: number;
+                                }[];
+                                authors: {
+                                    value: string;
+                                    label: string;
+                                    count: number;
+                                }[];
+                                sizes: {
+                                    value: string;
+                                    label: string;
+                                    count: number;
+                                }[];
+                                on_sale: number;
+                                in_stock: number;
+                                price: {
+                                    min: number;
+                                    max: number;
+                                };
+                                cities: {
+                                    value: string;
+                                    label: string;
+                                    count: number;
+                                }[];
+                            };
+                        };
                     };
                 };
             };
@@ -26227,7 +26383,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        data: components["schemas"]["Board"];
+                        data: components["schemas"]["PublicBoard"];
                     };
                 };
             };
@@ -26492,6 +26648,7 @@ export interface operations {
                     title: string;
                     description: string | null;
                     cover_pin_id: string | null;
+                    cover_path?: string | null;
                 };
             };
         };
@@ -28500,6 +28657,7 @@ export interface operations {
                     };
                     districts: string[];
                     active: boolean;
+                    city?: string;
                 };
             };
         };
@@ -28567,6 +28725,7 @@ export interface operations {
                     };
                     districts: string[];
                     active: boolean;
+                    city?: string;
                 };
             };
         };

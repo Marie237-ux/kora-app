@@ -31,7 +31,15 @@ ENV KORA_DEMO=true \
     KORA_DEMO_SEED=true \
     KORA_WHATSAPP_NUMBER=237690219242
 
+# Sessions for the online site: the storefront address must be "stateful" for Sanctum, otherwise the API opens no
+# session for it (cart, favourites and sign-in answer 419). Cookies only over HTTPS.
+ENV SANCTUM_STATEFUL_DOMAINS=kora-frontend-ok9a.onrender.com,localhost:4321 \
+    SESSION_SECURE_COOKIE=true \
+    SESSION_SAME_SITE=lax
+
 # Render gives the port in $PORT and the public address in $RENDER_EXTERNAL_URL. Migrations run on every start.
 # With KORA_DEMO_SEED=true the demo catalogue (shops, products, images, CMS pages) is reloaded on each start:
 # free Render instances lose their files when they restart, so images are re-created from the repository.
-CMD ["sh", "-c", "export APP_URL=${RENDER_EXTERNAL_URL:-$APP_URL}; php artisan migrate --force && php artisan config:cache && if [ \"$KORA_DEMO_SEED\" = true ]; then php artisan kora:demo-storefront database/demo/storefront.json --fresh || true; fi; php artisan serve --host=0.0.0.0 --port=${PORT:-10000}"]
+# Without APP_KEY (Render > kora-api > Environment) sessions and cookies cannot be encrypted: a temporary key is made
+# so the site works, but visitors' sessions and carts reset at each restart until a permanent APP_KEY is set there.
+CMD ["sh", "-c", "export APP_URL=${RENDER_EXTERNAL_URL:-$APP_URL}; if [ -z \"$APP_KEY\" ]; then echo 'WARNING: APP_KEY missing, using a temporary key (set APP_KEY in Render)'; export APP_KEY=base64:$(php -r 'echo base64_encode(random_bytes(32));'); fi; php artisan migrate --force && php artisan config:cache && if [ \"$KORA_DEMO_SEED\" = true ]; then php artisan kora:demo-storefront database/demo/storefront.json --fresh || true; fi; php artisan serve --host=0.0.0.0 --port=${PORT:-10000}"]

@@ -24,6 +24,7 @@ final class ManageDeliveryController extends OperationalController
         $d = $http->validate([
             ...$id ? ['version' => ['required', 'integer', 'min:1']] : [],
             'code' => ['required', 'string', 'max:40', 'regex:/^[A-Z0-9_-]+$/'],
+            'city' => ['sometimes', 'string', 'max:80'],
             'name' => ['required', 'array:fr,en'],
             'name.fr' => ['required', 'string', 'max:150'],
             'name.en' => ['required', 'string', 'max:150'],

@@ -49,7 +49,8 @@ const utility = [
 const year = new Date().getFullYear();
 const aisles = (await safe(api(locale).categories(), { data: [] })).value.data.map((a) => ({ slug: a.slug, name: a.name }));
 const whatsapp = (await safe(api(locale).request<{ data: { whatsapp: string | null } }>('/api/v1/content/contact'), { data: { whatsapp: null } })).value.data.whatsapp;
-const shopMenu = (await safe(api(locale).shops(), { data: [] })).value.data.map((s) => ({ slug: s.slug, name: s.name, place: s.district ?? s.city, avatar: s.avatar ?? null }));
+// Header menu "Our shops": three shops at most (the full list is one click away), with district and city.
+const shopMenu = (await safe(api(locale).shops(), { data: [] })).value.data.slice(0, 3).map((s) => ({ slug: s.slug, name: s.name, place: [s.district, s.city].filter(Boolean).join(', '), avatar: s.avatar ?? null }));
 ---
 
 <!doctype html>

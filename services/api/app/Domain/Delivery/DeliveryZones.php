@@ -21,13 +21,15 @@ final class DeliveryZones
         return implode(' ', app(SearchText::class)->tokens($district));
     }
 
-    public function resolve(string $district): ?object
+    /** Zone serving a district; with a city, only that city's zones (the same district name can exist in two cities). */
+    public function resolve(string $district, ?string $city = null): ?object
     {
         $wanted = $this->normalize($district);
         if ($wanted === '') {
             return null;
         }
-        foreach (DB::table('delivery_zones')->where('active', true)->orderBy('code')->get() as $zone) {
+        $zones = DB::table('delivery_zones')->where('active', true)->when($city, fn ($q) => $q->where('city', $city))->orderBy('code')->get();
+        foreach ($zones as $zone) {
             foreach (json_decode($zone->districts, true) as $name) {
                 if ($this->normalize($name) === $wanted) {
                     return $zone;
@@ -48,11 +50,13 @@ final class DeliveryZones
             }
             $districts[$key] = trim($name);
         }
+        $city = trim((string) ($data['city'] ?? $zone?->city ?? 'Douala')) ?: 'Douala';
         if ($data['active']) {
-            $this->assertDistrictsFree(array_keys($districts), $zone?->id);
+            $this->assertDistrictsFree(array_keys($districts), $zone?->id, $city);
         }
         $values = [
             'code' => $data['code'],
+            'city' => $city,
             'name' => Records::json($data['name']),
             'districts' => Records::json(array_values($districts)),
             'active' => $data['active'],
@@ -74,11 +78,12 @@ final class DeliveryZones
         return $this->dto(Records::row('delivery_zones', $id, false));
     }
 
-    /** A district may belong to a single active zone, otherwise the zone of an address would be ambiguous. */
-    private function assertDistrictsFree(array $keys, ?string $exceptId): void
+    /** In a city, a district may belong to a single active zone, otherwise the zone of an address would be ambiguous. */
+    private function assertDistrictsFree(array $keys, ?string $exceptId, string $city = 'Douala'): void
     {
         $others = DB::table('delivery_zones')
             ->where('active', true)
+            ->where('city', $city)
             ->when($exceptId, fn ($q) => $q->where('id', '!=', $exceptId))
             ->lockForUpdate()
             ->get();
@@ -98,6 +103,7 @@ final class DeliveryZones
         $base = [
             'id' => $zone->id,
             'name' => $name[$locale] ?? $name['fr'],
+            'city' => $zone->city ?? 'Douala',
             'districts' => json_decode($zone->districts, true),
         ];
 
