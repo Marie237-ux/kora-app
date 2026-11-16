@@ -1,0 +1,150 @@
+---
+/**
+ * In-place updates for filter views (catalogue, shop page, our shops): the filter form #cat-form, links inside
+ * [data-cat] and .cat-hero that stay on the same path (data-path), the phone filter sheet and the price slider.
+ */
+---
+
+<script>
+  // In-place updates: filters, sort, page size and pagination fetch the new page and swap only the hero text and the
+  // catalogue body. The URL follows (back/forward work); filter panel scroll, open groups and focus are kept.
+  const phone = matchMedia('(max-width: 760px)');
+  const panel = () => document.querySelector<HTMLDetailsElement>('.cat-filters > details');
+  const sheetOpen = () => phone.matches && Boolean(panel()?.open);
+  // Links that stay on this view (the catalogue, or the shop page it is scoped to) update in place.
+  const isCatalogue = (u: URL) => u.origin === location.origin && u.pathname.replace(/\/$/, '') === document.querySelector<HTMLElement>('[data-cat]')?.dataset.path;
+  let ctrl: AbortController | null = null;
+
+  function formUrl(form: HTMLFormElement): URL {
+    const u = new URL(form.action, location.href);
+    for (const [key, value] of new FormData(form)) if (String(value).trim() !== '') u.searchParams.append(key, String(value));
+    if (u.searchParams.get('sort') === 'name') u.searchParams.delete('sort');
+    if (u.searchParams.get('per') === '12') u.searchParams.delete('per');
+    return u;
+  }
+
+  async function go(target: URL, push = true, toResults = false) {
+    ctrl?.abort();
+    ctrl = new AbortController();
+    const body = document.querySelector<HTMLElement>('[data-cat]');
+    const results = document.getElementById('cat-results');
+    results?.setAttribute('aria-busy', 'true');
+    // Clear loading state: a veil with a message over the results, which stop reacting until the new ones arrive.
+    if (results && !results.querySelector('.cat-loading')) {
+      const veil = document.createElement('div');
+      veil.className = 'cat-loading';
+      veil.setAttribute('role', 'status');
+      const card = document.createElement('div');
+      card.className = 'cat-loading-card';
+      card.innerHTML = '<i class="spin" aria-hidden="true"></i>';
+      const label = document.createElement('span');
+      label.textContent = body?.dataset.loading ?? '…';
+      card.append(label);
+      veil.append(card);
+      results.append(veil);
+      results.querySelectorAll('.cat-grid, .shops-grid, .cat-pages, .cat-active').forEach((el) => el.setAttribute('inert', ''));
+    }
+    try {
+      const res = await fetch(target.href, { headers: { Accept: 'text/html' }, signal: ctrl.signal });
+      if (!res.ok) throw new Error(String(res.status));
+      const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+      const nextBody = doc.querySelector('[data-cat]');
+      const nextHero = doc.querySelector('.cat-hero-text');
+      if (!body || !nextBody) throw new Error('layout');
+      // keep UI state of the filter panel
+      const form = body.querySelector<HTMLElement>('.cat-form');
+      const scroll = form?.scrollTop ?? 0;
+      const open = new Map<string, boolean>();
+      const keyOf = (d: HTMLDetailsElement) => d.dataset.key ?? d.querySelector('summary')?.textContent?.trim().replace(/\d+$/, '') ?? '';
+      body.querySelectorAll<HTMLDetailsElement>('.cat-filters details').forEach((d) => open.set(keyOf(d), d.open));
+      const focused = document.activeElement as HTMLInputElement | null;
+      const focusKey = focused && body.contains(focused) && focused.name ? [focused.name, focused.value] : null;
+      body.replaceWith(nextBody);
+      const hero = document.querySelector('.cat-hero-text');
+      if (hero && nextHero) hero.replaceWith(nextHero);
+      document.title = doc.title;
+      nextBody.querySelectorAll<HTMLDetailsElement>('.cat-filters details').forEach((d) => {
+        const key = keyOf(d);
+        if (open.has(key)) d.open = open.get(key)!;
+      });
+      const nextForm = nextBody.querySelector<HTMLElement>('.cat-form');
+      if (nextForm) nextForm.scrollTop = scroll;
+      if (focusKey) nextBody.querySelector<HTMLElement>(`[name="${CSS.escape(focusKey[0])}"][value="${CSS.escape(focusKey[1])}"]`)?.focus({ preventScroll: true });
+      if (push) history.pushState({ catalogue: true }, '', target.pathname + target.search);
+      const top = document.getElementById('cat-results');
+      if (top && !sheetOpen() && (toResults || top.getBoundingClientRect().top < 0)) top.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+      bindSliders();
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') location.href = target.href;
+    }
+  }
+
+  document.addEventListener('submit', (e) => {
+    const form = e.target as HTMLFormElement;
+    if (form.id !== 'cat-form') return;
+    e.preventDefault();
+    go(formUrl(form));
+  });
+  document.addEventListener('change', (e) => {
+    const el = e.target as HTMLInputElement;
+    if (!el.closest('[data-cat]')) return;
+    if (el.matches('[data-auto], input[type=number]')) {
+      const form = document.getElementById('cat-form') as HTMLFormElement | null;
+      if (form) go(formUrl(form));
+    }
+  });
+  document.addEventListener('click', (e) => {
+    const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[href]');
+    if (a && (a.closest('[data-cat]') || a.closest('.cat-hero')) && !e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) {
+      const u = new URL(a.href);
+      if (isCatalogue(u)) {
+        e.preventDefault();
+        go(u, true, Boolean(a.closest('.cat-pages')));
+      }
+    }
+    const show = (e.target as HTMLElement).closest('[data-show-results]');
+    if (show) {
+      panel()?.removeAttribute('open');
+      const top = document.getElementById('cat-results');
+      if (top && top.getBoundingClientRect().top < 0) top.scrollIntoView({ block: 'start' });
+    }
+    // Phone: the "Filters" button of the sticky bar opens the panel as a bottom sheet; the dimmed backdrop closes it.
+    if ((e.target as HTMLElement).closest('[data-open-filters]')) panel()?.setAttribute('open', '');
+    if (e.target === document.querySelector('.cat-filters') && sheetOpen()) panel()?.removeAttribute('open');
+  });
+  addEventListener('popstate', () => go(new URL(location.href), false));
+  addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && sheetOpen()) panel()?.removeAttribute('open');
+  });
+
+  // Dual price slider: drag to preview, release to apply.
+  function bindSliders() {
+    document.querySelectorAll<HTMLElement>('.fslider').forEach((box) => {
+      if (box.dataset.bound) return;
+      box.dataset.bound = '1';
+      const [a, b] = box.querySelectorAll<HTMLInputElement>('input[type=range]');
+      const form = box.closest('form') as HTMLFormElement;
+      const minField = form.querySelector<HTMLInputElement>('input[name=min]')!;
+      const maxField = form.querySelector<HTMLInputElement>('input[name=max]')!;
+      const lo = Number(a.min);
+      const hi = Number(a.max);
+      const paint = () => {
+        if (Number(a.value) > Number(b.value)) [a.value, b.value] = [b.value, a.value];
+        const p = (v: string) => ((Number(v) - lo) / (hi - lo || 1)) * 100;
+        box.style.setProperty('--a', p(a.value) + '%');
+        box.style.setProperty('--b', p(b.value) + '%');
+        minField.value = Number(a.value) > lo ? a.value : '';
+        maxField.value = Number(b.value) < hi ? b.value : '';
+      };
+      a.addEventListener('input', paint);
+      b.addEventListener('input', paint);
+      const apply = () => go(formUrl(form));
+      a.addEventListener('change', apply);
+      b.addEventListener('change', apply);
+    });
+  }
+  bindSliders();
+  if (phone.matches) panel()?.removeAttribute('open');
+  // Back on a wide screen the panel is a sidebar again, always open.
+  phone.addEventListener('change', () => (phone.matches ? panel()?.removeAttribute('open') : panel()?.setAttribute('open', '')));
+</script>

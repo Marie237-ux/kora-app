@@ -28,7 +28,8 @@ ENV LOG_CHANNEL=stderr \
 # Set these to false (Render > kora-api > Environment) before the real launch.
 ENV KORA_DEMO=true \
     KORA_DEMO_REMOTE=true \
-    KORA_DEMO_SEED=true
+    KORA_DEMO_SEED=true \
+    KORA_WHATSAPP_NUMBER=237690219242
 
 # Render gives the port in $PORT and the public address in $RENDER_EXTERNAL_URL. Migrations run on every start.
 # With KORA_DEMO_SEED=true the demo catalogue (shops, products, images, CMS pages) is reloaded on each start:

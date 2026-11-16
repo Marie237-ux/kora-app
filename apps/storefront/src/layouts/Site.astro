@@ -2,6 +2,8 @@
 import '../styles/site.css';
 import { createHash } from 'node:crypto';
 import Header from '../components/Header.tsx';
+import Fab from '../components/Fab.tsx';
+import SaveSheet from '../components/SaveSheet.tsx';
 import { copy, type Locale } from '../lib/copy';
 import { api, safe } from '../lib/server';
 interface Props {
@@ -15,7 +17,6 @@ const { locale, title, description, active = '', query = '' } = Astro.props;
 const c = copy(locale);
 const path = Astro.url.pathname;
 const origin = import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321';
-const demo = import.meta.env.PUBLIC_KORA_DEMO !== 'false';
 // Light is the default. Dark only applies when the visitor chose it; the system setting is not followed.
 const themeScript =
   "(()=>{try{var t=localStorage.getItem('kora.theme');document.documentElement.dataset.theme=t==='dark'?'dark':'light'}catch(e){}})();";
@@ -32,13 +33,23 @@ for (const script of [themeScript, loaderStart, loaderScript, reveal]) {
 }
 Astro.response.headers.set('X-Content-Type-Options', 'nosniff');
 Astro.response.headers.set('Referrer-Policy', 'same-origin');
+// Main navigation: home, our catalogue (aisles menu), our shops (shops menu), inspirations (shared boards, spec §11)
+// and "More" (help, request a product, become a partner).
 const links = [
-  { href: '/' + locale + '/shops', label: c.shops, key: 'shops' },
-  { href: '/' + locale + '/catalogue', label: c.catalogue, key: 'catalogue' },
+  { href: '/' + locale, label: c.home, key: 'home' },
+  { href: '/' + locale + '/catalogue', label: c.ourCatalogue, key: 'catalogue' },
+  { href: '/' + locale + '/shops', label: c.ourShopsNav, key: 'shops' },
+  { href: '/' + locale + '/inspirations', label: c.inspirations, key: 'inspirations' },
+];
+const utility = [
+  { href: '/' + locale + '/help', label: c.helpContact, key: 'help' },
   { href: '/' + locale + '/request-product', label: c.request, key: 'request' },
+  { href: '/' + locale + '/partners', label: c.partners, key: 'partners' },
 ];
 const year = new Date().getFullYear();
 const aisles = (await safe(api(locale).categories(), { data: [] })).value.data.map((a) => ({ slug: a.slug, name: a.name }));
+const whatsapp = (await safe(api(locale).request<{ data: { whatsapp: string | null } }>('/api/v1/content/contact'), { data: { whatsapp: null } })).value.data.whatsapp;
+const shopMenu = (await safe(api(locale).shops(), { data: [] })).value.data.map((s) => ({ slug: s.slug, name: s.name, place: s.district ?? s.city, avatar: s.avatar ?? null }));
 ---
 
 <!doctype html>
@@ -65,11 +76,12 @@ const aisles = (await safe(api(locale).categories(), { data: [] })).value.data.m
       </div>
     </div>
     <a class="skip-link" href="#main">{c.skip}</a>
-    {demo && <div class="demo-strip">{c.demo}</div>}
-    <Header client:load locale={locale} links={links} aisles={aisles} active={active} query={query} />
+    <Header client:load locale={locale} links={links} utility={utility} aisles={aisles} shops={shopMenu} active={active} query={query} />
     <main id="main">
       <slot />
     </main>
+    <Fab client:idle locale={locale} aisles={aisles} whatsapp={whatsapp} />
+    <SaveSheet client:idle locale={locale} />
     <footer class="site-footer">
       <div class="wrap">
         <div class="final">

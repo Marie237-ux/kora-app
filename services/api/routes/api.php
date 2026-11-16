@@ -42,6 +42,10 @@ Route::prefix('v1')->group(function () {
     Route::get('shops', [CatalogueController::class, 'shops']);
     Route::get('categories', [CatalogueController::class, 'categories']);
     Route::get('shops/{slug}', [CatalogueController::class, 'shop']);
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('shops-liked', [CatalogueController::class, 'likedShops']);
+        Route::post('shops/{slug}/like', [CatalogueController::class, 'toggleShopLike'])->middleware('throttle:60,1');
+    });
     Route::get('catalogue/resolve/{entity}/{slug}', [CatalogueController::class, 'resolve'])->whereIn('entity', [
         'shops',
         'categories',

@@ -80,6 +80,13 @@ final class DemoStorefront extends Command
                 DB::table('media_assets')->where('id', $asset['id'])->update(['is_public' => true, 'rights_confirmed_at' => $now]);
                 $avatar = '/api/v1/media/'.$asset['id'].'/public';
             }
+            // Cover photo (wide image at the top of the shop page), same media rules as the profile photo.
+            $cover = null;
+            if (isset($s['cover']) && is_file($base.'/'.$s['cover'])) {
+                $asset = $media->upload(new UploadedFile($base.'/'.$s['cover'], basename($s['cover']), null, null, true), ['fr' => $s['name'], 'en' => $s['name']], $actor);
+                DB::table('media_assets')->where('id', $asset['id'])->update(['is_public' => true, 'rights_confirmed_at' => $now]);
+                $cover = '/api/v1/media/'.$asset['id'].'/public';
+            }
             DB::table('shops')->insert([
                 'id' => $shop,
                 'supplier_id' => $supplier,
@@ -89,6 +96,7 @@ final class DemoStorefront extends Command
                 'city' => $s['city'] ?? 'Douala',
                 'district' => $s['district'] ?? null,
                 'avatar_path' => $avatar,
+                'cover_path' => $cover,
                 'published' => true,
                 'status' => 'published',
                 'published_version' => 1,
@@ -217,7 +225,7 @@ final class DemoStorefront extends Command
                 $blocks[] = $block;
             }
             $cms = app(Cms::class);
-            $titles = ['home' => ['fr' => 'Accueil', 'en' => 'Home'], 'catalogue' => ['fr' => 'Catalogue', 'en' => 'Catalogue'], 'product' => ['fr' => 'Fiche produit', 'en' => 'Product page']];
+            $titles = ['home' => ['fr' => 'Accueil', 'en' => 'Home'], 'catalogue' => ['fr' => 'Catalogue', 'en' => 'Catalogue'], 'product' => ['fr' => 'Fiche produit', 'en' => 'Product page'], 'shops' => ['fr' => 'Nos boutiques', 'en' => 'Our shops']];
             $draft = $cms->saveDraft('page', $pageSlug, ['title' => $titles[$pageSlug] ?? ['fr' => $pageSlug, 'en' => $pageSlug], 'content' => ['blocks' => $blocks]], $actor);
             $cms->publish($draft['id'], [], $actor);
         }
@@ -260,7 +268,7 @@ final class DemoStorefront extends Command
         DB::transaction(function () {
             $supplier = DB::table('suppliers')->where('name', self::SUPPLIER)->value('id');
             $shops = DB::table('shops')->where('supplier_id', $supplier)->pluck('id');
-            $avatars = DB::table('shops')->whereIn('id', $shops)->pluck('avatar_path');
+            $avatars = DB::table('shops')->whereIn('id', $shops)->pluck('avatar_path')->merge(DB::table('shops')->whereIn('id', $shops)->pluck('cover_path'))->filter();
             $offers = DB::table('offers')->whereIn('shop_id', $shops)->get(['id', 'variant_id', 'image_path']);
             $variants = $offers->pluck('variant_id');
             $products = DB::table('variants')->whereIn('id', $variants)->pluck('product_id');

@@ -9672,6 +9672,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/content/contact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Raccourcis de contact publics (WhatsApp, téléphone, e-mail) */
+        get: operations["get_api_v1_content_contact"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/boards/favorites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Offres dans les favoris du membre */
+        get: operations["get_api_v1_boards_favorites"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/boards/favorites/toggle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ajouter une offre aux favoris, ou l’en retirer */
+        post: operations["post_api_v1_boards_favorites_toggle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shops-liked": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Boutiques aimées par le membre */
+        get: operations["get_api_v1_shops_liked"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shops/{slug}/like": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Aimer une boutique, ou retirer le cœur */
+        post: operations["post_api_v1_shops_slug_like"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -9694,6 +9779,8 @@ export interface components {
             district: string | null;
             /** @description Photo de profil de la boutique (chemin média public), sinon null. */
             avatar: string | null;
+            /** @description Photo de couverture de la boutique (chemin média public), sinon null. */
+            cover: string | null;
         };
         Offer: {
             id: string;
@@ -9954,6 +10041,7 @@ export interface components {
             bulk_unit?: ("carton" | "lot" | "boite" | "sac" | "palette") | null;
             bulk_unit_size?: number | null;
             bulk_min_units?: number | null;
+            cover_path?: string | null;
         };
         CatalogueRecord: {
             /** Format: uuid */
@@ -11123,6 +11211,8 @@ export interface components {
             pin_count: number;
             /** Format: date-time */
             updated_at: string;
+            /** @description Tableau « Mes favoris » du membre (le cœur sur les produits). */
+            is_favorites: boolean;
         };
         PublicBoardSummary: {
             /** Format: uuid */
@@ -16080,6 +16170,26 @@ export interface components {
                 }[];
             }[];
         };
+        ShopListing: {
+            id: string;
+            slug: string;
+            name: string;
+            description: string;
+            city: string;
+            district: string | null;
+            /** @description Photo de profil de la boutique (chemin média public), sinon null. */
+            avatar: string | null;
+            /** @description Photo de couverture de la boutique (chemin média public), sinon null. */
+            cover: string | null;
+            /** @description Produits publiés (une fiche par produit). */
+            product_count: number;
+            /** @description Produits en promotion en ce moment. */
+            on_sale_count: number;
+            aisles: {
+                slug: string;
+                name: string;
+            }[];
+        };
     };
     responses: {
         /** @description Unauthorized */
@@ -16250,7 +16360,24 @@ export interface operations {
     };
     get_api_v1_shops: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Recherche : nom, identifiant, quartier, ville, spécialité. */
+                q?: string;
+                /** @description Rayons (slugs séparés par des virgules). */
+                category?: string;
+                /** @description Quartiers (séparés par des virgules). */
+                district?: string;
+                /** @description Villes (séparées par des virgules). */
+                city?: string;
+                /** @description Seulement les boutiques avec des promotions en cours. */
+                on_sale?: boolean;
+                /** @description Tri. */
+                sort?: "name" | "products" | "deals" | "newest";
+                /** @description Page (avec per_page). */
+                page?: number;
+                /** @description Boutiques par page ; sans lui, toutes les boutiques. */
+                per_page?: "12" | "24" | "48";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -16264,7 +16391,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        data: components["schemas"]["Shop"][];
+                        data: components["schemas"]["ShopListing"][];
+                        meta: {
+                            total: number;
+                            page: number;
+                            last_page: number;
+                            facets: {
+                                categories: {
+                                    value: string;
+                                    label: string;
+                                    count: number;
+                                }[];
+                                districts: {
+                                    value: string;
+                                    label: string;
+                                    count: number;
+                                }[];
+                                cities: {
+                                    value: string;
+                                    label: string;
+                                    count: number;
+                                }[];
+                                on_sale: number;
+                            };
+                        };
                     };
                 };
             };
@@ -50480,6 +50630,8 @@ export interface operations {
             query?: {
                 q?: string;
                 category?: string;
+                /** @description Slug(s) de boutique, séparés par des virgules. */
+                shop?: string;
             };
             header?: never;
             path?: never;
@@ -50499,6 +50651,183 @@ export interface operations {
                 };
             };
             422: components["responses"]["ValidationError"];
+        };
+    };
+    get_api_v1_content_contact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Contact */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Lien https WhatsApp, ou null si aucun numéro. */
+                            whatsapp: string | null;
+                            phone: string | null;
+                            email: string | null;
+                        };
+                    };
+                };
+            };
+        };
+    };
+    get_api_v1_boards_favorites: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Favoris */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            offer_ids: string[];
+                        };
+                    };
+                };
+            };
+            /** @description Non connecté */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    post_api_v1_boards_favorites_toggle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    offer_id: string;
+                };
+            };
+        };
+        responses: {
+            /** @description État du cœur */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            favorite: boolean;
+                            /** Format: uuid */
+                            board_id: string;
+                        };
+                    };
+                };
+            };
+            /** @description Non connecté */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Offre indisponible */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_api_v1_shops_liked: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Boutiques aimées */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            shop_ids: string[];
+                        };
+                    };
+                };
+            };
+            /** @description Non connecté */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    post_api_v1_shops_slug_like: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description État du cœur */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            liked: boolean;
+                            shop_id: string;
+                        };
+                    };
+                };
+            };
+            /** @description Non connecté */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Boutique introuvable */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
 }

@@ -312,6 +312,34 @@ final class Cms
             ->all();
     }
 
+    /**
+     * Public contact shortcuts for the storefront's floating buttons: the WhatsApp link set in the site settings
+     * (social network "whatsapp", edited in the back office), otherwise the configured business number; null when
+     * neither exists, so no button is shown.
+     */
+    public function contact(): array
+    {
+        $settings = $this->effective('settings', 'site');
+        $site = $settings ? json_decode($settings->content, true) : [];
+        $whatsapp = null;
+        foreach ($site['social'] ?? [] as $item) {
+            if (strtolower((string) ($item['network'] ?? '')) === 'whatsapp' && str_starts_with((string) ($item['url'] ?? ''), 'https://')) {
+                $whatsapp = $item['url'];
+                break;
+            }
+        }
+        $number = preg_replace('/\D+/', '', (string) config('kora.whatsapp_number'));
+        if ($whatsapp === null && $number !== '') {
+            $whatsapp = 'https://wa.me/'.$number;
+        }
+
+        return [
+            'whatsapp' => $whatsapp,
+            'phone' => ($site['company']['phone'] ?? '') ?: null,
+            'email' => ($site['company']['email'] ?? '') ?: null,
+        ];
+    }
+
     public function revision(): array
     {
         $now = now();

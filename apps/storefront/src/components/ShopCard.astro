@@ -1,0 +1,94 @@
+---
+/**
+ * Shop card, the same on the home page and on "Our shops": cover photo (back office) with the deals badge and a heart
+ * to like the shop, profile photo, name with the verified badge, @handle · district, description, the shop's aisles,
+ * product count and "Visit the shop". Data comes from /api/v1/shops.
+ */
+import { copy, type Locale } from '../lib/copy';
+export type ShopListing = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  city: string;
+  district: string | null;
+  avatar: string | null;
+  cover: string | null;
+  product_count: number;
+  on_sale_count: number;
+  aisles: { slug: string; name: string }[];
+};
+interface Props {
+  shop: ShopListing;
+  locale: Locale;
+  /** Text chosen in the back office for this card (home page); otherwise the shop's description. */
+  text?: string;
+  class?: string;
+}
+const { shop: s, locale, text, class: extra = '' } = Astro.props;
+const c = copy(locale);
+const href = '/' + locale + '/shops/' + s.slug;
+---
+
+<article class={'vendor shop-card ' + extra}>
+  <a class={'vendor-cover' + (s.cover ? ' has-photo' : '')} href={href} tabindex="-1" aria-hidden="true">
+    {s.cover && <img src={s.cover} alt="" loading="lazy" decoding="async" />}
+  </a>
+  {s.on_sale_count > 0 && <span class="shop-deals-badge">{s.on_sale_count} {c.onSaleShort}</span>}
+  <button type="button" class="save-btn shop-like" data-like-shop={s.slug} data-like-id={s.id} data-save-name={s.name} aria-pressed="false" aria-label={c.likeShop + ' — ' + s.name}>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.2s-7.4-4.5-9.1-9.2C1.7 7.6 4 4.4 7.3 4.4c2 0 3.6 1.1 4.7 2.8 1.1-1.7 2.7-2.8 4.7-2.8 3.3 0 5.6 3.2 4.4 6.6-1.7 4.7-9.1 9.2-9.1 9.2Z" /></svg>
+  </button>
+  <div class="vendor-body">
+    <span class="vendor-avatar" aria-hidden="true">
+      {s.avatar ? <img src={s.avatar} alt="" loading="lazy" decoding="async" /> : s.name.slice(0, 1)}
+    </span>
+    <h3>
+      <a href={href}>{s.name}</a>
+      <span class="vendor-badge" role="img" aria-label={c.verified}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.5 12.3 3.6 3.6 7.4-7.6" /></svg></span>
+    </h3>
+    <span class="vendor-handle">@{s.slug}{s.district && <> · {s.district}</>}</span>
+    <p>{text || s.description}</p>
+    {s.aisles.length > 0 && (
+      <div class="shop-aisles-box">
+        <ul class="shop-aisles" data-aisles>
+          {s.aisles.map((a) => <li><a href={'/' + locale + '/shops/' + s.slug + '?category=' + a.slug}>{a.name}</a></li>)}
+        </ul>
+        <button type="button" class="rv-more-link shop-aisles-more" data-aisles-more data-less={c.seeLess} hidden>{c.seeMore}</button>
+      </div>
+    )}
+    <div class="vendor-foot">
+      <span>{s.product_count} {s.product_count > 1 ? c.productsCount : c.productOne}</span>
+      <a class="vendor-cta" href={href}>{c.visitShop} <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9" /></svg></a>
+    </div>
+  </div>
+</article>
+
+<script>
+  // Aisles: two lines at most; "See more" appears only when some are hidden, like "Read more" on reviews.
+  function measure() {
+    document.querySelectorAll<HTMLElement>('[data-aisles]').forEach((list) => {
+      const more = list.parentElement?.querySelector<HTMLButtonElement>('[data-aisles-more]');
+      const chip = list.querySelector<HTMLElement>('li');
+      if (chip) list.style.setProperty('--two-lines', chip.offsetHeight * 2 + 6 + 'px');
+      if (!more || list.classList.contains('open')) return;
+      more.hidden = list.scrollHeight <= list.clientHeight + 1;
+    });
+  }
+  document.addEventListener('click', (e) => {
+    const more = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-aisles-more]');
+    if (!more) return;
+    const list = more.parentElement?.querySelector<HTMLElement>('[data-aisles]');
+    if (!list) return;
+    const open = list.classList.toggle('open');
+    if (!more.dataset.more) more.dataset.more = more.textContent ?? '';
+    more.textContent = open ? more.dataset.less ?? '' : more.dataset.more;
+  });
+  let raf = 0;
+  const later = () => {
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(measure);
+  };
+  addEventListener('resize', later);
+  new MutationObserver(later).observe(document.body, { childList: true, subtree: true });
+  measure();
+</script>

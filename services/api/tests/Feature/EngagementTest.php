@@ -53,6 +53,16 @@ final class EngagementTest extends TestCase
             ])
             ->assertCreated()
             ->assertJsonPath('data.photos', 1);
+        // 1 to 3 photos per review: a fourth one is refused.
+        foreach ([2, 3] as $n) {
+            $this->withHeader('Idempotency-Key', (string) Str::uuid())
+                ->post('/api/v1/account/reviews/'.$mine['id'].'/photos', ['file' => UploadedFile::fake()->image('box'.$n.'.png', 120, 90)])
+                ->assertCreated()
+                ->assertJsonPath('data.photos', $n);
+        }
+        $this->withHeader('Idempotency-Key', (string) Str::uuid())
+            ->post('/api/v1/account/reviews/'.$mine['id'].'/photos', ['file' => UploadedFile::fake()->image('box4.png', 120, 90)])
+            ->assertUnprocessable();
         $product = DB::table('product_reviews')->value('product_id');
         $this->getJson('/api/v1/products/'.$product.'/reviews')->assertJsonPath('data.summary.count', 0);
 
@@ -62,6 +72,12 @@ final class EngagementTest extends TestCase
             'version' => $staff['version'],
             'decision' => 'reject',
             'reason' => 'negative',
+        ])->assertUnprocessable();
+        // No approved photo: the review cannot be published.
+        $this->op('POST', 'reviews/'.$staff['id'].'/moderation', [
+            'version' => $staff['version'],
+            'decision' => 'publish',
+            'approved_photos' => [],
         ])->assertUnprocessable();
         $staff = $this->op('POST', 'reviews/'.$staff['id'].'/moderation', [
             'version' => $staff['version'],

@@ -7,13 +7,14 @@ import { ArrowRight, BagIcon, CheckIcon, CloseIcon, GridIcon, HomeIcon, MenuIcon
 
 type Theme = 'light' | 'dark';
 type Link = { href: string; label: string; key: string };
+type ShopItem = { slug: string; name: string; place: string; avatar: string | null };
 export type Aisle = { slug: string; name: string };
 
 /**
  * Site header: logo, main navigation, search sheet, account, cart drawer, language and theme.
  * On phones: logo + menu at the top, and a floating tab bar at the bottom (home, catalogue, search, cart, account).
  */
-export default function Header({ locale, links, aisles = [], active = '', query = '' }: { locale: Locale; links: Link[]; aisles?: Aisle[]; active?: string; query?: string }) {
+export default function Header({ locale, links, utility = [], aisles = [], shops = [], active = '', query = '' }: { locale: Locale; links: Link[]; utility?: Link[]; aisles?: Aisle[]; shops?: ShopItem[]; active?: string; query?: string }) {
   const c = copy(locale);
   const [cart, setCart] = useState<Cart | null>(null);
   const [drawer, setDrawer] = useState(false);
@@ -147,11 +148,59 @@ export default function Header({ locale, links, aisles = [], active = '', query 
             <img src="/brand/logo-ink.png" alt="KORA" width="152" height="70" />
           </a>
           <nav className="main-nav" aria-label={c.menu}>
-            {links.map((l) => (
-              <a key={l.key} href={l.href} aria-current={active === l.key ? 'page' : undefined}>
-                {l.label}
-              </a>
-            ))}
+            {links.map((l) => {
+              const menu = l.key === 'catalogue' && aisles.length > 0 ? 'aisles' : l.key === 'shops' && shops.length > 0 ? 'shops' : null;
+              if (!menu) {
+                return (
+                  <a key={l.key} href={l.href} aria-current={active === l.key ? 'page' : undefined}>
+                    {l.label}
+                  </a>
+                );
+              }
+              return (
+                <div key={l.key} className="nav-item">
+                  <a href={l.href} aria-current={active === l.key ? 'page' : undefined} aria-haspopup="true">
+                    {l.label}<i className="nav-caret" aria-hidden="true" />
+                  </a>
+                  <div className={'nav-menu ' + menu}>
+                    {menu === 'aisles' ? (
+                      <>
+                        <p className="nav-menu-title">{c.browseAisles}</p>
+                        <ul className="nav-aisles">
+                          {aisles.map((a) => <li key={a.slug}><a href={home + '/catalogue?category=' + a.slug}>{a.name}</a></li>)}
+                        </ul>
+                        <a className="nav-menu-all" href={l.href}>{c.allCatalogue} →</a>
+                      </>
+                    ) : (
+                      <>
+                        <p className="nav-menu-title">{c.ourShopsNav}</p>
+                        <ul className="nav-shops">
+                          {shops.map((s) => (
+                            <li key={s.slug}>
+                              <a href={home + '/shops/' + s.slug}>
+                                <span className="nav-shop-av" aria-hidden="true">{s.avatar ? <img src={s.avatar} alt="" loading="lazy" /> : s.name.slice(0, 1)}</span>
+                                <span><strong>{s.name}</strong><small>{s.place}</small></span>
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                        <a className="nav-menu-all" href={l.href}>{c.allShops} →</a>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {utility.length > 0 && (
+              <div className="nav-item">
+                <button type="button" className="nav-more" aria-haspopup="true">{c.moreNav}<i className="nav-caret" aria-hidden="true" /></button>
+                <div className="nav-menu more">
+                  <ul className="nav-more-list">
+                    {utility.map((u) => <li key={u.key}><a href={u.href} aria-current={active === u.key ? 'page' : undefined}>{u.label}</a></li>)}
+                  </ul>
+                </div>
+              </div>
+            )}
           </nav>
           <div className="header-tools">
             <button type="button" className="tool desk" aria-expanded={search} aria-controls="site-search" onClick={openSearch}>
@@ -191,7 +240,8 @@ export default function Header({ locale, links, aisles = [], active = '', query 
               {menu ? <CloseIcon /> : <MenuIcon />}
             </button>
           </div>
-          <nav className="mobile-nav" id="mobile-nav" data-open={menu} aria-label={c.menu} hidden={!menu} style={{ top: menuTop }}>
+          <nav className="mobile-nav" id="mobile-nav" data-open={menu} aria-label={c.menu} hidden={!menu} style={{ top: 0, paddingTop: menuTop + 4 }}>
+            <div className="mnav-scroll">
             <p className="mnav-kicker" style={{ '--i': 0 } as CSSProperties}>{c.menuKicker}</p>
             <ul className="mnav-main">
               {links.map((l, i) => (
@@ -212,7 +262,19 @@ export default function Header({ locale, links, aisles = [], active = '', query 
                 </li>
               ))}
             </ul>
-            <ul className="mnav-main mnav-settings" style={{ '--i': links.length + 1 } as CSSProperties}>
+            {utility.length > 0 && (
+              <>
+                <p className="mnav-kicker mnav-kicker-sub" style={{ '--i': links.length + 1 } as CSSProperties}>{c.servicesNav}</p>
+                <ul className="mnav-main mnav-sub">
+                  {utility.map((u, i) => (
+                    <li key={u.key} style={{ '--i': links.length + 2 + i } as CSSProperties}>
+                      <a href={u.href} aria-current={active === u.key ? 'page' : undefined}>{u.label}</a>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            <ul className="mnav-main mnav-settings" style={{ '--i': links.length + 2 } as CSSProperties}>
               <li>
                 <div className="mnav-row">
                   <span>{c.languageLabel}</span>
@@ -229,6 +291,7 @@ export default function Header({ locale, links, aisles = [], active = '', query 
                 </button>
               </li>
             </ul>
+            </div>
             <div className="mnav-actions" style={{ '--i': links.length + 2 } as CSSProperties}>
               <a className="btn btn-accent mnav-cta" href={home + '/catalogue'}>{c.startShopping} <ArrowRight /></a>
             </div>

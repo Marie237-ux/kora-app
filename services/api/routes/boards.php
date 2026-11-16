@@ -15,6 +15,8 @@ Route::prefix('v1')->group(function () {
         ->middleware('throttle:60,1');
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('boards', [BoardsController::class, 'index']);
+        Route::get('boards/favorites', [BoardsController::class, 'favorites']);
+        Route::post('boards/favorites/toggle', [BoardsController::class, 'toggleFavorite'])->middleware('throttle:60,1');
         Route::post('boards', [BoardsController::class, 'create'])->middleware('throttle:20,1');
         Route::get('board-invitations/{token}', [BoardMembersController::class, 'preview'])
             ->where('token', '[a-f0-9]{64}')

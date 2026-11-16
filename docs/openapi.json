@@ -293,17 +293,123 @@
               "application/json": {
                 "schema": {
                   "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
                   "properties": {
                     "data": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Shop"
+                        "$ref": "#/components/schemas/ShopListing"
                       }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "required": [
+                        "total",
+                        "page",
+                        "last_page",
+                        "facets"
+                      ],
+                      "properties": {
+                        "total": {
+                          "type": "integer"
+                        },
+                        "page": {
+                          "type": "integer"
+                        },
+                        "last_page": {
+                          "type": "integer"
+                        },
+                        "facets": {
+                          "type": "object",
+                          "required": [
+                            "categories",
+                            "districts",
+                            "cities",
+                            "on_sale"
+                          ],
+                          "properties": {
+                            "categories": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "value",
+                                  "label",
+                                  "count"
+                                ],
+                                "properties": {
+                                  "value": {
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "count": {
+                                    "type": "integer"
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            },
+                            "districts": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "value",
+                                  "label",
+                                  "count"
+                                ],
+                                "properties": {
+                                  "value": {
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "count": {
+                                    "type": "integer"
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            },
+                            "cities": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "required": [
+                                  "value",
+                                  "label",
+                                  "count"
+                                ],
+                                "properties": {
+                                  "value": {
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "count": {
+                                    "type": "integer"
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            },
+                            "on_sale": {
+                              "type": "integer"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "additionalProperties": false
                     }
                   },
-                  "required": [
-                    "data"
-                  ],
                   "additionalProperties": false
                 }
               }
@@ -318,7 +424,97 @@
           "422": {
             "$ref": "#/components/responses/ValidationError"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Recherche : nom, identifiant, quartier, ville, spécialité.",
+            "schema": {
+              "type": "string",
+              "maxLength": 80
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "description": "Rayons (slugs séparés par des virgules).",
+            "schema": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          {
+            "name": "district",
+            "in": "query",
+            "required": false,
+            "description": "Quartiers (séparés par des virgules).",
+            "schema": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          {
+            "name": "city",
+            "in": "query",
+            "required": false,
+            "description": "Villes (séparées par des virgules).",
+            "schema": {
+              "type": "string",
+              "maxLength": 500
+            }
+          },
+          {
+            "name": "on_sale",
+            "in": "query",
+            "required": false,
+            "description": "Seulement les boutiques avec des promotions en cours.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "Tri.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "name",
+                "products",
+                "deals",
+                "newest"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page (avec per_page).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "description": "Boutiques par page ; sans lui, toutes les boutiques.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "12",
+                "24",
+                "48"
+              ]
+            }
+          }
+        ]
       }
     },
     "/api/v1/categories": {
@@ -66799,6 +66995,16 @@
               "type": "string",
               "maxLength": 120
             }
+          },
+          {
+            "name": "shop",
+            "in": "query",
+            "required": false,
+            "description": "Slug(s) de boutique, séparés par des virgules.",
+            "schema": {
+              "type": "string",
+              "maxLength": 500
+            }
           }
         ],
         "responses": {
@@ -66823,6 +67029,304 @@
           },
           "422": {
             "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/api/v1/content/contact": {
+      "get": {
+        "operationId": "get_api_v1_content_contact",
+        "tags": [
+          "Content"
+        ],
+        "summary": "Raccourcis de contact publics (WhatsApp, téléphone, e-mail)",
+        "responses": {
+          "200": {
+            "description": "Contact",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "whatsapp",
+                        "phone",
+                        "email"
+                      ],
+                      "properties": {
+                        "whatsapp": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Lien https WhatsApp, ou null si aucun numéro."
+                        },
+                        "phone": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "email": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/boards/favorites": {
+      "get": {
+        "operationId": "get_api_v1_boards_favorites",
+        "tags": [
+          "Boards"
+        ],
+        "summary": "Offres dans les favoris du membre",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Favoris",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "offer_ids"
+                      ],
+                      "properties": {
+                        "offer_ids": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Non connecté"
+          }
+        }
+      }
+    },
+    "/api/v1/boards/favorites/toggle": {
+      "post": {
+        "operationId": "post_api_v1_boards_favorites_toggle",
+        "tags": [
+          "Boards"
+        ],
+        "summary": "Ajouter une offre aux favoris, ou l’en retirer",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "offer_id"
+                ],
+                "properties": {
+                  "offer_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "État du cœur",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "favorite",
+                        "board_id"
+                      ],
+                      "properties": {
+                        "favorite": {
+                          "type": "boolean"
+                        },
+                        "board_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Non connecté"
+          },
+          "422": {
+            "description": "Offre indisponible"
+          }
+        }
+      }
+    },
+    "/api/v1/shops-liked": {
+      "get": {
+        "operationId": "get_api_v1_shops_liked",
+        "tags": [
+          "Catalogue"
+        ],
+        "summary": "Boutiques aimées par le membre",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Boutiques aimées",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "shop_ids"
+                      ],
+                      "properties": {
+                        "shop_ids": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Non connecté"
+          }
+        }
+      }
+    },
+    "/api/v1/shops/{slug}/like": {
+      "post": {
+        "operationId": "post_api_v1_shops_slug_like",
+        "tags": [
+          "Catalogue"
+        ],
+        "summary": "Aimer une boutique, ou retirer le cœur",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "État du cœur",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "liked",
+                        "shop_id"
+                      ],
+                      "properties": {
+                        "liked": {
+                          "type": "boolean"
+                        },
+                        "shop_id": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Non connecté"
+          },
+          "404": {
+            "description": "Boutique introuvable"
           }
         }
       }
@@ -66903,6 +67407,17 @@
               }
             ],
             "description": "Photo de profil de la boutique (chemin média public), sinon null."
+          },
+          "cover": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Photo de couverture de la boutique (chemin média public), sinon null."
           }
         },
         "required": [
@@ -66912,7 +67427,8 @@
           "description",
           "city",
           "district",
-          "avatar"
+          "avatar",
+          "cover"
         ],
         "additionalProperties": false
       },
@@ -68216,6 +68732,16 @@
               {
                 "type": "integer",
                 "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cover_path": {
+            "anyOf": [
+              {
+                "type": "string"
               },
               {
                 "type": "null"
@@ -73553,6 +74079,10 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "is_favorites": {
+            "type": "boolean",
+            "description": "Tableau « Mes favoris » du membre (le cœur sur les produits)."
           }
         },
         "required": [
@@ -73564,7 +74094,8 @@
           "version",
           "role",
           "pin_count",
-          "updated_at"
+          "updated_at",
+          "is_favorites"
         ],
         "additionalProperties": false
       },
@@ -97033,6 +97564,99 @@
           "categories",
           "characteristics"
         ],
+        "additionalProperties": false
+      },
+      "ShopListing": {
+        "type": "object",
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "description",
+          "city",
+          "district",
+          "avatar",
+          "cover",
+          "product_count",
+          "on_sale_count",
+          "aisles"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "district": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "avatar": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Photo de profil de la boutique (chemin média public), sinon null."
+          },
+          "cover": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Photo de couverture de la boutique (chemin média public), sinon null."
+          },
+          "product_count": {
+            "type": "integer",
+            "description": "Produits publiés (une fiche par produit)."
+          },
+          "on_sale_count": {
+            "type": "integer",
+            "description": "Produits en promotion en ce moment."
+          },
+          "aisles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "slug",
+                "name"
+              ],
+              "properties": {
+                "slug": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
         "additionalProperties": false
       }
     },

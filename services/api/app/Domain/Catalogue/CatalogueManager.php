@@ -49,6 +49,7 @@ final class CatalogueManager
                 'city' => $row->city ?? 'Douala',
                 'district' => $row->district ?? null,
                 'avatar_path' => $row->avatar_path ?? null,
+                'cover_path' => $row->cover_path ?? null,
             ],
             'categories' => [
                 'parent_id' => $row->parent_id,
@@ -157,6 +158,7 @@ final class CatalogueManager
                         'city' => $data['city'] ?? 'Douala',
                         'district' => $data['district'] ?? null,
                         'avatar_path' => $data['avatar_path'] ?? null,
+                        'cover_path' => $data['cover_path'] ?? null,
                     ],
                     'categories' => [
                         'parent_id' => null,
@@ -326,6 +328,11 @@ final class CatalogueManager
         if ($avatar !== null && ! app(MediaLibrary::class)->approvedPath($avatar)) {
             $this->fail('avatar_path', 'IMAGE_REQUIRED');
         }
+        // Cover photo: optional, same rule (approved public image).
+        $cover = trim((string) ($data['cover_path'] ?? '')) ?: null;
+        if ($cover !== null && ! app(MediaLibrary::class)->approvedPath($cover)) {
+            $this->fail('cover_path', 'IMAGE_REQUIRED');
+        }
 
         return [
             'supplier_id' => $data['supplier_id'],
@@ -335,6 +342,7 @@ final class CatalogueManager
             'city' => trim((string) ($data['city'] ?? '')) ?: 'Douala',
             'district' => trim((string) ($data['district'] ?? '')) ?: null,
             'avatar_path' => $avatar,
+            'cover_path' => $cover,
             'published' => true,
             'status' => 'published',
         ];

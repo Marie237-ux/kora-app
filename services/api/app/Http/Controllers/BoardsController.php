@@ -44,6 +44,7 @@ final class BoardsController extends OperationalController
                 'title' => $b->title,
                 'description' => $b->description,
                 'kind' => $b->kind,
+                'is_favorites' => (bool) $b->is_favorites,
                 'visibility' => $b->visibility,
                 'version' => (int) $b->version,
                 'role' => $boards->role($b, $http->user()),
@@ -64,6 +65,18 @@ final class BoardsController extends OperationalController
         ]);
 
         return $this->command($http, 'board.create', $d, fn ($data) => $boards->create($data, $http->user()), 201);
+    }
+
+    public function favorites(Request $http, Boards $boards)
+    {
+        return ['data' => ['offer_ids' => $boards->favoriteOffers($http->user())]];
+    }
+
+    public function toggleFavorite(Request $http, Boards $boards)
+    {
+        $d = $http->validate(['offer_id' => ['required', 'uuid']]);
+
+        return ['data' => DB::transaction(fn () => $boards->toggleFavorite($d['offer_id'], $http->user()))];
     }
 
     public function show(Request $http, string $id, Boards $boards)

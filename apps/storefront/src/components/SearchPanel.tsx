@@ -178,6 +178,7 @@ export default function SearchPanel({ locale, open, onClose, query = '', aisles 
   return (
     <div className="sx" id="site-search" role="dialog" aria-modal="true" aria-label={c.search}>
       <div className="sx-inner">
+        <div className="sx-head">
         <div className="sx-top">
           <h2 className="sx-title">{c.searchOnKora}</h2>
           <button type="button" className="sx-cancel" onClick={onClose}>{c.cancel}</button>
@@ -224,6 +225,7 @@ export default function SearchPanel({ locale, open, onClose, query = '', aisles 
             />
           </label>
         </form>
+        </div>
 
         {photo ? (
           <div className="sx-body" aria-live="polite" aria-busy={photo.state === 'busy'}>

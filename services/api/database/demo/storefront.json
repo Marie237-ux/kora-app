@@ -2276,7 +2276,8 @@
       ],
       "city": "Douala",
       "district": "Akwa",
-      "avatar": "images/profil-akwa-style.jpg"
+      "avatar": "images/profil-akwa-style.jpg",
+      "cover": "images/couverture-akwa-style.jpg"
     },
     {
       "slug": "bonapriso-tech",
@@ -2471,7 +2472,8 @@
       ],
       "city": "Douala",
       "district": "Bonapriso",
-      "avatar": "images/profil-bonapriso-tech.jpg"
+      "avatar": "images/profil-bonapriso-tech.jpg",
+      "cover": "images/couverture-bonapriso-tech.jpg"
     },
     {
       "slug": "deido-maison",
@@ -2655,7 +2657,8 @@
       ],
       "city": "Douala",
       "district": "Deïdo",
-      "avatar": "images/profil-deido-maison.jpg"
+      "avatar": "images/profil-deido-maison.jpg",
+      "cover": "images/couverture-deido-maison.jpg"
     },
     {
       "slug": "makepe-beaute",
@@ -2910,7 +2913,8 @@
       ],
       "city": "Douala",
       "district": "Makepe",
-      "avatar": "images/profil-makepe-beaute.jpg"
+      "avatar": "images/profil-makepe-beaute.jpg",
+      "cover": "images/couverture-makepe-beaute.jpg"
     }
   ],
   "scenes": [
@@ -3182,6 +3186,21 @@
           "en": "Everything to know before you buy: price, warranty, delivery and verified customer reviews."
         },
         "link": "/catalogue"
+      }
+    ],
+    "shops": [
+      {
+        "type": "banner",
+        "image_file": "images/boutiques-entete.jpg",
+        "alt": {
+          "fr": "Une cliente souriante qui montre ses sacs de courses",
+          "en": "A smiling customer showing her shopping bags"
+        },
+        "text": {
+          "fr": "Nos boutiques. Les commerçants de Douala vérifiés par KORA.",
+          "en": "Our shops. Douala merchants checked by KORA."
+        },
+        "link": "/shops"
       }
     ]
   },

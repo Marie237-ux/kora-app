@@ -78,7 +78,7 @@ final class EngagementController extends OperationalController
             'version' => ['required', 'integer', 'min:1'],
             'decision' => ['required', 'in:publish,reject'],
             'reason' => ['required_if:decision,reject', 'nullable', 'in:'.implode(',', Reviews::REJECTIONS)],
-            'approved_photos' => ['nullable', 'array', 'max:4'],
+            'approved_photos' => ['nullable', 'array', 'max:3'],
             'approved_photos.*' => ['uuid'],
         ]);
 

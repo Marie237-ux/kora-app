@@ -202,6 +202,10 @@ const L = fr
       notBulk: 'Ce produit n’est pas proposé en gros pour l’instant.',
       notBulkText: 'Besoin d’une grande quantité ? Dites-nous ce qu’il vous faut : l’équipe interroge les boutiques et vous répond.',
       notBulkGo: 'Faire une demande',
+      notBulkAvail: 'Disponibilité',
+      notBulkAvailText: 'Pas proposé en gros pour l’instant',
+      notBulkNeed: 'Grande quantité',
+      notBulkAsk: 'Votre demande',
       districtSearch: 'Votre quartier, ex. Bonamoussadi',
       servedIn: (d: string, z: string) => 'Livré à ' + d + ' · ' + z,
       notServed: 'Ce quartier n’est pas encore desservi.',
@@ -338,6 +342,10 @@ const L = fr
       notBulk: 'This product is not sold in bulk yet.',
       notBulkText: 'Need a large quantity? Tell us what you need: the team asks the shops and gets back to you.',
       notBulkGo: 'Make a request',
+      notBulkAvail: 'Availability',
+      notBulkAvailText: 'Not sold in bulk yet',
+      notBulkNeed: 'Large quantity',
+      notBulkAsk: 'Your request',
       districtSearch: 'Your district, e.g. Bonamoussadi',
       servedIn: (d: string, z: string) => 'Delivered to ' + d + ' · ' + z,
       notServed: 'This district is not served yet.',
@@ -551,6 +559,7 @@ const L = fr
                 minimum={offer.minimum_quantity}
                 disabled={offer.availability === 'unavailable'}
               />
+              <button type="button" class="save-btn save-lg" data-save-offer={offer.id} data-save-follow data-save-name={offer.name} aria-pressed="false" aria-label={c.saveLabel + ' — ' + offer.name}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.2s-7.4-4.5-9.1-9.2C1.7 7.6 4 4.4 7.3 4.4c2 0 3.6 1.1 4.7 2.8 1.1-1.7 2.7-2.8 4.7-2.8 3.3 0 5.6 3.2 4.4 6.6-1.7 4.7-9.1 9.2-9.1 9.2Z" /></svg></button>
             </div>
 
             <dl class="pdp-meta">
@@ -719,10 +728,15 @@ const L = fr
                   </div>
                 </div>
               ) : (
-                <div class="rv-empty bk-none">
-                  <h3>{L.notBulk}</h3>
-                  <p>{L.notBulkText}</p>
-                  <a class="px-plan-go" href={home + '/request-product'}>{L.notBulkGo}</a>
+                <div class="px-plain bk-none">
+                  <section>
+                    <h3>{L.bulkTitle}</h3>
+                    <dl>
+                      <div><dt>{L.notBulkAvail}</dt><dd>{L.notBulkAvailText}</dd></div>
+                      <div><dt>{L.notBulkNeed}</dt><dd>{L.notBulkText}</dd></div>
+                      <div><dt>{L.notBulkAsk}</dt><dd><a class="bk-none-go" href={home + '/request-product'}>{L.notBulkGo} →</a></dd></div>
+                    </dl>
+                  </section>
                 </div>
               )}
             </div>

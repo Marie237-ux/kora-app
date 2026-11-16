@@ -7,6 +7,7 @@ use App\Domain\Catalogue\PublicCatalogue;
 use App\Domain\Search\TextSearch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class CatalogueController extends Controller
@@ -90,11 +91,11 @@ class CatalogueController extends Controller
                 ? $query->whereIn('products.category_id', $attributes->descendantIds($category->id))
                 : $query->whereRaw('1 = 0');
         }
-        if ($base) {
-            return [$query, $category, $searchTokens];
-        }
         if ($shops = self::list($input['shop'] ?? null)) {
             $query->whereIn('shops.slug', $shops);
+        }
+        if ($base) {
+            return [$query, $category, $searchTokens];
         }
         if ($cities = self::list($input['city'] ?? null)) {
             $query->whereIn('shops.city', $cities);
@@ -196,7 +197,8 @@ class CatalogueController extends Controller
      */
     public function facets(Request $request, PublicCatalogue $catalogue, CategoryAttributes $attributes)
     {
-        $input = $request->validate(['q' => ['nullable', 'string', 'max:150'], 'category' => ['nullable', 'string', 'max:120']]);
+        // "shop" scopes every count to one shop (its page shows the same filters as the catalogue).
+        $input = $request->validate(['q' => ['nullable', 'string', 'max:150'], 'category' => ['nullable', 'string', 'max:120'], 'shop' => ['nullable', 'string', 'max:500']]);
         $locale = app()->getLocale();
         [$query, $category] = $this->filtered($input, $attributes, $catalogue, true);
         $rows = $query->limit(5000)->get();
@@ -232,7 +234,7 @@ class CatalogueController extends Controller
         }
         $prices = $rows->pluck('selling_price')->map(fn ($p) => (int) $p);
         // Aisles that contain results for the search (counts ignore the aisle currently selected).
-        $aisleRows = ! empty($input['category']) ? $this->filtered(['q' => $input['q'] ?? null], $attributes, $catalogue, true)[0]->limit(5000)->get() : $rows;
+        $aisleRows = ! empty($input['category']) ? $this->filtered(['q' => $input['q'] ?? null, 'shop' => $input['shop'] ?? null], $attributes, $catalogue, true)[0]->limit(5000)->get() : $rows;
         $aisleNames = DB::table('categories')->pluck('name', 'slug');
         $aisles = $aisleRows->groupBy('category_slug')->map(fn ($g, $slug) => [
             'value' => (string) $slug,
@@ -291,15 +293,118 @@ class CatalogueController extends Controller
         ];
     }
 
-    public function shops()
+    /**
+     * Published shops with what they sell (product count, offers on sale, aisles), taken from their published offers.
+     * Without parameters: every shop by name (header menu, home). The "Our shops" page adds a search, aisles,
+     * districts, cities, "on sale", a sort and pages; each filter's counts ignore that filter's own selection.
+     */
+    public function shops(Request $request, PublicCatalogue $catalogue, CategoryAttributes $attributes)
     {
+        $in = $request->validate([
+            'q' => ['nullable', 'string', 'max:80'],
+            'category' => ['nullable', 'string', 'max:500'],
+            'district' => ['nullable', 'string', 'max:500'],
+            'city' => ['nullable', 'string', 'max:500'],
+            'on_sale' => ['nullable', 'boolean'],
+            'sort' => ['nullable', 'in:name,products,deals,newest'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'in:12,24,48'],
+        ]);
+        $locale = app()->getLocale();
+        $shops = DB::table('shops')
+            ->where('published', true)
+            ->orderBy('name')
+            ->get(['id', 'slug', 'name', 'description', 'city', 'district', 'avatar_path', 'cover_path', 'created_at']);
+        // One card per product and shop (a lipstick in five shades counts once), as in the catalogue.
+        $cards = $catalogue->query()->limit(20000)->get()->unique(fn ($r) => $r->product_id.'|'.$r->shop_id);
+        $byShop = $cards->groupBy('shop_id');
+        $names = DB::table('categories')->pluck('name', 'slug')->map(fn ($n) => json_decode((string) $n, true)[$locale] ?? '');
+        $stats = function ($shop) use ($byShop) {
+            $own = collect($byShop[$shop->id] ?? []);
+
+            return [
+                'products' => $own->count(),
+                'on_sale' => $own->filter(fn ($r) => (int) $r->regular_price > (int) $r->selling_price)->count(),
+                'aisles' => $own->pluck('category_slug')->filter()->unique()->sort()->values()->all(),
+            ];
+        };
+        $norm = fn (?string $v) => Str::lower(Str::ascii((string) $v));
+        $q = $norm(trim((string) ($in['q'] ?? '')));
+        $base = $shops
+            ->filter(fn ($s) => $q === '' || str_contains($norm(implode(' ', [$s->name, $s->slug, $s->district, $s->city, implode(' ', (array) json_decode((string) $s->description, true))])), $q))
+            ->map(fn ($s) => [$s, $stats($s)])
+            ->values();
+        $aisles = [];
+        foreach (self::list($in['category'] ?? null) as $slug) {
+            $category = $this->publishedRow('categories', $slug);
+            if ($category) {
+                $aisles = [...$aisles, ...DB::table('categories')->whereIn('id', $attributes->descendantIds($category->id))->pluck('slug')->all()];
+            }
+        }
+        $selected = ['category' => self::list($in['category'] ?? null), 'district' => self::list($in['district'] ?? null), 'city' => self::list($in['city'] ?? null)];
+        $passes = fn ($p, ?string $skip = null) => ($skip === 'district' || ! $selected['district'] || in_array($p[0]->district, $selected['district'], true))
+            && ($skip === 'city' || ! $selected['city'] || in_array($p[0]->city ?? 'Douala', $selected['city'], true))
+            && ($skip === 'category' || ! $selected['category'] || array_intersect($p[1]['aisles'], $aisles))
+            && ($skip === 'on_sale' || empty($in['on_sale']) || $p[1]['on_sale'] > 0);
+        $counts = fn (string $skip, callable $values) => $base->filter(fn ($p) => $passes($p, $skip))->flatMap(fn ($p) => array_filter((array) $values($p)))->countBy();
+        $toList = fn ($c, ?callable $label = null) => collect($c)
+            ->map(fn ($n, $k) => ['value' => (string) $k, 'label' => $label ? $label($k) : (string) $k, 'count' => $n])
+            ->sortBy('label')
+            ->values();
+        $result = $base->filter(fn ($p) => $passes($p))->values();
+        $result = match ($in['sort'] ?? 'name') {
+            'products' => $result->sortByDesc(fn ($p) => $p[1]['products'])->values(),
+            'deals' => $result->sortByDesc(fn ($p) => $p[1]['on_sale'])->values(),
+            'newest' => $result->sortByDesc(fn ($p) => (string) $p[0]->created_at)->values(),
+            default => $result,
+        };
+        $total = $result->count();
+        $per = (int) ($in['per_page'] ?? 0);
+        $last = $per ? max(1, (int) ceil($total / $per)) : 1;
+        $page = $per ? min($last, (int) ($in['page'] ?? 1)) : 1;
+
         return [
-            'data' => DB::table('shops')
-                ->where('published', true)
-                ->orderBy('name')
-                ->get(['id', 'slug', 'name', 'description', 'city', 'district', 'avatar_path'])
-                ->map(fn ($s) => $this->shopDto($s)),
+            'data' => ($per ? $result->slice(($page - 1) * $per, $per) : $result)->values()->map(fn ($p) => [
+                ...$this->shopDto($p[0]),
+                'product_count' => $p[1]['products'],
+                'on_sale_count' => $p[1]['on_sale'],
+                'aisles' => array_map(fn ($slug) => ['slug' => $slug, 'name' => $names[$slug] ?? $slug], $p[1]['aisles']),
+            ]),
+            'meta' => [
+                'total' => $total,
+                'page' => $page,
+                'last_page' => $last,
+                'facets' => [
+                    'categories' => $toList($counts('category', fn ($p) => $p[1]['aisles']), fn ($k) => $names[$k] ?? $k),
+                    'districts' => $toList($counts('district', fn ($p) => $p[0]->district)),
+                    'cities' => $toList($counts('city', fn ($p) => $p[0]->city ?? 'Douala')),
+                    'on_sale' => $base->filter(fn ($p) => $passes($p, 'on_sale') && $p[1]['on_sale'] > 0)->count(),
+                ],
+            ],
         ];
+    }
+
+    /** Shops the signed-in member likes (hearts on shop cards and shop pages). */
+    public function likedShops(Request $request)
+    {
+        return ['data' => ['shop_ids' => DB::table('shop_likes')->where('user_id', $request->user()->id)->pluck('shop_id')->all()]];
+    }
+
+    /** Heart on a shop: like it, or remove the like when it is already there. */
+    public function toggleShopLike(Request $request, string $slug)
+    {
+        $shop = $this->publishedRow('shops', $slug);
+        abort_unless($shop, 404);
+        $user = $request->user()->id;
+
+        return ['data' => DB::transaction(function () use ($shop, $user) {
+            $gone = DB::table('shop_likes')->where('user_id', $user)->where('shop_id', $shop->id)->delete();
+            if (! $gone) {
+                DB::table('shop_likes')->insert(['user_id' => $user, 'shop_id' => $shop->id, 'created_at' => now()]);
+            }
+
+            return ['liked' => ! $gone, 'shop_id' => $shop->id];
+        })];
     }
 
     public function shop(string $slug)
@@ -370,6 +475,7 @@ class CatalogueController extends Controller
             'city' => $shop->city ?? 'Douala',
             'district' => $shop->district ?? null,
             'avatar' => $shop->avatar_path ?? null,
+            'cover' => $shop->cover_path ?? null,
         ];
     }
 }

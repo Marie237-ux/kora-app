@@ -20,7 +20,7 @@ export const blankDraft = (entity: CatalogueEntity): CatalogueDraft => {
         private_details: { contact_name: '', email: '', phone: '', address: '', legal_name: '' },
       };
     case 'shops':
-      return { name: '', slug: '', supplier_id: '', description: { ...name }, city: 'Douala', district: null, avatar_path: null };
+      return { name: '', slug: '', supplier_id: '', description: { ...name }, city: 'Douala', district: null, avatar_path: null, cover_path: null };
     case 'categories':
       return { name: { ...name }, slug: '', parent_id: null, attributes: [] };
     case 'products':
@@ -218,6 +218,14 @@ export function CatalogueForm({
             user={user}
             value={draft.avatar_path ?? null}
             onChange={(value) => set('avatar_path', value)}
+          />
+          <h3>{c.cover_path}</h3>
+          <p className="muted">{c.cover_hint}</p>
+          <MediaPicker
+            locale={locale}
+            user={user}
+            value={draft.cover_path ?? null}
+            onChange={(value) => set('cover_path', value)}
           />
         </>
       )}

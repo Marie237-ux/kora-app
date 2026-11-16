@@ -32,6 +32,7 @@ final class CatalogueRules
                 'city' => ['nullable', 'string', 'max:80'],
                 'district' => ['nullable', 'string', 'max:120'],
                 'avatar_path' => ['nullable', 'string', 'max:200'],
+                'cover_path' => ['nullable', 'string', 'max:200'],
             ],
             'categories' => [
                 'parent_id' => ['nullable', 'uuid', 'exists:categories,id'],

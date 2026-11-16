@@ -1,40 +1,208 @@
 ---
-import Base from '../../../layouts/Base.astro';
-import { t } from '@kora/ui';
-import { createApi, type Locale, type Shop } from '@kora/api-client';
-const locale = Astro.params.locale as Locale;
-if (!['fr', 'en'].includes(locale)) return new Response(null, { status: 404 });
-const copy = t(locale);
-let shops: Shop[] = [];
-let failed = false;
-try {
-  shops = (
-    await createApi(import.meta.env.API_INTERNAL_URL || 'http://localhost:8000', locale).shops()
-  ).data;
-} catch {
-  failed = true;
-}
+/**
+ * Our shops. Same layout and behaviour as the catalogue: filters on the left (search, aisles, districts, cities, shops
+ * with deals), sort and page size above the results, removable active filters, pagination; everything is applied by
+ * the API (/api/v1/shops) with real counts and updates in place. Cards are the home page's shop cards, with the
+ * shop's cover photo, its aisles and a heart to like it.
+ */
+import Site from '../../../layouts/Site.astro';
+import CatalogueScript from '../../../components/CatalogueScript.astro';
+import ShopCard, { type ShopListing } from '../../../components/ShopCard.astro';
+import { copy } from '../../../lib/copy';
+import { api, localeOf, safe } from '../../../lib/server';
+const locale = localeOf(Astro.params.locale);
+if (!locale) return new Response(null, { status: 404 });
+const c = copy(locale);
+const k = api(locale);
+const home = '/' + locale;
+const basePath = home + '/shops';
+const url = Astro.url.searchParams;
+const q = (url.get('q') ?? '').slice(0, 80);
+const many = (key: string) => [...new Set(url.getAll(key).filter(Boolean))];
+const catsSel = many('category');
+const districtsSel = many('district');
+const citiesSel = many('city');
+const promo = url.get('promo') === '1';
+const sorts = ['name', 'products', 'deals', 'newest'];
+const sort = sorts.includes(url.get('sort') ?? '') ? (url.get('sort') as string) : 'name';
+const per = ['12', '24', '48'].includes(url.get('per') ?? '') ? (url.get('per') as string) : '12';
+const page = Math.max(1, Number.parseInt(url.get('page') ?? '1', 10) || 1);
+
+type Option = { value: string; label: string; count: number };
+type Listing = ShopListing;
+type Res = { data: Listing[]; meta: { total: number; page: number; last_page: number; facets: { categories: Option[]; districts: Option[]; cities: Option[]; on_sale: number } } };
+const query = new URLSearchParams();
+if (q) query.set('q', q);
+if (catsSel.length) query.set('category', catsSel.join(','));
+if (districtsSel.length) query.set('district', districtsSel.join(','));
+if (citiesSel.length) query.set('city', citiesSel.join(','));
+if (promo) query.set('on_sale', '1');
+query.set('sort', sort);
+query.set('per_page', per);
+query.set('page', String(page));
+const empty: Res = { data: [], meta: { total: 0, page: 1, last_page: 1, facets: { categories: [], districts: [], cities: [], on_sale: 0 } } };
+type CmsPage = { data: { page: { blocks: { type: string; media_id?: string }[] } | null; media: Record<string, string> } };
+const [res, cms] = await Promise.all([
+  safe(k.request<Res>('/api/v1/shops?' + query.toString()), empty),
+  safe(k.request<CmsPage>('/api/v1/content/pages/shops'), { data: { page: null, media: {} } } as CmsPage),
+]);
+// Header photo: the banner of the CMS page "shops" (back office → site pages → Our shops), like the catalogue.
+const headerBlock = cms.value.data.page?.blocks.find((b) => b.type === 'banner' && b.media_id);
+const headerImage = headerBlock?.media_id ? cms.value.data.media[headerBlock.media_id] ?? null : null;
+const shops = res.value.data;
+const meta = res.value.meta;
+const facets = meta.facets;
+
+const current = new URLSearchParams(url);
+current.delete('page');
+const link = (mutate: (p: URLSearchParams) => void) => {
+  const p = new URLSearchParams(current);
+  mutate(p);
+  const s = p.toString();
+  return basePath + (s ? '?' + s : '');
+};
+const without = (key: string, value?: string) =>
+  link((p) => {
+    const keep = value === undefined ? [] : p.getAll(key).filter((v) => v !== value);
+    p.delete(key);
+    keep.forEach((v) => p.append(key, v));
+  });
+const pageLink = (n: number) => link((p) => (n > 1 ? p.set('page', String(n)) : p.delete('page')));
+const pages = Array.from({ length: meta.last_page }, (_, i) => i + 1).filter((n) => n === 1 || n === meta.last_page || Math.abs(n - meta.page) <= 1);
+const label = (list: Option[], v: string) => list.find((o) => o.value === v)?.label ?? v;
+const active: { label: string; href: string }[] = [];
+if (q) active.push({ label: '« ' + q + ' »', href: without('q') });
+for (const v of catsSel) active.push({ label: label(facets.categories, v), href: without('category', v) });
+for (const v of districtsSel) active.push({ label: v, href: without('district', v) });
+for (const v of citiesSel) active.push({ label: v, href: without('city', v) });
+if (promo) active.push({ label: c.shopsWithDeals, href: without('promo') });
+const countLabel = (n: number) => n + ' ' + (n > 1 ? c.shopsWord : c.shopWord);
 ---
 
-<Base locale={locale} title={copy.shops}>
-  <section class="section" style="border-top:0">
-    <p class="eyebrow">Douala</p>
-    <h1>{copy.shopsTitle}</h1>
-    {failed ? (
-      <p class="error">{copy.dataUnavailable}</p>
-    ) : shops.length ? (
-      <div class="shop-grid">
-        {shops.map((shop) => (
-          <article class="shop-card">
-            <h2>
-              <a href={'/' + locale + '/shops/' + shop.slug}>{shop.name}</a>
-            </h2>
-            <p>{shop.description}</p>
-          </article>
-        ))}
+<Site locale={locale} title={c.ourShopsNav} active="shops">
+  <section class={'cat-hero shops-hero' + (headerImage ? ' has-photo' : '')}>
+    {headerImage && <img class="cat-photo" src={headerImage} alt="" decoding="async" fetchpriority="high" />}
+    <div class="wrap cat-hero-inner">
+      <div class="cat-hero-text">
+        <nav class="crumbs" aria-label={c.breadcrumb}>
+          <a href={home}>{c.home}</a><span aria-hidden="true">/</span><span aria-current="page">{c.ourShopsNav}</span>
+        </nav>
+        <h1>{q ? c.resultsFor + ' « ' + q + ' »' : c.ourShopsNav}</h1>
+        {!q && <p>{c.shopsIntro}</p>}
       </div>
-    ) : (
-      <p class="empty">{copy.shopsEmpty}</p>
-    )}
+    </div>
   </section>
-</Base>
+
+  <section class="wrap cat-body shops-layout" data-cat data-path={basePath} data-loading={c.updatingResults}>
+    <aside class="cat-filters" aria-label={c.filters}>
+      <details open data-key="panel">
+        <summary>
+          <span>{c.filters}</span>
+          {active.length > 0 && <span class="cat-count">{active.length}</span>}
+          {active.length > 0 && <a class="fclear" href={basePath}>{c.clearAll}</a>}
+          <span class="fclose" aria-hidden="true"></span>
+        </summary>
+        <form id="cat-form" class="cat-form" action={basePath} method="get">
+          <div class="cat-search" role="search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+            <label class="sr-only" for="shops-q">{c.search}</label>
+            <input id="shops-q" type="search" name="q" value={q} placeholder={c.shopsSearch} maxlength="80" />
+          </div>
+
+          {facets.categories.length > 0 && (
+            <details class="fgroup" open>
+              <summary>{c.categories}</summary>
+              <div class="fchips">{facets.categories.map((o) => <label><input type="checkbox" name="category" value={o.value} checked={catsSel.includes(o.value)} data-auto /><span>{o.label}<small>{o.count}</small></span></label>)}</div>
+            </details>
+          )}
+
+          <details class="fgroup" open>
+            <summary>{c.goodDeals}</summary>
+            <label class="fswitch"><input type="checkbox" name="promo" value="1" checked={promo} data-auto /><span>{c.shopsWithDeals}<small>{facets.on_sale}</small></span><b aria-hidden="true"><em></em></b></label>
+          </details>
+
+          {facets.districts.length > 0 && (
+            <details class="fgroup" open>
+              <summary>{c.district}</summary>
+              <div class="fchips">{facets.districts.map((o) => <label><input type="checkbox" name="district" value={o.value} checked={districtsSel.includes(o.value)} data-auto /><span>{o.label}<small>{o.count}</small></span></label>)}</div>
+            </details>
+          )}
+          {facets.cities.length > 0 && (
+            <details class="fgroup" open={citiesSel.length > 0 || facets.cities.length > 1}>
+              <summary>{c.city}</summary>
+              <div class="fchips">{facets.cities.map((o) => <label><input type="checkbox" name="city" value={o.value} checked={citiesSel.includes(o.value)} data-auto /><span>{o.label}<small>{o.count}</small></span></label>)}</div>
+            </details>
+          )}
+          <noscript><button type="submit" class="btn btn-dark btn-small">{c.applyFilters}</button></noscript>
+        </form>
+        <div class="fapply">
+          <button type="button" class="btn btn-dark" data-show-results>{c.showShops.replace('{n}', String(meta.total))}</button>
+        </div>
+      </details>
+    </aside>
+
+    <div class="cat-main" id="cat-results">
+      <div class="cat-bar">
+        <p><strong>{meta.total}</strong> {meta.total > 1 ? c.shopsWord : c.shopWord}</p>
+        <div class="cat-bar-tools">
+          <button type="button" class="cat-ftoggle" data-open-filters aria-controls="cat-form">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></svg>
+            {c.filters}{active.length > 0 && <span class="cat-count">{active.length}</span>}
+          </button>
+          <label class="cat-select"><span>{c.perPage}</span>
+            <select name="per" form="cat-form" data-auto>
+              {['12', '24', '48'].map((n) => <option value={n} selected={per === n}>{n}</option>)}
+            </select>
+          </label>
+          <label class="cat-select"><span>{c.sortBy}</span>
+            <select name="sort" form="cat-form" data-auto>
+              <option value="name" selected={sort === 'name'}>{c.sortName}</option>
+              <option value="products" selected={sort === 'products'}>{c.sortMostProducts}</option>
+              <option value="deals" selected={sort === 'deals'}>{c.sortMostDeals}</option>
+              <option value="newest" selected={sort === 'newest'}>{c.sortNewestShops}</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <p class="cat-mcount"><strong>{meta.total}</strong> {meta.total > 1 ? c.shopsWord : c.shopWord}</p>
+      {active.length > 0 && (
+        <div class="cat-active">
+          {active.map((f) => <a href={f.href} aria-label={c.removeFilter + ' ' + f.label}>{f.label}<span aria-hidden="true">×</span></a>)}
+          <a class="cat-clear" href={basePath}>{c.resetFilters}</a>
+        </div>
+      )}
+
+      {res.failed ? (
+        <p class="notice error" role="alert">{c.dataUnavailable} <a href={Astro.url.pathname + Astro.url.search}>{c.retry}</a></p>
+      ) : shops.length ? (
+        <>
+          <div class="shops-grid">
+            {shops.map((s) => <ShopCard shop={s} locale={locale} />)}
+          </div>
+          {meta.last_page > 1 && (
+            <nav class="cat-pages" aria-label={c.page}>
+              {meta.page > 1 ? <a class="cat-step" href={pageLink(meta.page - 1)}>← {c.previousPage}</a> : <span class="cat-step off">← {c.previousPage}</span>}
+              <span class="cat-nums">
+                {pages.map((n, i) => (
+                  <>
+                    {i > 0 && n - pages[i - 1] > 1 && <span aria-hidden="true">…</span>}
+                    <a href={pageLink(n)} aria-current={n === meta.page ? 'page' : undefined} aria-label={c.page + ' ' + n}>{n}</a>
+                  </>
+                ))}
+              </span>
+              {meta.page < meta.last_page ? <a class="cat-step" href={pageLink(meta.page + 1)}>{c.nextPage} →</a> : <span class="cat-step off">{c.nextPage} →</span>}
+            </nav>
+          )}
+        </>
+      ) : (
+        <div class="cat-empty">
+          <img src="/brand/logo-ink.png" alt="" width="120" height="52" />
+          <h2>{c.shopsNoMatch}</h2>
+          {active.length > 0 && <div><a class="btn btn-line btn-small" href={basePath}>{c.resetFilters}</a></div>}
+        </div>
+      )}
+      <p class="sr-only" role="status" aria-live="polite">{countLabel(meta.total)}</p>
+    </div>
+  </section>
+  <CatalogueScript />
+</Site>

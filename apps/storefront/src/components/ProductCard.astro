@@ -36,6 +36,7 @@ const off = was ? Math.round((1 - offer.price.amount / was) * 100) : 0;
     </a>
     <span class={'kcard-stock' + (offer.availability === 'available' ? '' : offer.availability === 'unavailable' ? ' off' : ' warn')}>{c[offer.availability]}</span>
     {off > 0 && <span class="kcard-off">−{off} %</span>}
+    <button type="button" class="save-btn" data-save-offer={offer.id} data-save-name={offer.name} aria-pressed="false" aria-label={c.saveLabel + ' — ' + offer.name}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.2s-7.4-4.5-9.1-9.2C1.7 7.6 4 4.4 7.3 4.4c2 0 3.6 1.1 4.7 2.8 1.1-1.7 2.7-2.8 4.7-2.8 3.3 0 5.6 3.2 4.4 6.6-1.7 4.7-9.1 9.2-9.1 9.2Z" /></svg></button>
   </div>
   <div class="kcard-body">
     {categoryName && <span class="kcard-cat">{categoryName}</span>}

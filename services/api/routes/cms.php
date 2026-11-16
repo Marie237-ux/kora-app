@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
     // Public: site settings, pages, campaigns and legal conditions in force.
     Route::get('content/revision', [CmsController::class, 'revision'])->middleware('throttle:240,1');
+    Route::get('content/contact', [CmsController::class, 'contact'])->middleware('throttle:240,1');
     Route::get('content/pages/{slug}', [CmsController::class, 'showPage'])
         ->where('slug', '[a-z0-9-]{1,120}')
         ->middleware('throttle:240,1');

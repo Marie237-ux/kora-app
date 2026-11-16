@@ -265,6 +265,50 @@ final class Boards
         return $this->dto($this->change($board, $actor, 'pin_updated', [], ['pin_id' => $id]), $actor);
     }
 
+    /** The member's private "Favourites" board (the heart on products), created on first use; one per account. */
+    public function favorites(User $actor, bool $create): ?object
+    {
+        $board = DB::table('boards')->where('owner_id', $actor->id)->where('is_favorites', true)->first();
+        if ($board || ! $create) {
+            return $board;
+        }
+        $made = $this->create([
+            'title' => app()->getLocale() === 'en' ? 'Favourites' : 'Mes favoris',
+            'kind' => 'collection',
+            'hide_gift_purchases' => false,
+        ], $actor);
+        DB::table('boards')->where('id', $made['id'])->update(['is_favorites' => true]);
+
+        return Records::row('boards', $made['id']);
+    }
+
+    /** Offer ids in the member's favourites, for the hearts shown on the site. */
+    public function favoriteOffers(User $actor): array
+    {
+        $board = $this->favorites($actor, false);
+
+        return $board ? DB::table('board_pins')->where('board_id', $board->id)->pluck('offer_id')->all() : [];
+    }
+
+    /** Heart pressed: pins the offer to the favourites board, or removes it when it is already there. */
+    public function toggleFavorite(string $offerId, User $actor): array
+    {
+        $board = $this->favorites($actor, true);
+        if ($board->archived_at !== null) {
+            DB::table('boards')->where('id', $board->id)->update(['archived_at' => null]);
+            $board = Records::row('boards', $board->id);
+        }
+        $pin = DB::table('board_pins')->where('board_id', $board->id)->where('offer_id', $offerId)->first();
+        if ($pin) {
+            $this->removePin($board, $pin->id, $actor);
+
+            return ['favorite' => false, 'board_id' => $board->id];
+        }
+        $this->addPin($board, ['offer_id' => $offerId, 'wished_quantity' => 1], $actor);
+
+        return ['favorite' => true, 'board_id' => $board->id];
+    }
+
     public function removePin(object $board, string $id, User $actor): array
     {
         $this->pin($board, $id);

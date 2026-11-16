@@ -19,6 +19,10 @@ final class Reviews
 {
     public const REJECTIONS = ['abusive', 'personal_data', 'off_topic', 'spam', 'not_about_product'];
 
+    public const MIN_PHOTOS = 1;
+
+    public const MAX_PHOTOS = 3;
+
     public static function fail(string $field, string $code): never
     {
         throw ValidationException::withMessages([$field => __('reviews.'.$code)]);
@@ -76,7 +80,8 @@ final class Reviews
         if ($review->status !== 'pending') {
             self::fail('review', 'REVIEW_STATE');
         }
-        if (DB::table('review_photos')->where('review_id', $id)->count() >= 4) {
+        // A review carries 1 to 3 photos (the minimum is checked when it is published).
+        if (DB::table('review_photos')->where('review_id', $id)->count() >= self::MAX_PHOTOS) {
             self::fail('file', 'TOO_MANY_PHOTOS');
         }
         $media = app(MediaLibrary::class)->upload(
@@ -103,6 +108,13 @@ final class Reviews
             self::fail('review', 'REVIEW_STATE');
         }
         $publish = $data['decision'] === 'publish';
+        if ($publish) {
+            $approvable = DB::table('review_photos')->where('review_id', $id)
+                ->whereIn('id', $data['approved_photos'] ?? [])->count();
+            if ($approvable < self::MIN_PHOTOS) {
+                self::fail('approved_photos', 'PHOTO_REQUIRED');
+            }
+        }
         DB::table('product_reviews')
             ->where('id', $id)
             ->update([

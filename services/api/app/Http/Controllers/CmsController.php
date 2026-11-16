@@ -23,6 +23,13 @@ final class CmsController extends OperationalController
             ->header('Vary', 'X-Kora-Locale');
     }
 
+    public function contact(Cms $cms)
+    {
+        return response()
+            ->json(['data' => app(ReadSnapshot::class)->run(fn () => $cms->contact())])
+            ->header('Cache-Control', 'public, max-age=60');
+    }
+
     public function revision(Cms $cms)
     {
         return ['data' => $cms->revision()];
