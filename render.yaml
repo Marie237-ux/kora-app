@@ -18,6 +18,11 @@ services:
         value: https://kora-api-mh76.onrender.com
       - key: KORA_STOREFRONT_URL
         value: https://kora-frontend-ok9a.onrender.com
+      # "Continue with Google": paste the OAuth client values in the Render dashboard (empty = button hidden).
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
       # Online demo: same test catalogue as local, reloaded on each start (test-data banner shown on the site).
       - key: KORA_DEMO
         value: "true"

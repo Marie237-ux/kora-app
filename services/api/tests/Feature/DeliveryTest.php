@@ -106,6 +106,50 @@ final class DeliveryTest extends TestCase
         $this->assertArrayNotHasKey('points', $quote);
     }
 
+    public function test_lines_from_another_city_are_shipped_and_only_local_lines_need_a_slot(): void
+    {
+        $n = $this->network();
+        // The second shop is in Yaoundé: its line is shipped to Douala at the route's flat fee.
+        DB::table('shops')->where('id', $n['second']['shop'])->update(['city' => 'Yaoundé']);
+        DB::table('shipping_routes')->insert([
+            'id' => (string) \Illuminate\Support\Str::uuid(), 'origin_city' => 'Yaoundé', 'destination_city' => 'Douala',
+            'fee' => 2500, 'days_min' => 1, 'days_max' => 2, 'to_door' => false, 'active' => true, 'version' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->client();
+        $address = $this->address('Bonapriso');
+        $this->assertSame('Douala', $address['city']);
+        $cart = $this->fill([[$n['first']['offer'], 2], [$n['second']['offer'], 1]]);
+        $quote = $this->quote($cart, $address)->assertCreated()->assertJsonPath('data.status', 'quoted')->json('data');
+        $this->assertSame(['local', 'shipping'], array_column($quote['groups'], 'mode'));
+        $this->assertSame('Yaoundé', $quote['groups'][1]['from']);
+        $this->assertSame('2500', $quote['groups'][1]['fee']);
+        $this->assertTrue($quote['needs_slot']);
+        // Local part: base 1 500 + route north→south 700 + 4 kg bracket, plus the shipping fee.
+        $this->assertSame((string) ((int) $quote['groups'][0]['fee'] + 2500), $quote['total']);
+
+        // A customer whose address is in Yaoundé gets the Douala line shipped and no local delivery at all.
+        DB::table('shipping_routes')->insert([
+            'id' => (string) \Illuminate\Support\Str::uuid(), 'origin_city' => 'Douala', 'destination_city' => '*',
+            'fee' => 5000, 'days_min' => 3, 'days_max' => 5, 'to_door' => false, 'active' => true, 'version' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $far = $this->api('POST', 'account/addresses', [
+            'label' => 'Famille', 'city' => 'Garoua', 'district' => 'Centre', 'landmark' => 'Test landmark only',
+            'contact_name' => 'Test client', 'contact_phone' => '+237 600 000 000',
+        ])->assertCreated()->json('data');
+        $cart = $this->getJson('/api/v1/cart')->json('data');
+        $this->api('PUT', 'cart/lines/'.collect($cart['lines'])->firstWhere('offer_id', $n['second']['offer'])['id'], [
+            'version' => $cart['version'], 'offer_id' => $n['second']['offer'], 'quantity' => 1, 'selected' => false,
+        ])->assertOk();
+        $cart = $this->getJson('/api/v1/cart')->json('data');
+        $shipped = $this->quote($cart, $far)->assertCreated()->assertJsonPath('data.status', 'quoted')->json('data');
+        $this->assertSame(['shipping'], array_column($shipped['groups'], 'mode'));
+        $this->assertFalse($shipped['needs_slot']);
+        $this->assertSame('5000', $shipped['total']);
+        $this->assertSame([], $shipped['slots']);
+    }
+
     public function test_a_quote_is_never_zero_by_default_when_data_is_missing(): void
     {
         $this->operationUser();
@@ -310,6 +354,42 @@ final class DeliveryTest extends TestCase
             'rule_id' => $rule['id'],
             'date' => $tomorrow->toDateString(),
         ])->assertUnprocessable();
+    }
+
+    public function test_the_team_manages_shipping_routes_and_checkout_uses_them(): void
+    {
+        $this->operationUser();
+        $route = $this->op('POST', 'delivery/shipping-routes', [
+            'origin_city' => 'Yaoundé', 'destination_city' => 'Douala', 'fee' => 2500, 'days_min' => 1, 'days_max' => 2,
+            'to_door' => false, 'active' => true,
+        ])->assertCreated()->assertJsonPath('data.fee', 2500)->json('data');
+        // Same pair twice, same city on both sides and a backwards delay are refused.
+        $this->op('POST', 'delivery/shipping-routes', [
+            'origin_city' => 'Yaoundé', 'destination_city' => 'Douala', 'fee' => 1, 'days_min' => 1, 'days_max' => 2, 'to_door' => false, 'active' => true,
+        ])->assertConflict();
+        $this->op('POST', 'delivery/shipping-routes', [
+            'origin_city' => 'Kribi', 'destination_city' => 'Kribi', 'fee' => 1, 'days_min' => 3, 'days_max' => 2, 'to_door' => false, 'active' => true,
+        ])->assertUnprocessable();
+        $updated = $this->op('PUT', 'delivery/shipping-routes/'.$route['id'], [
+            'version' => $route['version'], 'origin_city' => 'Yaoundé', 'destination_city' => 'Douala', 'fee' => 3000,
+            'days_min' => 1, 'days_max' => 3, 'to_door' => true, 'active' => true,
+        ])->assertOk()->assertJsonPath('data.version', 2)->json('data');
+        $this->op('PUT', 'delivery/shipping-routes/'.$route['id'], [
+            'version' => $route['version'], 'origin_city' => 'Yaoundé', 'destination_city' => 'Douala', 'fee' => 1,
+            'days_min' => 1, 'days_max' => 3, 'to_door' => true, 'active' => true,
+        ])->assertConflict();
+        $this->op('GET', 'delivery/shipping-routes')->assertOk()->assertJsonPath('data.0.fee', 3000);
+
+        // The checkout quote uses the edited route.
+        $n = $this->network();
+        DB::table('shops')->where('id', $n['second']['shop'])->update(['city' => 'Yaoundé']);
+        $this->client();
+        $cart = $this->fill([[$n['first']['offer'], 1], [$n['second']['offer'], 1]]);
+        $quote = $this->quote($cart, $this->address('Bonapriso'))->assertCreated()->json('data');
+        $this->assertSame('3000', $quote['groups'][1]['fee']);
+        $this->assertTrue($quote['groups'][1]['to_door']);
+        $this->assertSame(3, $quote['groups'][1]['days_max']);
+        $this->assertSame($updated['id'], DB::table('shipping_routes')->value('id'));
     }
 
     public function test_delivery_settings_require_their_permission(): void

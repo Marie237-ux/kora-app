@@ -43,6 +43,7 @@ final class DeliveryController extends OperationalController
         return $http->validate([
             ...$update ? ['version' => ['required', 'integer', 'min:1']] : [],
             'label' => ['required', 'string', 'max:80'],
+            'city' => ['sometimes', 'string', 'max:80'],
             'district' => ['required', 'string', 'max:120'],
             'landmark' => ['required', 'string', 'max:300'],
             'instructions' => ['nullable', 'string', 'max:1000'],

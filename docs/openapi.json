@@ -22798,6 +22798,10 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "city": {
+                    "type": "string",
+                    "maxLength": 80
                   }
                 },
                 "required": [
@@ -22981,6 +22985,10 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "city": {
+                    "type": "string",
+                    "maxLength": 80
                   }
                 },
                 "required": [
@@ -67464,6 +67472,7 @@
             "sessionCookie": []
           }
         ],
+        "x-resource-owner": "account",
         "responses": {
           "200": {
             "description": "Favoris",
@@ -67511,6 +67520,12 @@
         "security": [
           {
             "sessionCookie": []
+          }
+        ],
+        "x-resource-owner": "account",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
           }
         ],
         "requestBody": {
@@ -67679,6 +67694,439 @@
           },
           "404": {
             "description": "Boutique introuvable"
+          }
+        }
+      }
+    },
+    "/api/v1/operations/delivery/shipping-routes": {
+      "get": {
+        "operationId": "get_api_v1_operations_delivery_shipping_routes",
+        "tags": [
+          "Delivery"
+        ],
+        "summary": "Tarifs d’expédition entre villes",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "origin_city",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 80
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Routes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ShippingRoute"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Non connecté"
+          },
+          "403": {
+            "description": "Permission delivery.read requise"
+          }
+        }
+      },
+      "post": {
+        "operationId": "post_api_v1_operations_delivery_shipping_routes",
+        "tags": [
+          "Delivery"
+        ],
+        "summary": "Créer un tarif d’expédition",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "origin_city",
+                  "destination_city",
+                  "fee",
+                  "days_min",
+                  "days_max",
+                  "to_door",
+                  "active"
+                ],
+                "properties": {
+                  "origin_city": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "destination_city": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "fee": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "days_min": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 60
+                  },
+                  "days_max": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 60
+                  },
+                  "to_door": {
+                    "type": "boolean"
+                  },
+                  "active": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Route",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ShippingRoute"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Cette route existe déjà"
+          },
+          "422": {
+            "description": "Données invalides"
+          }
+        }
+      }
+    },
+    "/api/v1/operations/delivery/shipping-routes/{id}": {
+      "put": {
+        "operationId": "put_api_v1_operations_delivery_shipping_routes_id",
+        "tags": [
+          "Delivery"
+        ],
+        "summary": "Modifier un tarif d’expédition",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "version",
+                  "origin_city",
+                  "destination_city",
+                  "fee",
+                  "days_min",
+                  "days_max",
+                  "to_door",
+                  "active"
+                ],
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "origin_city": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "destination_city": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "fee": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "days_min": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 60
+                  },
+                  "days_max": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 60
+                  },
+                  "to_door": {
+                    "type": "boolean"
+                  },
+                  "active": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Route",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ShippingRoute"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Introuvable"
+          },
+          "409": {
+            "description": "Version périmée ou route en double"
+          },
+          "422": {
+            "description": "Données invalides"
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{id}/reopen": {
+      "post": {
+        "operationId": "post_orders__id__reopen",
+        "tags": [
+          "Commandes et paiements"
+        ],
+        "summary": "Modifier une commande non payée : elle est annulée, ses articles reviennent dans le panier",
+        "description": "Refusé si la commande est payée, annulée ou expirée (ORDER_NOT_EDITABLE) ou si un paiement est en cours (ORDER_PAYMENT_IN_PROGRESS). Réservations, créneau, offre de livraison et points sont rendus.",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-resource-owner": "account",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Commande annulée, panier complété",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "required": [
+                        "order_id",
+                        "status",
+                        "skipped_line_ids"
+                      ],
+                      "properties": {
+                        "order_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "cancelled"
+                          ]
+                        },
+                        "skipped_line_ids": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Non connecté"
+          },
+          "404": {
+            "description": "Commande inconnue"
+          },
+          "422": {
+            "description": "Commande non modifiable"
+          }
+        }
+      }
+    },
+    "/api/v1/me/avatar": {
+      "post": {
+        "operationId": "post_me_avatar",
+        "tags": [
+          "Compte"
+        ],
+        "summary": "Photo de profil du membre (image publique, 4 Mo au plus)",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-resource-owner": "account",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profil mis à jour"
+          },
+          "401": {
+            "description": "Non connecté"
+          },
+          "422": {
+            "description": "Image refusée"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "delete_me_avatar",
+        "tags": [
+          "Compte"
+        ],
+        "summary": "Retirer la photo de profil",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "x-resource-owner": "account",
+        "responses": {
+          "200": {
+            "description": "Profil mis à jour"
+          },
+          "401": {
+            "description": "Non connecté"
           }
         }
       }
@@ -75604,6 +76052,9 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "city": {
+            "type": "string"
           }
         },
         "required": [
@@ -75621,7 +76072,8 @@
           "served",
           "zone",
           "version",
-          "updated_at"
+          "updated_at",
+          "city"
         ],
         "additionalProperties": false
       },
@@ -75704,7 +76156,8 @@
                     "route",
                     "mass",
                     "bulky",
-                    "fragile"
+                    "fragile",
+                    "shipping"
                   ]
                 },
                 "quantity": {
@@ -75713,6 +76166,10 @@
                 "amount": {
                   "type": "string",
                   "pattern": "^(0|[1-9][0-9]*)$"
+                },
+                "from": {
+                  "type": "string",
+                  "description": "Ville de départ (expédition)."
                 }
               },
               "required": [
@@ -75748,12 +76205,16 @@
               },
               "district": {
                 "type": "string"
+              },
+              "city": {
+                "type": "string"
               }
             },
             "required": [
               "id",
               "label",
-              "district"
+              "district",
+              "city"
             ],
             "additionalProperties": false
           },
@@ -75904,6 +76365,87 @@
               }
             ],
             "description": "Livraison nette à payer après promotion, suppléments compris."
+          },
+          "groups": {
+            "type": "array",
+            "description": "Lignes livrées dans la ville de l’adresse (local) ou expédiées depuis une autre ville (shipping).",
+            "items": {
+              "type": "object",
+              "required": [
+                "mode",
+                "city",
+                "line_ids",
+                "fee"
+              ],
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "enum": [
+                    "local",
+                    "shipping"
+                  ]
+                },
+                "from": {
+                  "type": "string"
+                },
+                "city": {
+                  "type": "string"
+                },
+                "line_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "fee": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^(0|[1-9][0-9]*)$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "days_min": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "days_max": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "to_door": {
+                  "anyOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "needs_slot": {
+            "type": "boolean",
+            "description": "Un créneau est requis (livraison locale)."
           }
         },
         "required": [
@@ -75930,7 +76472,9 @@
           "stock_reserved",
           "created_at",
           "promotion",
-          "payable_delivery"
+          "payable_delivery",
+          "groups",
+          "needs_slot"
         ],
         "additionalProperties": false
       },
@@ -76140,6 +76684,17 @@
                 "prepared_quantity": {
                   "type": "integer",
                   "minimum": 0
+                },
+                "image": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Photo publique actuelle de l’offre, sinon null."
                 }
               },
               "required": [
@@ -76158,7 +76713,8 @@
                 "procurement_received_quantity",
                 "loyalty_discount",
                 "loyalty_points_used",
-                "prepared_quantity"
+                "prepared_quantity",
+                "image"
               ],
               "additionalProperties": false
             }
@@ -98188,6 +98744,60 @@
           "available_count",
           "total"
         ],
+        "additionalProperties": false
+      },
+      "ShippingRoute": {
+        "type": "object",
+        "required": [
+          "id",
+          "origin_city",
+          "destination_city",
+          "fee",
+          "days_min",
+          "days_max",
+          "to_door",
+          "active",
+          "version",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "origin_city": {
+            "type": "string"
+          },
+          "destination_city": {
+            "type": "string",
+            "description": "Ville d’arrivée, ou « * » pour toute autre ville."
+          },
+          "fee": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Frais d’expédition (XAF)."
+          },
+          "days_min": {
+            "type": "integer"
+          },
+          "days_max": {
+            "type": "integer"
+          },
+          "to_door": {
+            "type": "boolean",
+            "description": "Livré à la porte (sinon retrait en agence)."
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
         "additionalProperties": false
       },
       "CatalogueFacets": {

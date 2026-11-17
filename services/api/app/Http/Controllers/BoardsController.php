@@ -76,7 +76,8 @@ final class BoardsController extends OperationalController
     {
         $d = $http->validate(['offer_id' => ['required', 'uuid']]);
 
-        return ['data' => DB::transaction(fn () => $boards->toggleFavorite($d['offer_id'], $http->user()))];
+        // Keyed like every other write: a repeated tap or a network retry answers the first result, never flips twice.
+        return $this->command($http, 'board.favorite:'.$d['offer_id'], $d, fn ($data) => $boards->toggleFavorite($data['offer_id'], $http->user()));
     }
 
     public function show(Request $http, string $id, Boards $boards)

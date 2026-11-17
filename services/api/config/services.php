@@ -55,4 +55,10 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+    // "Continue with Google" (Google Cloud console → APIs & Services → Credentials → OAuth client ID, type "Web").
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID', ''),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET', ''),
+    ],
+
 ];

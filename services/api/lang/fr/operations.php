@@ -35,6 +35,8 @@ return [
     'LOCATION_INACTIVE' => 'Cet emplacement ou dépôt est inactif.',
     'TRACKING_REQUIRED' => 'Renseignez le lot, la date ou les identifiants uniques attendus pour cette variante.',
     'EXPIRED_LOT' => 'Un lot expiré reste traçable mais ne peut pas être rendu disponible.',
+    'ORDER_NOT_EDITABLE' => 'Cette commande n’est plus modifiable : elle est payée, annulée ou expirée.',
+    'ORDER_PAYMENT_IN_PROGRESS' => 'Un paiement est en cours pour cette commande. Attendez son résultat avant de la modifier.',
     'RESERVATION_POLICY_REQUIRED' => 'Configurez explicitement la durée de réservation avant de réserver du stock.',
     'PURPOSE_ALREADY_RESERVED' => 'Cette référence de préparation a déjà une réservation ; ne la réutilisez pas.',
     'STOCK_INSUFFICIENT' => 'La quantité disponible non réservée est insuffisante.',

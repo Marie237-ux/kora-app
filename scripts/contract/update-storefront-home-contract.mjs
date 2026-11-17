@@ -254,6 +254,7 @@ console.log('Storefront home contract updated.');
       tags: ['Boards'],
       summary: 'Offres dans les favoris du membre',
       security: [{ sessionCookie: [] }],
+      'x-resource-owner': 'account',
       responses: {
         200: { description: 'Favoris', content: json({ type: 'object', required: ['data'], properties: { data: { type: 'object', required: ['offer_ids'], properties: { offer_ids: { type: 'array', items: { type: 'string', format: 'uuid' } } } } } }) },
         401: { description: 'Non connecté' },
@@ -266,6 +267,8 @@ console.log('Storefront home contract updated.');
       tags: ['Boards'],
       summary: 'Ajouter une offre aux favoris, ou l’en retirer',
       security: [{ sessionCookie: [] }],
+      'x-resource-owner': 'account',
+      parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }],
       requestBody: { required: true, content: json({ type: 'object', required: ['offer_id'], properties: { offer_id: { type: 'string', format: 'uuid' } } }) },
       responses: {
         200: { description: 'État du cœur', content: json({ type: 'object', required: ['data'], properties: { data: { type: 'object', required: ['favorite', 'board_id'], properties: { favorite: { type: 'boolean' }, board_id: { type: 'string', format: 'uuid' } } } } }) },
@@ -525,4 +528,156 @@ console.log('Storefront home contract updated.');
     if (au && !au.properties.key) { au.properties.key = { type: 'string', description: 'Clé publique opaque du créateur.' }; au.required = [...(au.required ?? []), 'key']; }
   }
   writeFileSync(file, JSON.stringify(a14, null, 2) + '\n');
+}
+
+// National delivery: addresses have a city; a quote splits lines into local delivery and shipping groups.
+{
+  const a15 = JSON.parse(readFileSync(file, 'utf8'));
+  const s15 = a15.components.schemas;
+  const addr = s15.CustomerAddress;
+  if (!addr.properties.city) { addr.properties.city = { type: 'string' }; addr.required.push('city'); }
+  for (const [path, item] of Object.entries(a15.paths)) {
+    if (!path.startsWith('/api/v1/account/addresses')) continue;
+    for (const op of Object.values(item)) {
+      const body = op?.requestBody?.content?.['application/json']?.schema;
+      if (body?.properties?.district && !body.properties.city) body.properties.city = { type: 'string', maxLength: 80 };
+    }
+  }
+  const q = s15.DeliveryQuote;
+  if (!q.properties.address.properties.city) { q.properties.address.properties.city = { type: 'string' }; q.properties.address.required.push('city'); }
+  const item = q.properties.breakdown.items;
+  if (!item.properties.code.enum.includes('shipping')) item.properties.code.enum.push('shipping');
+  if (!item.properties.from) item.properties.from = { type: 'string', description: 'Ville de départ (expédition).' };
+  if (!q.properties.groups) {
+    const nn = (t) => ({ anyOf: [t, { type: 'null' }] });
+    q.properties.groups = {
+      type: 'array',
+      description: 'Lignes livrées dans la ville de l’adresse (local) ou expédiées depuis une autre ville (shipping).',
+      items: {
+        type: 'object',
+        required: ['mode', 'city', 'line_ids', 'fee'],
+        properties: {
+          mode: { type: 'string', enum: ['local', 'shipping'] },
+          from: { type: 'string' },
+          city: { type: 'string' },
+          line_ids: { type: 'array', items: { type: 'string', format: 'uuid' } },
+          fee: nn({ type: 'string', pattern: '^(0|[1-9][0-9]*)$' }),
+          days_min: nn({ type: 'integer' }),
+          days_max: nn({ type: 'integer' }),
+          to_door: nn({ type: 'boolean' }),
+        },
+        additionalProperties: false,
+      },
+    };
+    q.properties.needs_slot = { type: 'boolean', description: 'Un créneau est requis (livraison locale).' };
+    q.required.push('groups', 'needs_slot');
+  }
+  writeFileSync(file, JSON.stringify(a15, null, 2) + '\n');
+}
+
+// Shipping routes between cities (team settings, permission delivery.read / delivery.settings).
+{
+  const a16 = JSON.parse(readFileSync(file, 'utf8'));
+  const json = (schema) => ({ 'application/json': { schema } });
+  a16.components.schemas.ShippingRoute = {
+    type: 'object',
+    required: ['id', 'origin_city', 'destination_city', 'fee', 'days_min', 'days_max', 'to_door', 'active', 'version', 'updated_at'],
+    properties: {
+      id: { type: 'string', format: 'uuid' }, origin_city: { type: 'string' },
+      destination_city: { type: 'string', description: 'Ville d’arrivée, ou « * » pour toute autre ville.' },
+      fee: { type: 'integer', minimum: 0, description: 'Frais d’expédition (XAF).' }, days_min: { type: 'integer' }, days_max: { type: 'integer' },
+      to_door: { type: 'boolean', description: 'Livré à la porte (sinon retrait en agence).' }, active: { type: 'boolean' },
+      version: { type: 'integer' }, updated_at: { type: 'string', format: 'date-time' },
+    },
+    additionalProperties: false,
+  };
+  const input = (update) => ({
+    type: 'object',
+    required: [...(update ? ['version'] : []), 'origin_city', 'destination_city', 'fee', 'days_min', 'days_max', 'to_door', 'active'],
+    properties: {
+      ...(update ? { version: { type: 'integer', minimum: 1 } } : {}),
+      origin_city: { type: 'string', maxLength: 80 }, destination_city: { type: 'string', maxLength: 80 },
+      fee: { type: 'integer', minimum: 0 }, days_min: { type: 'integer', minimum: 0, maximum: 60 }, days_max: { type: 'integer', minimum: 0, maximum: 60 },
+      to_door: { type: 'boolean' }, active: { type: 'boolean' },
+    },
+    additionalProperties: false,
+  });
+  const one = { description: 'Route', content: json({ type: 'object', required: ['data'], properties: { data: { $ref: '#/components/schemas/ShippingRoute' } } }) };
+  const sec = [{ sessionCookie: [] }];
+  const key = { name: 'Idempotency-Key', in: 'header', required: true, schema: { type: 'string', format: 'uuid' } };
+  a16.paths['/api/v1/operations/delivery/shipping-routes'] = {
+    get: {
+      operationId: 'get_api_v1_operations_delivery_shipping_routes', tags: ['Delivery'], summary: 'Tarifs d’expédition entre villes', security: sec,
+      parameters: [{ name: 'origin_city', in: 'query', required: false, schema: { type: 'string', maxLength: 80 } }, { name: 'page', in: 'query', required: false, schema: { type: 'integer', minimum: 1 } }],
+      responses: { 200: { description: 'Routes', content: json({ type: 'object', required: ['data', 'meta'], properties: { data: { type: 'array', items: { $ref: '#/components/schemas/ShippingRoute' } }, meta: { $ref: '#/components/schemas/PageMeta' } } }) }, 401: { description: 'Non connecté' }, 403: { description: 'Permission delivery.read requise' } },
+    },
+    post: {
+      operationId: 'post_api_v1_operations_delivery_shipping_routes', tags: ['Delivery'], summary: 'Créer un tarif d’expédition', security: sec, parameters: [key],
+      requestBody: { required: true, content: json(input(false)) },
+      responses: { 201: one, 409: { description: 'Cette route existe déjà' }, 422: { description: 'Données invalides' } },
+    },
+  };
+  a16.paths['/api/v1/operations/delivery/shipping-routes/{id}'] = {
+    put: {
+      operationId: 'put_api_v1_operations_delivery_shipping_routes_id', tags: ['Delivery'], summary: 'Modifier un tarif d’expédition', security: sec,
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }, key],
+      requestBody: { required: true, content: json(input(true)) },
+      responses: { 200: one, 404: { description: 'Introuvable' }, 409: { description: 'Version périmée ou route en double' }, 422: { description: 'Données invalides' } },
+    },
+  };
+  writeFileSync(file, JSON.stringify(a16, null, 2) + '\n');
+}
+
+// Account: each order line carries the offer's current approved photo (order list thumbnails).
+{
+  const a17 = JSON.parse(readFileSync(file, 'utf8'));
+  const line = a17.components.schemas.Order.properties.lines.items;
+  if (!line.properties.image) {
+    line.properties.image = { anyOf: [{ type: 'string' }, { type: 'null' }], description: 'Photo publique actuelle de l’offre, sinon null.' };
+    line.required.push('image');
+  }
+  writeFileSync(file, JSON.stringify(a17, null, 2) + '\n');
+}
+
+// Change an unpaid order (cancelled, items back to the cart) and the member's profile photo.
+{
+  const api9 = JSON.parse(readFileSync(file, 'utf8'));
+  const json = (schema) => ({ 'application/json': { schema } });
+  api9.paths['/api/v1/orders/{id}/reopen'] = {
+    post: {
+      operationId: 'post_orders__id__reopen',
+      tags: ['Commandes et paiements'],
+      summary: 'Modifier une commande non payée : elle est annulée, ses articles reviennent dans le panier',
+      description: 'Refusé si la commande est payée, annulée ou expirée (ORDER_NOT_EDITABLE) ou si un paiement est en cours (ORDER_PAYMENT_IN_PROGRESS). Réservations, créneau, offre de livraison et points sont rendus.',
+      security: [{ sessionCookie: [] }],
+      'x-resource-owner': 'account',
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }, { $ref: '#/components/parameters/IdempotencyKey' }],
+      responses: {
+        200: { description: 'Commande annulée, panier complété', content: json({ type: 'object', required: ['data'], properties: { data: { type: 'object', required: ['order_id', 'status', 'skipped_line_ids'], properties: { order_id: { type: 'string', format: 'uuid' }, status: { type: 'string', enum: ['cancelled'] }, skipped_line_ids: { type: 'array', items: { type: 'string', format: 'uuid' } } } } } }) },
+        401: { description: 'Non connecté' },
+        404: { description: 'Commande inconnue' },
+        422: { description: 'Commande non modifiable' },
+      },
+    },
+  };
+  api9.paths['/api/v1/me/avatar'] = {
+    post: {
+      operationId: 'post_me_avatar',
+      tags: ['Compte'],
+      summary: 'Photo de profil du membre (image publique, 4 Mo au plus)',
+      security: [{ sessionCookie: [] }],
+      'x-resource-owner': 'account',
+      requestBody: { required: true, content: { 'multipart/form-data': { schema: { type: 'object', required: ['file'], properties: { file: { type: 'string', format: 'binary' } } } } } },
+      responses: { 200: { description: 'Profil mis à jour' }, 401: { description: 'Non connecté' }, 422: { description: 'Image refusée' } },
+    },
+    delete: {
+      operationId: 'delete_me_avatar',
+      tags: ['Compte'],
+      summary: 'Retirer la photo de profil',
+      security: [{ sessionCookie: [] }],
+      'x-resource-owner': 'account',
+      responses: { 200: { description: 'Profil mis à jour' }, 401: { description: 'Non connecté' } },
+    },
+  };
+  writeFileSync(file, JSON.stringify(api9, null, 2) + '\n');
 }

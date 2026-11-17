@@ -13,6 +13,7 @@ final class CustomerAddresses
 
     private const FIELDS = [
         'label',
+        'city',
         'district',
         'landmark',
         'instructions',
@@ -85,6 +86,7 @@ final class CustomerAddresses
             $values[$field] = $data[$field] ?? null;
         }
         $values['instructions'] ??= '';
+        $values['city'] = trim((string) ($values['city'] ?? '')) ?: 'Douala';
 
         return $values;
     }
@@ -96,11 +98,12 @@ final class CustomerAddresses
 
     public function dto(object $address): array
     {
-        $zone = app(DeliveryZones::class)->resolve($address->district);
+        $zone = app(DeliveryZones::class)->resolve($address->district, $address->city ?? 'Douala');
 
         return [
             'id' => $address->id,
             'label' => $address->label,
+            'city' => $address->city ?? 'Douala',
             'district' => $address->district,
             'landmark' => $address->landmark,
             'instructions' => $address->instructions,

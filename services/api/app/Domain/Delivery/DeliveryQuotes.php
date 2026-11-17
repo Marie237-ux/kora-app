@@ -30,47 +30,102 @@ final class DeliveryQuotes
         if ($view['needs_review']) {
             DeliveryZones::fail('cart', 'CART_NEEDS_REVIEW');
         }
-        $zone = app(DeliveryZones::class)->resolve($address->district);
+        // Lines from a shop in the address's city are delivered by KORA couriers (zone, grid, slot); lines from a shop
+        // in another city are shipped, one parcel per origin city, at the route's flat fee and delay.
+        $city = $address->city ?? 'Douala';
+        $origins = DB::table('offers')
+            ->join('shops', 'shops.id', '=', 'offers.shop_id')
+            ->whereIn('offers.id', array_column($lines, 'offer_id'))
+            ->pluck('shops.city', 'offers.id');
+        $originOf = fn ($line) => $origins[$line['offer_id']] ?? 'Douala';
+        $local = array_values(array_filter($lines, fn ($line) => $originOf($line) === $city));
+        $shipped = array_values(array_filter($lines, fn ($line) => $originOf($line) !== $city));
+        $zone = $local ? app(DeliveryZones::class)->resolve($address->district, $city) : null;
         $grid = app(DeliveryGrids::class)->current();
         $rules = $grid ? json_decode($grid->rules, true) : null;
         $reasons = [];
         [$plan, $lineReasons, $readyAfter] = $this->plan($lines, $actor, $rules);
         array_push($reasons, ...$lineReasons);
+        $localPlan = $shipped && $local ? $this->plan($local, $actor, $rules)[0] : $plan;
 
         $status = 'quoted';
         $breakdown = [];
         $total = null;
-        if (! $zone) {
-            $status = 'unserviceable';
-            $reasons[] = 'zone_not_served';
+        $localTotal = '0';
+        if ($local) {
+            if (! $zone) {
+                $status = 'unserviceable';
+                $reasons[] = 'zone_not_served';
+            } elseif (in_array('transport_unavailable', $reasons, true)) {
+                $status = 'unserviceable';
+            } elseif (! $grid) {
+                $status = 'confirmation_required';
+                $reasons[] = 'grid_missing';
+            } elseif ($reasons) {
+                $status = 'confirmation_required';
+            } else {
+                $points = collect($localPlan['points']);
+                $price = app(DeliveryGrids::class)->price(
+                    $grid,
+                    $zone->id,
+                    $points->pluck('zone_id')->all(),
+                    $localPlan['mass_grams'],
+                    $localPlan['bulky'],
+                    $localPlan['fragile'],
+                );
+                if (isset($price['reason'])) {
+                    $status = $price['reason'] === 'zone_not_in_grid' ? 'unserviceable' : 'confirmation_required';
+                    $reasons[] = $price['reason'];
+                } else {
+                    $breakdown = $price['breakdown'];
+                    $localTotal = (string) $price['total'];
+                }
+            }
         } elseif (in_array('transport_unavailable', $reasons, true)) {
             $status = 'unserviceable';
-        } elseif (! $grid) {
-            $status = 'confirmation_required';
-            $reasons[] = 'grid_missing';
         } elseif ($reasons) {
             $status = 'confirmation_required';
-        } else {
-            $points = collect($plan['points']);
-            $price = app(DeliveryGrids::class)->price(
-                $grid,
-                $zone->id,
-                $points->pluck('zone_id')->all(),
-                $plan['mass_grams'],
-                $plan['bulky'],
-                $plan['fragile'],
-            );
-            if (isset($price['reason'])) {
-                $status = $price['reason'] === 'zone_not_in_grid' ? 'unserviceable' : 'confirmation_required';
-                $reasons[] = $price['reason'];
-            } else {
-                $breakdown = $price['breakdown'];
-                $total = $price['total'];
+        }
+        $groups = [];
+        if ($local) {
+            $groups[] = ['mode' => 'local', 'city' => $city, 'line_ids' => array_column($local, 'id'), 'fee' => $status === 'quoted' ? $localTotal : null];
+        }
+        $shippingTotal = 0;
+        foreach (collect($shipped)->groupBy($originOf) as $from => $group) {
+            $route = DB::table('shipping_routes')
+                ->where('active', true)
+                ->where('origin_city', $from)
+                ->whereIn('destination_city', [$city, '*'])
+                ->orderByRaw("CASE WHEN destination_city = '*' THEN 1 ELSE 0 END")
+                ->first();
+            if (! $route) {
+                $reasons[] = 'shipping_route_missing';
+                if ($status === 'quoted') {
+                    $status = 'confirmation_required';
+                }
             }
+            $groups[] = [
+                'mode' => 'shipping',
+                'from' => $from,
+                'city' => $city,
+                'line_ids' => $group->pluck('id')->values()->all(),
+                'fee' => $route ? (string) $route->fee : null,
+                'days_min' => $route ? (int) $route->days_min : null,
+                'days_max' => $route ? (int) $route->days_max : null,
+                'to_door' => $route ? (bool) $route->to_door : null,
+            ];
+            if ($route) {
+                $shippingTotal += (int) $route->fee;
+                $breakdown[] = ['code' => 'shipping', 'quantity' => 1, 'amount' => (int) $route->fee, 'from' => $from];
+            }
+        }
+        $plan['groups'] = $groups;
+        if ($status === 'quoted') {
+            $total = (string) ((int) $localTotal + $shippingTotal);
         }
         // Shown with the quote only; re-checked and reserved under lock when the order is created.
         $promotion =
-            $total === null || ! $applyPromotions
+            $total === null || ! $applyPromotions || ! $zone
                 ? null
                 : app(DeliveryOffers::class)->evaluate(
                     $actor->id,
@@ -282,7 +337,10 @@ final class DeliveryQuotes
             ),
             'demo_amounts' => (bool) $quote->demo_amounts,
             'zone' => $zone ? app(DeliveryZones::class)->dto($zone, true) : null,
-            'address' => ['id' => $quote->address_id, 'label' => $address['label'], 'district' => $address['district']],
+            'address' => ['id' => $quote->address_id, 'label' => $address['label'], 'city' => $address['city'] ?? 'Douala', 'district' => $address['district']],
+            // Delivered in the address's city, or shipped from another city (one group per origin city).
+            'groups' => $plan['groups'] ?? [],
+            'needs_slot' => collect($plan['groups'] ?? [['mode' => 'local']])->contains('mode', 'local'),
             'collection_count' => count($plan['points']),
             'ready_after_minutes' => $quote->ready_after_minutes === null ? null : (int) $quote->ready_after_minutes,
             'lines' => array_map(
@@ -297,7 +355,7 @@ final class DeliveryQuotes
                 $plan['lines'],
             ),
             'slot' => $slot,
-            'slots' => $bookable
+            'slots' => $bookable && $quote->zone_id
                 ? app(DeliverySlots::class)->available($quote->zone_id, (int) $quote->ready_after_minutes, $quote->id)
                 : [],
             // "full" may be shown as free delivery; "base" must show the base fee offered and the supplements still due.

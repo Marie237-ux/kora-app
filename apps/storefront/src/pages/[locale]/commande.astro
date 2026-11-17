@@ -1,0 +1,57 @@
+---
+/**
+ * Order (checkout): address with its city, then what is delivered in that city and what is shipped from another
+ * city (from the API's delivery quote), then the exact total and payment. Private page (never indexed).
+ */
+import Site from '../../layouts/Site.astro';
+import Checkout from '../../components/Checkout.tsx';
+import ProductCard from '../../components/ProductCard.astro';
+import { copy } from '../../lib/copy';
+import { api, localeOf, safe } from '../../lib/server';
+const locale = localeOf(Astro.params.locale);
+if (!locale) return new Response(null, { status: 404 });
+const c = copy(locale);
+const home = '/' + locale;
+type CmsPage = { data: { page: { blocks: { type: string; media_id?: string }[] } | null; media: Record<string, string> } };
+// Header photo: banner of the CMS page "commande" (back office → site pages → Checkout), like the catalogue.
+const cms = await safe(api(locale).request<CmsPage>('/api/v1/content/pages/commande'), { data: { page: null, media: {} } } as CmsPage);
+const block = cms.value.data.page?.blocks.find((b) => b.type === 'banner' && b.media_id);
+const headerImage = block?.media_id ? cms.value.data.media[block.media_id] ?? null : null;
+// Shown only when the cart is empty: the best-selling products (real sales), to start again from here.
+const empty = { data: [], meta: { page: 1, last_page: 1, total: 0, demo: false } };
+const [best, cats] = await Promise.all([
+  safe(api(locale).catalogue('?sort=best_selling&per_page=12'), empty),
+  safe(api(locale).categories(), { data: [] }),
+]);
+const suggestions = best.value.data.filter((o) => o.image).slice(0, 4);
+const names = Object.fromEntries(cats.value.data.map((x) => [x.slug, x.name]));
+---
+
+<Site locale={locale} title={c.coTitle}>
+  <section class={'cat-hero co-hero' + (headerImage ? ' has-photo' : '')}>
+    {headerImage && <img class="cat-photo" src={headerImage} alt="" decoding="async" fetchpriority="high" />}
+    <div class="wrap cat-hero-inner">
+      <div class="cat-hero-text">
+        <nav class="crumbs" aria-label={c.breadcrumb}>
+          <a href={home}>{c.home}</a><span aria-hidden="true">/</span><span aria-current="page">{c.coTitle}</span>
+        </nav>
+        <h1>{c.coTitle}</h1>
+        <p>{c.coIntro}</p>
+      </div>
+    </div>
+  </section>
+  <div class="co-area">
+    <section class="wrap co-body">
+      <Checkout client:load locale={locale} />
+    </section>
+  </div>
+  {suggestions.length > 0 && (
+    <section class="wrap co-suggest" data-co-suggest hidden>
+      <header>
+        <h2>{c.coSuggest}</h2>
+        <p>{c.coSuggestText}</p>
+      </header>
+      <div class="cat-grid co-suggest-grid">{suggestions.map((o) => <ProductCard offer={o as any} locale={locale} categoryName={names[o.category]} />)}</div>
+    </section>
+  )}
+</Site>

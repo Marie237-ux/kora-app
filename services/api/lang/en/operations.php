@@ -35,6 +35,8 @@ return [
     'LOCATION_INACTIVE' => 'This location or warehouse is inactive.',
     'TRACKING_REQUIRED' => 'Provide the required lot, date or unique unit identifiers for this variant.',
     'EXPIRED_LOT' => 'An expired lot remains traceable but cannot be made available.',
+    'ORDER_NOT_EDITABLE' => 'This order can no longer be changed: it is paid, cancelled or expired.',
+    'ORDER_PAYMENT_IN_PROGRESS' => 'A payment is under way for this order. Wait for its result before changing it.',
     'RESERVATION_POLICY_REQUIRED' => 'Explicitly configure the stock reservation duration before creating a hold.',
     'PURPOSE_ALREADY_RESERVED' => 'This preparation reference already has a reservation. Do not reuse it.',
     'STOCK_INSUFFICIENT' => 'There is not enough available, unreserved stock.',

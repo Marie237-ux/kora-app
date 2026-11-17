@@ -62,6 +62,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'permissions' => $this->permissions(),
             'staff' => $this->isStaff(),
             'mfa_enabled' => $this->two_factor_confirmed_at !== null,
+            'avatar' => $this->avatar_path,
         ];
     }
 

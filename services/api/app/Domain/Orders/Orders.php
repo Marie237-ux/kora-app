@@ -49,7 +49,9 @@ final class Orders
         if ($quote->status !== 'quoted' || CarbonImmutable::parse($quote->expires_at, 'UTC')->isPast()) {
             DeliveryZones::fail('quote', 'QUOTE_NOT_BOOKABLE');
         }
-        if ($quote->slot_status !== 'held') {
+        // A slot is needed only for what KORA couriers deliver in the customer's city (shipped parcels have none).
+        $needsSlot = collect(json_decode($quote->plan, true)['groups'] ?? [['mode' => 'local']])->contains('mode', 'local');
+        if ($needsSlot && $quote->slot_status !== 'held') {
             self::fail('slot', 'SLOT_REQUIRED');
         }
         abort_if(DB::table('orders')->where('quote_id', $quote->id)->exists(), 409);
@@ -95,7 +97,7 @@ final class Orders
         }
         // Re-checked under the offer lock: the budget or the customer's uses may have been taken since the quote.
         $promotion =
-            $professional || ($redemption && ! $redemption['rules']['combine_delivery_promotions'])
+            $professional || ! $quote->zone_id || ($redemption && ! $redemption['rules']['combine_delivery_promotions'])
                 ? null
                 : app(DeliveryOffers::class)->evaluate(
                     $actor->id,
@@ -347,6 +349,16 @@ final class Orders
         ) {
             return;
         }
+        $this->releaseHolds($order);
+        DB::table('orders')
+            ->where('id', $order->id)
+            ->update(['status' => 'expired', 'version' => $order->version + 1, 'updated_at' => now()]);
+        $this->event($order->id, 'expired', null);
+    }
+
+    /** Stock reservations, delivery slot, delivery offer and loyalty points held by an unpaid order go back. */
+    private function releaseHolds(object $order): void
+    {
         foreach (
             DB::table('order_lines')
                 ->where('order_id', $order->id)
@@ -362,13 +374,55 @@ final class Orders
             ->update(['slot_status' => 'released', 'updated_at' => now()]);
         app(DeliveryOffers::class)->release($order->id);
         app(LoyaltyRedemptions::class)->releaseOrder($order);
+    }
+
+    /**
+     * "Change my order" for an order not paid yet: it is cancelled (everything it held goes back) and its items
+     * return to the member's cart, so they can adjust it and order again. Refused while a payment is under way
+     * (an attempt started in the last 30 minutes) or once anything was paid; a late payment on the cancelled order
+     * is still recorded by the payment checks, never lost. Returns the items that could not go back to the cart.
+     */
+    public function reopen(object $order, object $cart): array
+    {
+        if ($order->status !== 'awaiting_payment') {
+            Money::fail('status', 'ORDER_NOT_EDITABLE');
+        }
+        $running = DB::table('payment_attempts')
+            ->where('order_id', $order->id)
+            ->where(fn ($q) => $q
+                ->whereIn('status', ['confirmed', 'to_verify'])
+                ->orWhere(fn ($q) => $q->whereIn('status', ['starting', 'pending'])->where('created_at', '>', now()->subMinutes(30))))
+            ->exists();
+        if ($running) {
+            Money::fail('payment', 'ORDER_PAYMENT_IN_PROGRESS');
+        }
+        $this->releaseHolds($order);
         DB::table('orders')
             ->where('id', $order->id)
-            ->update(['status' => 'expired', 'version' => $order->version + 1, 'updated_at' => now()]);
-        $this->event($order->id, 'expired', null);
+            ->update(['status' => 'cancelled', 'version' => $order->version + 1, 'updated_at' => now()]);
+        $this->event($order->id, 'cancelled_by_customer_to_edit', null);
+        $carts = app(Carts::class);
+        $skipped = [];
+        foreach (DB::table('order_lines')->where('order_id', $order->id)->orderBy('id')->get(['id', 'offer_id', 'quantity']) as $line) {
+            try {
+                $carts->add($cart, $line->offer_id, (int) $line->quantity);
+            } catch (ValidationException) {
+                $skipped[] = $line->id;
+            }
+        }
+        $carts->bump($cart);
+
+        return ['order_id' => $order->id, 'status' => 'cancelled', 'skipped_line_ids' => $skipped];
     }
 
     /** Customer view: what was bought and its payment state, without costs, agreements or stock locations. */
+    private function lineImage(?string $offerId): ?string
+    {
+        $path = $offerId ? DB::table('offers')->where('id', $offerId)->value('image_path') : null;
+
+        return app(\App\Domain\Media\MediaLibrary::class)->approvedPath($path) ? $path : null;
+    }
+
     public function dto(object $order): array
     {
         $locale = app()->getLocale();
@@ -422,6 +476,8 @@ final class Orders
                         'name' => $snapshot['name'][$locale] ?? $snapshot['name']['fr'],
                         'sku' => $snapshot['sku'],
                         'shop' => ['name' => $snapshot['shop']['name'], 'slug' => $snapshot['shop']['slug']],
+                        // Current approved photo of the offer (for the order list), never a private file.
+                        'image' => $this->lineImage($line->offer_id),
                         'warranty' => $snapshot['warranty'][$locale] ?? $snapshot['warranty']['fr'],
                         'quantity' => (int) $line->quantity,
                         'unit_price' => (string) $line->unit_price,

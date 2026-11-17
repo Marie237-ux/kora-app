@@ -318,7 +318,7 @@ export default function Header({ locale, links, utility = [], aisles = [], shops
       <div className="drawer-backdrop" data-open={drawer} hidden={!drawer} onClick={() => setDrawer(false)} />
       <aside className="drawer" data-open={drawer} role="dialog" aria-modal="true" aria-label={c.cartTitle} aria-hidden={!drawer}>
         <header>
-          <h2>{c.cartTitle}</h2>
+          <h2>{c.cartTitle}{n > 0 && <span className="drawer-count"> ({n})</span>}</h2>
           <button type="button" className="icon-round" onClick={() => setDrawer(false)} aria-label={c.close}>
             <CloseIcon />
           </button>
@@ -341,9 +341,12 @@ export default function Header({ locale, links, utility = [], aisles = [], shops
                     <h3><a href={home + '/products/' + l.offer_id}>{l.offer?.name ?? '—'}</a></h3>
                     <button type="button" className="line-remove" onClick={() => change(l.id, 'remove')} disabled={busy} aria-label={c.remove + ' — ' + (l.offer?.name ?? '')} title={c.remove}><CloseIcon /></button>
                   </div>
-                  {l.offer?.shop.slug
-                    ? <a className="line-shop" href={home + '/shops/' + l.offer.shop.slug}>{l.offer.shop.name}</a>
-                    : <small className="line-shop">{l.offer?.shop.name}</small>}
+                  <span className="line-from">
+                    {l.offer?.shop.slug
+                      ? <a className="line-shop" href={home + '/shops/' + l.offer.shop.slug}>{l.offer.shop.name}</a>
+                      : <small className="line-shop">{l.offer?.shop.name}</small>}
+                    {l.offer?.shop.city && <small className="line-city"> · {l.offer.shop.city}</small>}
+                  </span>
                   {Object.keys(l.changes ?? {}).length > 0 && <small className="line-changed">{c.priceChanged}</small>}
                   <div className="line-foot">
                     <div className="line-qty">
@@ -365,7 +368,7 @@ export default function Header({ locale, links, utility = [], aisles = [], shops
               <span>{cart.selected_subtotal ? money(cart.selected_subtotal, locale) : '—'}</span>
             </div>
             <small className="muted">{c.deliveryLater}</small>
-            <a className="btn btn-accent" href={home + '/cart'}>{c.checkout}</a>
+            <a className="btn btn-accent" href={home + '/commande'}>{c.checkout}</a>
             <button type="button" className="btn btn-line" onClick={() => setDrawer(false)}>{c.continueShopping}</button>
           </footer>
         )}

@@ -4,6 +4,8 @@ import { createHash } from 'node:crypto';
 import Header from '../components/Header.tsx';
 import Fab from '../components/Fab.tsx';
 import SaveSheet from '../components/SaveSheet.tsx';
+import AuthSheet from '../components/AuthSheet.tsx';
+import type { AuthMode } from '../components/Auth.tsx';
 import { copy, type Locale } from '../lib/copy';
 import { api, safe } from '../lib/server';
 interface Props {
@@ -12,8 +14,12 @@ interface Props {
   description?: string;
   active?: string;
   query?: string;
+  /** Full-screen page of its own (sign-in): no bar, no floating buttons, no footer. */
+  bare?: boolean;
+  /** Sign-in page: the account panel is open from the start (over an empty page). */
+  auth?: AuthMode;
 }
-const { locale, title, description, active = '', query = '' } = Astro.props;
+const { locale, title, description, active = '', query = '', bare = false, auth } = Astro.props;
 const c = copy(locale);
 const path = Astro.url.pathname;
 const origin = import.meta.env.PUBLIC_SITE_URL || 'http://localhost:4321';
@@ -50,6 +56,13 @@ const year = new Date().getFullYear();
 const aisles = (await safe(api(locale).categories(), { data: [] })).value.data.map((a) => ({ slug: a.slug, name: a.name }));
 const whatsapp = (await safe(api(locale).request<{ data: { whatsapp: string | null } }>('/api/v1/content/contact'), { data: { whatsapp: null } })).value.data.whatsapp;
 // Header menu "Our shops": three shops at most (the full list is one click away), with district and city.
+// Photo at the top of the account panel: first banner of the CMS page "compte" (back office → site pages).
+type CmsPage = { data: { page: { blocks: { type: string; media_id?: string }[] } | null; media: Record<string, string> } };
+const accountCms = bare ? null : (await safe(api(locale).request<CmsPage>('/api/v1/content/pages/compte'), { data: { page: null, media: {} } } as CmsPage)).value.data;
+const accountBanner = accountCms?.page?.blocks.find((b) => b.type === 'banner' && b.media_id && accountCms.media[b.media_id]);
+// "Continue with Google" is only shown when the API has a Google client configured.
+const google = bare ? false : (await safe(api(locale).request<{ data: { google: boolean } }>('/api/v1/auth/providers'), { data: { google: false } })).value.data.google;
+const authPhoto = accountBanner ? accountCms!.media[accountBanner.media_id!] : null;
 const shopMenu = (await safe(api(locale).shops(), { data: [] })).value.data.slice(0, 3).map((s) => ({ slug: s.slug, name: s.name, place: [s.district, s.city].filter(Boolean).join(', '), avatar: s.avatar ?? null }));
 ---
 
@@ -77,13 +90,14 @@ const shopMenu = (await safe(api(locale).shops(), { data: [] })).value.data.slic
       </div>
     </div>
     <a class="skip-link" href="#main">{c.skip}</a>
-    <Header client:load locale={locale} links={links} utility={utility} aisles={aisles} shops={shopMenu} active={active} query={query} />
-    <main id="main">
+    {!bare && <Header client:load locale={locale} links={links} utility={utility} aisles={aisles} shops={shopMenu} active={active} query={query} />}
+    <main id="main" class={bare ? 'bare' : undefined}>
       <slot />
     </main>
-    <Fab client:idle locale={locale} aisles={aisles} whatsapp={whatsapp} />
-    <SaveSheet client:idle locale={locale} />
-    <footer class="site-footer">
+    {!bare && <Fab client:idle locale={locale} aisles={aisles} whatsapp={whatsapp} />}
+    {!bare && <SaveSheet client:idle locale={locale} />}
+    {!bare && <AuthSheet client:load locale={locale} initial={auth} photo={authPhoto} google={google} />}
+    {!bare && (<footer class="site-footer">
       <div class="wrap">
         <div class="final">
           <span class="final-kicker">{c.finalKicker}</span>
@@ -143,7 +157,7 @@ const shopMenu = (await safe(api(locale).shops(), { data: [] })).value.data.slic
           <span>{c.madeIn}</span>
         </div>
       </div>
-    </footer>
+    </footer>)}
     <script>
       // Going to another page: show the loading screen if the next page takes more than a moment to arrive.
       // In-page actions (filters, tabs, variants…) call preventDefault and never trigger it.

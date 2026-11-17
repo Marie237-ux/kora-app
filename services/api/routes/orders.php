@@ -22,6 +22,9 @@ Route::prefix('v1')->group(function () {
         Route::post('orders/{id}/supply-cases/{caseId}/choice', [OrderSupplyController::class, 'choose'])
             ->whereUuid(['id', 'caseId'])
             ->middleware('throttle:20,1');
+        Route::post('orders/{id}/reopen', [OrdersController::class, 'reopen'])
+            ->whereUuid('id')
+            ->middleware('throttle:10,1');
         Route::post('orders/{id}/payments', [OrdersController::class, 'pay'])
             ->whereUuid('id')
             ->middleware('throttle:10,1');

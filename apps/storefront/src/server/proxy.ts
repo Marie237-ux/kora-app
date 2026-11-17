@@ -41,6 +41,8 @@ export async function forwardApi({ request, url }: APIContext): Promise<Response
       'x-request-id',
       'x-content-type-options',
       'retry-after',
+      // Redirects of the "Continue with Google" round trip.
+      'location',
     ]) {
       const value = result.headers.get(key);
       if (value) output.set(key, value);

@@ -9757,6 +9757,79 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/operations/delivery/shipping-routes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tarifs d’expédition entre villes */
+        get: operations["get_api_v1_operations_delivery_shipping_routes"];
+        put?: never;
+        /** Créer un tarif d’expédition */
+        post: operations["post_api_v1_operations_delivery_shipping_routes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/operations/delivery/shipping-routes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Modifier un tarif d’expédition */
+        put: operations["put_api_v1_operations_delivery_shipping_routes_id"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/{id}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Modifier une commande non payée : elle est annulée, ses articles reviennent dans le panier
+         * @description Refusé si la commande est payée, annulée ou expirée (ORDER_NOT_EDITABLE) ou si un paiement est en cours (ORDER_PAYMENT_IN_PROGRESS). Réservations, créneau, offre de livraison et points sont rendus.
+         */
+        post: operations["post_orders__id__reopen"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Photo de profil du membre (image publique, 4 Mo au plus) */
+        post: operations["post_me_avatar"];
+        /** Retirer la photo de profil */
+        delete: operations["delete_me_avatar"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -11477,6 +11550,7 @@ export interface components {
             version: number;
             /** Format: date-time */
             updated_at: string;
+            city: string;
         };
         DeliveryQuote: {
             /** Format: uuid */
@@ -11496,9 +11570,11 @@ export interface components {
             total: string | null;
             breakdown: {
                 /** @enum {string} */
-                code: "base" | "extra_collections" | "route" | "mass" | "bulky" | "fragile";
+                code: "base" | "extra_collections" | "route" | "mass" | "bulky" | "fragile" | "shipping";
                 quantity: number;
                 amount: string;
+                /** @description Ville de départ (expédition). */
+                from?: string;
             }[];
             demo_amounts: boolean;
             zone: components["schemas"]["DeliveryZonePublic"] | null;
@@ -11507,6 +11583,7 @@ export interface components {
                 id: string;
                 label: string;
                 district: string;
+                city: string;
             };
             collection_count: number;
             ready_after_minutes: number | null;
@@ -11539,6 +11616,20 @@ export interface components {
             promotion: components["schemas"]["DeliveryPromotion"] | null;
             /** @description Livraison nette à payer après promotion, suppléments compris. */
             payable_delivery: string | null;
+            /** @description Lignes livrées dans la ville de l’adresse (local) ou expédiées depuis une autre ville (shipping). */
+            groups: {
+                /** @enum {string} */
+                mode: "local" | "shipping";
+                from?: string;
+                city: string;
+                line_ids: string[];
+                fee: string | null;
+                days_min?: number | null;
+                days_max?: number | null;
+                to_door?: boolean | null;
+            }[];
+            /** @description Un créneau est requis (livraison locale). */
+            needs_slot: boolean;
         };
         PaymentAttempt: {
             /** Format: uuid */
@@ -11594,6 +11685,8 @@ export interface components {
                 loyalty_discount: string;
                 loyalty_points_used: string;
                 prepared_quantity: number;
+                /** @description Photo publique actuelle de l’offre, sinon null. */
+                image: string | null;
             }[];
             delivery: {
                 breakdown: {
@@ -16234,6 +16327,23 @@ export interface components {
                 /** @enum {string} */
                 currency: "XAF";
             };
+        };
+        ShippingRoute: {
+            /** Format: uuid */
+            id: string;
+            origin_city: string;
+            /** @description Ville d’arrivée, ou « * » pour toute autre ville. */
+            destination_city: string;
+            /** @description Frais d’expédition (XAF). */
+            fee: number;
+            days_min: number;
+            days_max: number;
+            /** @description Livré à la porte (sinon retrait en agence). */
+            to_door: boolean;
+            active: boolean;
+            version: number;
+            /** Format: date-time */
+            updated_at: string;
         };
         CatalogueFacets: {
             total: number;
@@ -28232,6 +28342,7 @@ export interface operations {
                     contact_phone: string;
                     alternate_name?: string | null;
                     alternate_phone?: string | null;
+                    city?: string;
                 };
             };
         };
@@ -28302,6 +28413,7 @@ export interface operations {
                     contact_phone: string;
                     alternate_name?: string | null;
                     alternate_phone?: string | null;
+                    city?: string;
                 };
             };
         };
@@ -50873,7 +50985,10 @@ export interface operations {
     post_api_v1_boards_favorites_toggle: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description UUID propre à cette action. Rejouer la même clé et le même contenu effectif renvoie le résultat original ; un contenu différent est rejeté (409). */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
             path?: never;
             cookie?: never;
         };
@@ -50982,6 +51097,274 @@ export interface operations {
             };
             /** @description Boutique introuvable */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_api_v1_operations_delivery_shipping_routes: {
+        parameters: {
+            query?: {
+                origin_city?: string;
+                page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Routes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ShippingRoute"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Non connecté */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Permission delivery.read requise */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    post_api_v1_operations_delivery_shipping_routes: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    origin_city: string;
+                    destination_city: string;
+                    fee: number;
+                    days_min: number;
+                    days_max: number;
+                    to_door: boolean;
+                    active: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Route */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ShippingRoute"];
+                    };
+                };
+            };
+            /** @description Cette route existe déjà */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Données invalides */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    put_api_v1_operations_delivery_shipping_routes_id: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    version: number;
+                    origin_city: string;
+                    destination_city: string;
+                    fee: number;
+                    days_min: number;
+                    days_max: number;
+                    to_door: boolean;
+                    active: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Route */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ShippingRoute"];
+                    };
+                };
+            };
+            /** @description Introuvable */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Version périmée ou route en double */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Données invalides */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    post_orders__id__reopen: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description UUID propre à cette action. Rejouer la même clé et le même contenu effectif renvoie le résultat original ; un contenu différent est rejeté (409). */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Commande annulée, panier complété */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            order_id: string;
+                            /** @enum {string} */
+                            status: "cancelled";
+                            skipped_line_ids: string[];
+                        };
+                    };
+                };
+            };
+            /** @description Non connecté */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Commande inconnue */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Commande non modifiable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    post_me_avatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Profil mis à jour */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Non connecté */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Image refusée */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_me_avatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Profil mis à jour */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Non connecté */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

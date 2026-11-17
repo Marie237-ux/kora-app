@@ -6,7 +6,7 @@ export type CartOffer = {
   name: string;
   image: string | null;
   price: { amount: number };
-  shop: { name: string; slug: string };
+  shop: { name: string; slug: string; city?: string; district?: string | null };
   category: string;
 };
 export type CartLine = {

@@ -27,6 +27,12 @@ Route::prefix('v1')->group(function () {
         ->middleware('auth:sanctum')
         ->group(function () {
             Route::get('zones', [ManageDeliveryController::class, 'zones'])->middleware('permission:delivery.read');
+            // Shipping between cities: fee and delay per origin / destination ("*" = any other city).
+            Route::get('shipping-routes', [\App\Http\Controllers\ShippingRoutesController::class, 'index'])->middleware('permission:delivery.read');
+            Route::post('shipping-routes', [\App\Http\Controllers\ShippingRoutesController::class, 'save'])->middleware('permission:delivery.settings');
+            Route::put('shipping-routes/{id}', [\App\Http\Controllers\ShippingRoutesController::class, 'save'])
+                ->whereUuid('id')
+                ->middleware('permission:delivery.settings');
             Route::post('zones', [ManageDeliveryController::class, 'saveZone'])->middleware(
                 'permission:delivery.settings',
             );

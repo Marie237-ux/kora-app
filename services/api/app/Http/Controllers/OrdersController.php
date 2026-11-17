@@ -76,6 +76,18 @@ final class OrdersController extends OperationalController
     }
 
     /** Not wrapped in the command bus: the provider is called outside any database transaction. */
+    /** Change an unpaid order: it is cancelled and its items go back to the cart (see Orders::reopen). */
+    public function reopen(Request $http, string $id, Orders $orders, Carts $carts)
+    {
+        return [
+            'data' => DB::transaction(function () use ($http, $id, $orders, $carts) {
+                $order = DB::table('orders')->where('id', $orders->owned($id, $http->user())->id)->lockForUpdate()->first();
+
+                return $orders->reopen($order, $carts->current($http, true));
+            }, 3),
+        ];
+    }
+
     public function pay(Request $http, string $id, Payments $payments)
     {
         $key = $http->header('Idempotency-Key');

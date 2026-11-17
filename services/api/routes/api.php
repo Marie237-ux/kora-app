@@ -106,6 +106,21 @@ Route::prefix('v1')->group(function () {
                 ],
             ],
         );
+        // Profile photo: a public media of the member (shown on their account, their public boards and reviews).
+        Route::post('me/avatar', function (Request $request) {
+            $data = $request->validate(['file' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096']]);
+            $library = app(\App\Domain\Media\MediaLibrary::class);
+            $media = $library->upload($data['file'], ['fr' => 'Photo de profil', 'en' => 'Profile photo'], $request->user());
+            $library->setPublic($media['id'], $media['version'], true, $request->user(), true);
+            $request->user()->forceFill(['avatar_path' => '/api/v1/media/'.$media['id'].'/public'])->save();
+
+            return ['data' => $request->user()->publicProfile()];
+        })->middleware('throttle:10,1');
+        Route::delete('me/avatar', function (Request $request) {
+            $request->user()->forceFill(['avatar_path' => null])->save();
+
+            return ['data' => $request->user()->publicProfile()];
+        });
         Route::patch('me/preferences', function (Request $request) {
             $data = $request->validate([
                 'locale' => ['required', 'in:fr,en'],

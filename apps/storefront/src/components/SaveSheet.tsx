@@ -159,6 +159,7 @@ export default function SaveSheet({ locale }: { locale: Locale }) {
     try {
       const r = await api.request<{ data: { favorite: boolean } }>('/api/v1/boards/favorites/toggle', {
         method: 'POST',
+        headers: key(),
         body: JSON.stringify({ offer_id: target.offerId }),
       });
       setFavs((s) => {

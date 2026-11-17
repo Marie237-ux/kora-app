@@ -73,6 +73,14 @@ final class DemoStorefront extends Command
                 ? DB::table('delivery_zones')->where('code', $z['code'])->update($values)
                 : DB::table('delivery_zones')->insert([...$values, 'id' => (string) Str::uuid(), 'code' => $z['code'], 'version' => 1, 'created_at' => $now]);
         }
+        // Shipping routes of the demo (carrier rates between cities), kept by origin/destination so the team can edit them.
+        foreach ($manifest['shipping'] ?? [] as $r) {
+            $values = ['fee' => $r['fee'], 'days_min' => $r['days'][0], 'days_max' => $r['days'][1], 'to_door' => $r['to_door'] ?? false, 'active' => true, 'updated_at' => $now];
+            $key = ['origin_city' => $r['from'], 'destination_city' => $r['to']];
+            DB::table('shipping_routes')->where($key)->exists()
+                ? DB::table('shipping_routes')->where($key)->update($values)
+                : DB::table('shipping_routes')->insert([...$key, ...$values, 'id' => (string) Str::uuid(), 'version' => 1, 'created_at' => $now]);
+        }
         foreach ($manifest['shops'] as $s) {
             $shop = (string) Str::uuid();
             $avatar = null;
@@ -226,10 +234,13 @@ final class DemoStorefront extends Command
                 $blocks[] = $block;
             }
             $cms = app(Cms::class);
-            $titles = ['home' => ['fr' => 'Accueil', 'en' => 'Home'], 'catalogue' => ['fr' => 'Catalogue', 'en' => 'Catalogue'], 'product' => ['fr' => 'Fiche produit', 'en' => 'Product page'], 'shops' => ['fr' => 'Nos boutiques', 'en' => 'Our shops'], 'inspirations' => ['fr' => 'Inspirations', 'en' => 'Inspirations']];
+            $titles = ['home' => ['fr' => 'Accueil', 'en' => 'Home'], 'catalogue' => ['fr' => 'Catalogue', 'en' => 'Catalogue'], 'product' => ['fr' => 'Fiche produit', 'en' => 'Product page'], 'shops' => ['fr' => 'Nos boutiques', 'en' => 'Our shops'], 'inspirations' => ['fr' => 'Inspirations', 'en' => 'Inspirations'], 'commande' => ['fr' => 'Commande', 'en' => 'Checkout'], 'compte' => ['fr' => 'Compte', 'en' => 'Account']];
             $draft = $cms->saveDraft('page', $pageSlug, ['title' => $titles[$pageSlug] ?? ['fr' => $pageSlug, 'en' => $pageSlug], 'content' => ['blocks' => $blocks]], $actor);
             $cms->publish($draft['id'], [], $actor);
         }
+        // Delivery set-up of the demo, so a checkout gives a real (demo-flagged) price: weight of each product, shop
+        // stock confirmed, one pick-up point per shop in the zone of its district, a published demo grid and slots.
+        $this->demoDelivery($manifest, $actor->id, $now);
         if (! empty($manifest['boards'])) {
             // Inspirations: boards curated by the KORA team, published explicitly (public), with real demo products.
             $curator = User::firstOrCreate(['email' => 'selections@kora.local'], ['name' => 'Équipe KORA', 'password' => Str::random(40)]);
@@ -284,6 +295,93 @@ final class DemoStorefront extends Command
     }
 
     /** Removes the previous test set only: what belongs to the test supplier, and the test scenes. */
+    private function demoDelivery(array $manifest, int $actorId, $now): void
+    {
+        $supplier = DB::table('suppliers')->where('name', self::SUPPLIER)->value('id');
+        $shops = DB::table('shops')->where('supplier_id', $supplier)->get(['id', 'name', 'city', 'district']);
+        $offers = DB::table('offers')->whereIn('shop_id', $shops->pluck('id'))->get(['id', 'variant_id']);
+        $grams = $manifest['delivery']['grams'] ?? 1500;
+        foreach ($offers as $o) {
+            DB::table('inventory_profiles')->updateOrInsert(['variant_id' => $o->variant_id], [
+                'id' => DB::table('inventory_profiles')->where('variant_id', $o->variant_id)->value('id') ?? (string) Str::uuid(),
+                'tracking_mode' => 'none',
+                'requires_expiry' => false,
+                'logistics' => json_encode(['mass_grams' => $grams, 'length_mm' => null, 'width_mm' => null, 'height_mm' => null, 'transport_class' => 'standard', 'handling' => ['fr' => '', 'en' => '']]),
+                'verified_by' => $actorId,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+            DB::table('supplier_availability')->updateOrInsert(['offer_id' => $o->id], [
+                'id' => DB::table('supplier_availability')->where('offer_id', $o->id)->value('id') ?? (string) Str::uuid(),
+                'quantity' => null,
+                'verified_at' => $now->copy()->subMinute(),
+                'valid_until' => $now->copy()->addDays(60),
+                'preparation_minutes' => 60,
+                'contact' => 'Démo',
+                'reference' => 'DEMO',
+                'verified_by' => $actorId,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        }
+        $zones = app(\App\Domain\Delivery\DeliveryZones::class);
+        foreach ($shops as $shop) {
+            $zone = $shop->district ? $zones->resolve($shop->district, $shop->city ?? 'Douala') : null;
+            if ($zone && ! DB::table('collection_points')->where('shop_id', $shop->id)->exists()) {
+                DB::table('collection_points')->insert([
+                    'id' => (string) Str::uuid(), 'zone_id' => $zone->id, 'shop_id' => $shop->id, 'warehouse_id' => null,
+                    'name' => $shop->name, 'address' => 'Boutique de démonstration', 'priority' => 0, 'active' => true,
+                    'version' => 1, 'created_at' => $now, 'updated_at' => $now,
+                ]);
+            }
+        }
+        // A published demo grid only when the team has none (the team's own grid always wins).
+        if (! DB::table('delivery_grids')->where('status', 'published')->exists()) {
+            $fees = $manifest['delivery']['base_fees'] ?? [];
+            DB::table('delivery_grids')->insert([
+                'id' => (string) Str::uuid(),
+                'number' => (int) DB::table('delivery_grids')->max('number') + 1,
+                'status' => 'published',
+                'rules' => json_encode([
+                    'demo' => true,
+                    'extra_collection_fee' => 500,
+                    'mass_brackets' => [['max_grams' => 5000, 'amount' => 0], ['max_grams' => 20000, 'amount' => 1000], ['max_grams' => 100000, 'amount' => 3000]],
+                    'bulky_fee' => 2000,
+                    'fragile_fee' => 800,
+                    'validity_minutes' => 30,
+                    'warehouse_preparation_minutes' => 120,
+                    'zones' => DB::table('delivery_zones')->where('active', true)->get(['id', 'city'])
+                        ->map(fn ($z) => ['zone_id' => $z->id, 'base_fee' => $fees[$z->city] ?? 1500])->values()->all(),
+                    'route_supplements' => [],
+                ]),
+                'notes' => 'Grille de démonstration',
+                'version' => 1,
+                'created_by' => $actorId,
+                'published_by' => $actorId,
+                'published_at' => $now,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        }
+        // Stock held 30 minutes while the customer pays, only when the team has not chosen a duration yet.
+        if (! DB::table('business_settings')->where('key', 'inventory')->exists()) {
+            DB::table('business_settings')->insert([
+                'key' => 'inventory', 'value' => json_encode(['reservation_ttl_seconds' => 1800]), 'version' => 1,
+                'updated_by' => $actorId, 'created_at' => $now, 'updated_at' => $now,
+            ]);
+        }
+        if (! DB::table('delivery_slot_rules')->exists()) {
+            foreach (range(1, 6) as $day) {
+                foreach ([['09:00', '12:00'], ['14:00', '18:00']] as [$from, $to]) {
+                    DB::table('delivery_slot_rules')->insert([
+                        'id' => (string) Str::uuid(), 'zone_id' => null, 'weekday' => $day, 'starts_at' => $from, 'ends_at' => $to,
+                        'capacity' => 20, 'cutoff_minutes' => 120, 'active' => true, 'version' => 1, 'created_at' => $now, 'updated_at' => $now,
+                    ]);
+                }
+            }
+        }
+    }
+
     private function clear(): void
     {
         DB::transaction(function () {
@@ -302,6 +400,8 @@ final class DemoStorefront extends Command
             foreach (['catalogue_search_tokens', 'catalogue_search_documents', 'embedding_queue', 'offer_embeddings', 'supplier_availability', 'cart_lines', 'board_pins', 'product_alerts'] as $table) {
                 DB::table($table)->whereIn('offer_id', $offers->pluck('id'))->delete();
             }
+            DB::table('inventory_profiles')->whereIn('variant_id', $variants)->delete();
+            DB::table('collection_points')->whereIn('shop_id', $shops)->delete();
             DB::table('offers')->whereIn('id', $offers->pluck('id'))->delete();
             DB::table('variants')->whereIn('id', $variants)->delete();
             DB::table('products')->whereIn('id', $products)->delete();

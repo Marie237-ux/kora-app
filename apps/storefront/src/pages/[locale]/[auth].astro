@@ -1,24 +1,48 @@
 ---
-import Base from '../../layouts/Base.astro';
-import { AuthPanel, AccountPanel, t } from '@kora/ui';
-import type { Locale } from '@kora/api-client';
-const locale = Astro.params.locale as Locale;
-if (!['fr', 'en'].includes(locale)) return new Response(null, { status: 404 });
+/**
+ * Sign-in, registration, forgotten / new password (the account panel, open over the page) and the customer account
+ * (greeting, menu, orders, addresses, preferences). Private pages (never indexed).
+ */
+import Site from '../../layouts/Site.astro';
+import type { AuthMode } from '../../components/Auth.tsx';
+import Account from '../../components/Account.tsx';
+import { copy } from '../../lib/copy';
+import { api, localeOf, safe } from '../../lib/server';
+const locale = localeOf(Astro.params.locale);
+if (!locale) return new Response(null, { status: 404 });
 const route = Astro.params.auth || '';
-const modes: Record<string, 'login' | 'register' | 'forgot' | 'reset'> = {
-  login: 'login',
-  register: 'register',
-  'forgot-password': 'forgot',
-  'reset-password': 'reset',
-};
+const modes: Record<string, AuthMode> = { login: 'login', register: 'register', 'forgot-password': 'forgot', 'reset-password': 'reset' };
 if (!modes[route] && route !== 'account') return new Response(null, { status: 404 });
-const copy = t(locale);
+const c = copy(locale);
+const mode = modes[route];
+// Account header: the product page's hero, on the photo of the CMS page "compte" (back office → site pages).
+type CmsPage = { data: { page: { blocks: { type: string; media_id?: string }[] } | null; media: Record<string, string> } };
+const cms = route === 'account' ? (await safe(api(locale).request<CmsPage>('/api/v1/content/pages/compte'), { data: { page: null, media: {} } } as CmsPage)).value.data : null;
+const banner = cms?.page?.blocks.find((b) => b.type === 'banner' && b.media_id && cms.media[b.media_id]);
+const photo = banner ? cms!.media[banner.media_id!] : null;
+const title = route === 'account' ? c.acTitle : { login: c.signIn, register: c.createAccount, forgot: c.auForgotTitle, reset: c.auResetTitle }[mode];
 ---
 
-<Base locale={locale} title={copy.account} privatePage>
-  {route === 'account' ? (
-    <AccountPanel locale={locale} client:load />
-  ) : (
-    <AuthPanel locale={locale} mode={modes[route]} client:load />
+<Site locale={locale} title={title.replace(/[.?!]$/, '').trim()} active={route === 'account' ? 'account' : ''} auth={mode}>
+  {route === 'account' && (
+    <section class={'cat-hero co-hero ac-hero' + (photo ? ' has-photo' : '')}>
+      {photo && <img class="cat-photo" src={photo} alt="" decoding="async" fetchpriority="high" />}
+      <div class="wrap cat-hero-inner">
+        <div class="cat-hero-text">
+          <nav class="crumbs" aria-label={c.breadcrumb}>
+            <a href={'/' + locale}>{c.home}</a><span aria-hidden="true">/</span><span aria-current="page">{c.acTitle}</span>
+          </nav>
+          <h1>{c.acTitle}</h1>
+          <p>{c.acIntro}</p>
+        </div>
+      </div>
+    </section>
   )}
-</Base>
+  <div class={'ac-area' + (mode ? ' au-page' : '')}>
+    {route === 'account' && (
+      <div class="wrap">
+        <Account client:load locale={locale} />
+      </div>
+    )}
+  </div>
+</Site>

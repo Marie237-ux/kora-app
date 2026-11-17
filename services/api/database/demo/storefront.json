@@ -3662,6 +3662,74 @@
         },
         "link": "/inspirations"
       }
+    ],
+    "commande": [
+      {
+        "type": "banner",
+        "image_file": "images/commande-entete.jpg",
+        "alt": {
+          "fr": "Une cliente souriante ouvre son colis sur son canapé",
+          "en": "A smiling customer opens her parcel on her sofa"
+        },
+        "text": {
+          "fr": "Commande. Livraison dans votre ville, expédition partout au Cameroun.",
+          "en": "Checkout. Delivery in your city, shipping across Cameroon."
+        },
+        "link": "/commande"
+      }
+    ],
+    "compte": [
+      {
+        "type": "banner",
+        "image_file": "images/compte-entete.jpg",
+        "alt": {
+          "fr": "Une cliente souriante qui commande depuis son téléphone, assise dans son salon",
+          "en": "A smiling customer ordering from her phone in her living room"
+        },
+        "title": {
+          "fr": "Tout le Cameroun, livré chez vous.",
+          "en": "All of Cameroon, delivered to you."
+        },
+        "text": {
+          "fr": "Les boutiques de votre ville sont livrées au créneau choisi, les autres vous sont expédiées partout au pays.",
+          "en": "Shops in your city are delivered at the time you choose, the others are shipped anywhere in the country."
+        },
+        "link": "/account"
+      },
+      {
+        "type": "banner",
+        "image_file": "images/compte-2.jpg",
+        "alt": {
+          "fr": "Une cliente souriante, son téléphone à la main",
+          "en": "A smiling customer holding her phone"
+        },
+        "title": {
+          "fr": "Payez comme vous voulez.",
+          "en": "Pay the way you like."
+        },
+        "text": {
+          "fr": "Orange Money, MTN MoMo ou carte, sur la page de paiement sécurisée.",
+          "en": "Orange Money, MTN MoMo or card, on the secure payment page."
+        },
+        "link": "/account"
+      },
+      {
+        "type": "banner",
+        "image_file": "images/compte-3.jpg",
+        "alt": {
+          "fr": "Une cliente ravie avec ses sacs de courses",
+          "en": "A happy customer with her shopping bags"
+        },
+        "title": {
+          "fr": "Suivez chaque commande.",
+          "en": "Follow every order."
+        },
+        "text": {
+          "fr": "Vos commandes, vos adresses et vos favoris, au même endroit.",
+          "en": "Your orders, addresses and favourites, in one place."
+        },
+        "link": "/account"
+      }
     ]
   },
   "zones": [
@@ -3884,5 +3952,160 @@
       ],
       "cover": "images/tableau-rentree.jpg"
     }
-  ]
+  ],
+  "shipping": [
+    {
+      "from": "Douala",
+      "to": "Yaoundé",
+      "fee": 2500,
+      "days": [
+        1,
+        2
+      ]
+    },
+    {
+      "from": "Yaoundé",
+      "to": "Douala",
+      "fee": 2500,
+      "days": [
+        1,
+        2
+      ]
+    },
+    {
+      "from": "Douala",
+      "to": "Bafoussam",
+      "fee": 3000,
+      "days": [
+        2,
+        3
+      ]
+    },
+    {
+      "from": "Bafoussam",
+      "to": "Douala",
+      "fee": 3000,
+      "days": [
+        2,
+        3
+      ]
+    },
+    {
+      "from": "Douala",
+      "to": "Kribi",
+      "fee": 2500,
+      "days": [
+        1,
+        2
+      ]
+    },
+    {
+      "from": "Kribi",
+      "to": "Douala",
+      "fee": 2500,
+      "days": [
+        1,
+        2
+      ]
+    },
+    {
+      "from": "Yaoundé",
+      "to": "Bafoussam",
+      "fee": 3000,
+      "days": [
+        2,
+        3
+      ]
+    },
+    {
+      "from": "Bafoussam",
+      "to": "Yaoundé",
+      "fee": 3000,
+      "days": [
+        2,
+        3
+      ]
+    },
+    {
+      "from": "Yaoundé",
+      "to": "Kribi",
+      "fee": 3000,
+      "days": [
+        2,
+        3
+      ]
+    },
+    {
+      "from": "Kribi",
+      "to": "Yaoundé",
+      "fee": 3000,
+      "days": [
+        2,
+        3
+      ]
+    },
+    {
+      "from": "Bafoussam",
+      "to": "Kribi",
+      "fee": 4000,
+      "days": [
+        3,
+        4
+      ]
+    },
+    {
+      "from": "Kribi",
+      "to": "Bafoussam",
+      "fee": 4000,
+      "days": [
+        3,
+        4
+      ]
+    },
+    {
+      "from": "Douala",
+      "to": "*",
+      "fee": 5000,
+      "days": [
+        3,
+        5
+      ]
+    },
+    {
+      "from": "Yaoundé",
+      "to": "*",
+      "fee": 5000,
+      "days": [
+        3,
+        5
+      ]
+    },
+    {
+      "from": "Bafoussam",
+      "to": "*",
+      "fee": 5000,
+      "days": [
+        3,
+        5
+      ]
+    },
+    {
+      "from": "Kribi",
+      "to": "*",
+      "fee": 5000,
+      "days": [
+        3,
+        5
+      ]
+    }
+  ],
+  "delivery": {
+    "grams": 1500,
+    "base_fees": {
+      "Douala": 1500,
+      "Yaoundé": 1500,
+      "Bafoussam": 1000,
+      "Kribi": 1000
+    }
+  }
 }
