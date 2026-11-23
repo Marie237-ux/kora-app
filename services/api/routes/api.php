@@ -6,6 +6,7 @@ use App\Http\Controllers\CatalogueController;
 use App\Http\Controllers\HeroController;
 use App\Http\Controllers\ManageCatalogueController;
 use App\Http\Controllers\MediaController;
+use App\Http\Controllers\ShopSocialController;
 use App\Http\Middleware\CatalogueAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -42,7 +43,19 @@ Route::prefix('v1')->group(function () {
     Route::get('shops', [CatalogueController::class, 'shops']);
     Route::get('categories', [CatalogueController::class, 'categories']);
     Route::get('shops/{slug}', [CatalogueController::class, 'shop']);
+    // Shop stories (public; a signed-in member never sees the shops they blocked).
+    Route::get('stories', [ShopSocialController::class, 'index'])->middleware('throttle:240,1');
+    Route::get('shops/{slug}/stories', [ShopSocialController::class, 'shop'])->middleware('throttle:240,1');
     Route::middleware('auth:sanctum')->group(function () {
+        Route::post('stories/{id}/react', [ShopSocialController::class, 'react'])->whereUuid('id')->middleware('throttle:60,1');
+        Route::post('shops/{slug}/report', [ShopSocialController::class, 'report'])->middleware('throttle:10,1');
+        Route::get('shops-blocked', [ShopSocialController::class, 'blockedShops']);
+        Route::post('shops/{slug}/block', [ShopSocialController::class, 'toggleBlock'])->middleware('throttle:30,1');
+        Route::get('operations/stories', [ShopSocialController::class, 'manage'])->middleware('permission:content.read');
+        Route::post('operations/stories', [ShopSocialController::class, 'create'])->middleware('permission:content.write');
+        Route::post('operations/stories/{id}/status', [ShopSocialController::class, 'setStatus'])->whereUuid('id')->middleware('permission:content.publish');
+        Route::get('operations/shop-reports', [ShopSocialController::class, 'reports'])->middleware('permission:catalogue.read');
+        Route::post('operations/shop-reports/{id}/status', [ShopSocialController::class, 'reportStatus'])->whereUuid('id')->middleware('permission:catalogue.read');
         Route::get('shops-liked', [CatalogueController::class, 'likedShops']);
         Route::post('shops/{slug}/like', [CatalogueController::class, 'toggleShopLike'])->middleware('throttle:60,1');
     });

@@ -1,0 +1,36 @@
+---
+/**
+ * Page not found: in the visitor's language (from the address), the photo hero of the CMS page "introuvable"
+ * (the catalogue's photo when none is set), then on the home page's warm sheet a search field and the ways back.
+ */
+import Site from '../layouts/Site.astro';
+import PageHero from '../components/PageHero.astro';
+import { type Locale } from '../lib/copy';
+import { cmsPage } from '../lib/cms';
+const locale: Locale = Astro.url.pathname.startsWith('/en') ? 'en' : 'fr';
+const fr = locale === 'fr';
+Astro.response.status = 404;
+const page = await cmsPage(locale, 'introuvable', 'catalogue');
+---
+
+<Site locale={locale} title={fr ? 'Page introuvable' : 'Page not found'}>
+  <PageHero locale={locale} photo={page.photo} title={fr ? 'Page introuvable' : 'Page not found'} crumb="404" text={fr ? 'Le lien est peut-être ancien, ou le produit n’est plus en ligne.' : 'The link may be old, or the product is no longer online.'} />
+  <section class="featured sheet pg-sheet nf">
+    <div class="wrap">
+      <header class="featured-head">
+        <span class="kicker">404</span>
+        <h2>{fr ? 'Cherchez-le, ou demandez-le à l’équipe KORA' : 'Search for it, or ask the KORA team'}</h2>
+      </header>
+      <form class="nf-search" action={'/' + locale + '/catalogue'} method="get" role="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+        <input name="q" type="search" placeholder={fr ? 'Rechercher un produit, une boutique…' : 'Search a product, a shop…'} aria-label={fr ? 'Rechercher' : 'Search'} />
+        <button type="submit" class="btn btn-accent btn-small">{fr ? 'Rechercher' : 'Search'}</button>
+      </form>
+      <div class="nf-links">
+        <a class="btn btn-dark btn-small" href={'/' + locale}>{fr ? 'Retour à l’accueil' : 'Back to home'}</a>
+        <a class="btn btn-line btn-small" href={'/' + locale + '/catalogue'}>{fr ? 'Voir le catalogue' : 'See the catalogue'}</a>
+        <a class="nf-request" href={'/' + locale + '/request-product'}>{fr ? 'Demander un produit' : 'Request a product'} →</a>
+      </div>
+    </div>
+  </section>
+</Site>

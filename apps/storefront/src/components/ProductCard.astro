@@ -33,7 +33,7 @@ const was = offer.compare_at_price && offer.compare_at_price > offer.price.amoun
 const off = was ? Math.round((1 - offer.price.amount / was) * 100) : 0;
 ---
 
-<article class="kcard">
+<article class="kcard" data-shop={offer.shop.slug}>
   <div class="kcard-media">
     <a class="kcard-img" href={href} tabindex="-1" aria-hidden="true">
       {offer.image && <img src={offer.image} alt="" loading="lazy" decoding="async" />}

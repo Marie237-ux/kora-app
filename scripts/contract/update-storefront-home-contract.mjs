@@ -681,3 +681,18 @@ console.log('Storefront home contract updated.');
   };
   writeFileSync(file, JSON.stringify(api9, null, 2) + '\n');
 }
+
+// Shop stories, reporting and blocking a shop (shops as accounts).
+{
+  const api10 = JSON.parse(readFileSync(file, 'utf8'));
+  const json = (schema) => ({ 'application/json': { schema } });
+  const ok = (d) => ({ 200: { description: d }, 401: { description: 'Non connecté' }, 404: { description: 'Boutique inconnue' } });
+  const slug = { name: 'slug', in: 'path', required: true, schema: { type: 'string' } };
+  api10.paths['/api/v1/stories'] = { get: { operationId: 'get_stories', tags: ['Boutiques'], summary: 'Stories en cours (24 h) des boutiques suivies par le membre, sans les boutiques bloquées ; liste vide pour un visiteur (meta.following)', 'x-resource-owner': 'public', responses: { 200: { description: 'Stories par boutique' } } } };
+  api10.paths['/api/v1/shops/{slug}/stories'] = { get: { operationId: 'get_shop_stories', tags: ['Boutiques'], summary: 'Stories en cours d’une boutique, pour ses abonnés seulement (meta.followed)', 'x-resource-owner': 'public', parameters: [slug], responses: { 200: { description: 'Stories' }, 404: { description: 'Boutique inconnue' } } } };
+  api10.paths['/api/v1/shops/{slug}/report'] = { post: { operationId: 'post_shop_report', tags: ['Boutiques'], summary: 'Signaler une boutique ou un de ses produits à l’équipe KORA', security: [{ sessionCookie: [] }], 'x-resource-owner': 'account', parameters: [slug], requestBody: { required: true, content: json({ type: 'object', required: ['reason'], properties: { reason: { type: 'string', enum: ['counterfeit', 'misleading', 'behaviour', 'prohibited', 'other'] }, details: { type: 'string', nullable: true }, offer_id: { type: 'string', format: 'uuid', nullable: true } } }) }, responses: { 201: { description: 'Signalement créé' }, ...ok('Signalement déjà ouvert') } } };
+  api10.paths['/api/v1/stories/{id}/react'] = { post: { operationId: 'post_story_react', tags: ['Boutiques'], summary: 'Réagir à une story en cours d’une boutique suivie, changer ou retirer sa réaction (null)', security: [{ sessionCookie: [] }], 'x-resource-owner': 'account', parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }], requestBody: { required: true, content: json({ type: 'object', required: ['reaction'], properties: { reaction: { type: 'string', enum: ['love', 'adore', 'fire', 'clap', 'wow', 'haha'], nullable: true } } }) }, responses: { 200: { description: 'Réaction enregistrée' }, 401: { description: 'Non connecté' }, 404: { description: 'Story introuvable ou expirée' }, 422: { description: 'Réaction inconnue' } } } };
+  api10.paths['/api/v1/shops-blocked'] = { get: { operationId: 'get_shops_blocked', tags: ['Boutiques'], summary: 'Boutiques bloquées par le membre', security: [{ sessionCookie: [] }], 'x-resource-owner': 'account', responses: { 200: { description: 'Liste' }, 401: { description: 'Non connecté' } } } };
+  api10.paths['/api/v1/shops/{slug}/block'] = { post: { operationId: 'post_shop_block', tags: ['Boutiques'], summary: 'Bloquer une boutique, ou la débloquer', security: [{ sessionCookie: [] }], 'x-resource-owner': 'account', parameters: [slug], responses: ok('État du blocage') } };
+  writeFileSync(file, JSON.stringify(api10, null, 2) + '\n');
+}

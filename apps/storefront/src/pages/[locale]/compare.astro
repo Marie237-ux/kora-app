@@ -1,0 +1,280 @@
+---
+/**
+ * Comparison (spec §12): up to four products of one aisle side by side, after the Apple / Boulanger comparators.
+ * The site's photo hero, a tool row (count, "Only the differences", share, clear), then one card per product —
+ * photo, shop, name, price (the lowest one marked), add to cart — and a free slot to add another product of the
+ * aisle. Below, two tabs like the product page: "The essentials" (price, shop, availability) and "Specifications"
+ * (every characteristic from the catalogue grid), in the product page's specification style. Differing rows are
+ * stressed, identical ones can be hidden. Unknown values say so; values in different units are not lined up.
+ * The address is shareable (?offers=…) and carries no personal data; opening it also sets this browser's list.
+ */
+import Site from '../../layouts/Site.astro';
+import PageHero from '../../components/PageHero.astro';
+import AddToCart from '../../components/AddToCart.tsx';
+import { localeOf, api, safe } from '../../lib/server';
+import { cmsPage } from '../../lib/cms';
+import { pagesCopy } from '../../lib/pages-copy';
+import { copy, money } from '../../lib/copy';
+const locale = localeOf(Astro.params.locale);
+if (!locale) return new Response(null, { status: 404 });
+const p = pagesCopy(locale);
+const c = copy(locale);
+const home = '/' + locale;
+const ids = (Astro.url.searchParams.get('offers') ?? '').split(',').filter((x) => /^[0-9a-f-]{36}$/.test(x)).slice(0, 4);
+type Value = { state: 'known' | 'unknown' | 'not_applicable'; value: unknown };
+type Line = { key: string; label: string | Record<string, string>; unit: string | null; comparable: boolean; values: Record<string, Value> };
+type Offer = {
+  id: string;
+  name: string;
+  image: string | null;
+  category: string;
+  minimum_quantity: number;
+  price: { amount: number };
+  compare_at_price: number | null;
+  availability: string;
+  shop: { name: string; slug: string; avatar: string | null };
+};
+type Result = { data: { offers: Offer[]; characteristics: Line[] } };
+const result = ids.length >= 2
+  ? (await safe(api(locale).request<Result>('/api/v1/compare?' + ids.map((i) => 'offers[]=' + i).join('&')), null as unknown as Result)).value?.data ?? null
+  : null;
+const page = await cmsPage(locale, 'catalogue');
+const offers = result && result.offers.length >= 2 ? result.offers : [];
+const lines = result?.characteristics ?? [];
+const aisleSlug = offers[0]?.category ?? '';
+const aisles = aisleSlug ? (await safe(api(locale).request<{ data: { slug: string; name: string }[] }>('/api/v1/categories'), { data: [] })).value?.data ?? [] : [];
+const aisle = aisles.find((a) => a.slug === aisleSlug)?.name ?? '';
+const prices = offers.map((o) => o.price.amount);
+const cheapest = new Set(prices.length && Math.min(...prices) !== Math.max(...prices) ? offers.filter((o) => o.price.amount === Math.min(...prices)).map((o) => o.id) : []);
+const addSlot = offers.length > 0 && offers.length < 4;
+const cols = offers.length + (addSlot ? 1 : 0);
+const label = (l: Line) => (typeof l.label === 'string' ? l.label : l.label[locale] ?? l.label.fr);
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const shown = (v: Value, unit: string | null) =>
+  v.state === 'known'
+    ? typeof v.value === 'boolean'
+      ? v.value ? (locale === 'fr' ? 'Oui' : 'Yes') : locale === 'fr' ? 'Non' : 'No'
+      : cap(String(v.value)) + (unit ? ' ' + unit : '')
+    : v.state === 'unknown' ? p.cmpUnknown : '—';
+// A row is "the same everywhere" when every product has the same known value.
+const same = (l: Line) => {
+  const vs = offers.map((o) => l.values[o.id] ?? { state: 'not_applicable', value: null });
+  return vs.every((v) => v.state === 'known') && new Set(vs.map((v) => JSON.stringify(v.value))).size === 1;
+};
+const avail = (a: string) => (a === 'available' ? (locale === 'fr' ? 'En stock' : 'In stock') : a === 'unavailable' ? (locale === 'fr' ? 'Indisponible' : 'Unavailable') : locale === 'fr' ? 'Sur commande' : 'To order');
+const without = (id: string) => home + '/compare?offers=' + offers.filter((x) => x.id !== id).map((x) => x.id).join(',');
+const items = JSON.stringify(offers.map((o) => ({ id: o.id, category: o.category, name: o.name, image: o.image, price: o.price.amount })));
+const samePrice = prices.every((x) => x === prices[0]);
+const sameShop = new Set(offers.map((o) => o.shop.slug)).size === 1;
+const sameAvail = new Set(offers.map((o) => o.availability)).size === 1;
+const specsAllSame = lines.length > 0 && lines.every(same);
+const essentialsAllSame = samePrice && sameShop && sameAvail;
+const catalogueHref = home + '/catalogue' + (aisleSlug ? '?category=' + aisleSlug : '');
+const tabs: [string, string][] = [['essentials', p.cmpEssentials], ...(lines.length ? [['specs', p.cmpSpecs] as [string, string]] : [])];
+---
+
+<Site locale={locale} title={p.cmpTitle}>
+  <PageHero locale={locale} photo={page.photo} title={p.cmpTitle} text={offers.length ? (aisle ? aisle + ' · ' : '') + p.cmpCount(offers.length) + '. ' + p.cmpText : p.cmpText} />
+  <section class="cx" data-cx data-items={items}>
+    <div class="wrap">
+      {offers.length >= 2 ? (
+        <>
+          <div class="cx-bar">
+            <p class="cx-bar-t">{aisle && <span class="kicker">{aisle}</span>}<strong>{p.cmpCount(offers.length)}</strong></p>
+            <div class="cx-tools">
+              <label class="cx-switch">
+                <input type="checkbox" data-cx-diff />
+                <span aria-hidden="true"></span>
+                {p.cmpDiff}
+              </label>
+              <button type="button" class="cx-tool" data-cx-share data-done={p.cmpCopied}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M8 7l4-4 4 4M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" /></svg>
+                <span>{p.cmpShare}</span>
+              </button>
+              <button type="button" class="cx-tool" data-cx-clear data-href={catalogueHref}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" /></svg>
+                <span>{p.cmpClear}</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="cx-scroll" data-cx-sync>
+            <div class="cx-grid" style={'--cols:' + cols}>
+              <div class="cx-corner" aria-hidden="true"></div>
+              {offers.map((o) => (
+                <article class="cx-card">
+                  <a class="cx-x" href={without(o.id)} aria-label={p.cmpRemove + ' — ' + o.name}>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17" /></svg>
+                  </a>
+                  {cheapest.has(o.id) && <span class="cx-badge">{p.cmpCheapest}</span>}
+                  <a class="cx-img" href={home + '/products/' + o.id} tabindex="-1" aria-hidden="true">{o.image && <img src={o.image} alt="" loading="lazy" decoding="async" />}</a>
+                  <a class="cx-shop" href={home + '/shops/' + o.shop.slug}>
+                    <span class="cx-av" aria-hidden="true">{o.shop.avatar ? <img src={o.shop.avatar} alt="" loading="lazy" /> : o.shop.name.charAt(0)}</span>
+                    {o.shop.name}
+                  </a>
+                  <h2><a href={home + '/products/' + o.id}>{o.name}</a></h2>
+                  <p class="cx-price">
+                    <b>{money(o.price.amount, locale)}</b>
+                    {o.compare_at_price && <s>{money(o.compare_at_price, locale)}</s>}
+                  </p>
+                  <div class="cx-buy">
+                    <AddToCart client:visible variant="pill" locale={locale} offerId={o.id} name={o.name} minimum={o.minimum_quantity} disabled={o.availability === 'unavailable'} />
+                    <a class="cx-view" href={home + '/products/' + o.id}>{p.cmpView}</a>
+                  </div>
+                </article>
+              ))}
+              {addSlot && (
+                <a class="cx-add" href={catalogueHref}>
+                  <span class="cx-add-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 6v12M6 12h12" /></svg></span>
+                  <strong>{p.cmpAddMore}</strong>
+                  <small>{p.cmpAddMoreText}</small>
+                </a>
+              )}
+            </div>
+          </div>
+
+          <div class="pdp-tabs cx-tabs">
+            <div class="pdp-tablist" role="tablist" data-cx-tabs>
+              {tabs.map(([key, name], i) => (
+                <button type="button" role="tab" id={'cx-tab-' + key} aria-controls={'cx-panel-' + key} aria-selected={i === 0 ? 'true' : 'false'} data-cx-tab={key}>{name}</button>
+              ))}
+              <span class="pdp-tab-ink" aria-hidden="true"></span>
+            </div>
+          </div>
+
+          <div class="cx-scroll" data-cx-sync>
+            <div class="cx-panel" role="tabpanel" id="cx-panel-essentials" aria-labelledby="cx-tab-essentials">
+              <div class="cx-grid cx-rows" style={'--cols:' + cols}>
+                <div class="cx-row" data-same={samePrice ? '' : undefined}>
+                  <div class="cx-label">{p.cmpPrice}</div>
+                  {offers.map((o) => (
+                    <div class="cx-cell cx-strong">
+                      {money(o.price.amount, locale)}
+                      {cheapest.has(o.id) && <span class="cx-tag">{p.cmpCheapest}</span>}
+                    </div>
+                  ))}
+                  {addSlot && <div class="cx-cell cx-pad"></div>}
+                </div>
+                <div class="cx-row" data-same={sameShop ? '' : undefined}>
+                  <div class="cx-label">{p.cmpShop}</div>
+                  {offers.map((o) => <div class="cx-cell"><a href={home + '/shops/' + o.shop.slug}>{o.shop.name}</a></div>)}
+                  {addSlot && <div class="cx-cell cx-pad"></div>}
+                </div>
+                <div class="cx-row" data-same={sameAvail ? '' : undefined}>
+                  <div class="cx-label">{p.cmpAvailability}</div>
+                  {offers.map((o) => <div class="cx-cell"><span class="cx-dot" data-state={o.availability}></span>{avail(o.availability)}</div>)}
+                  {addSlot && <div class="cx-cell cx-pad"></div>}
+                </div>
+              </div>
+              {essentialsAllSame && <p class="cx-same-note">{p.cmpSame}</p>}
+            </div>
+
+            {lines.length > 0 && (
+              <div class="cx-panel" role="tabpanel" id="cx-panel-specs" aria-labelledby="cx-tab-specs" hidden>
+                <div class="cx-grid cx-rows" style={'--cols:' + cols}>
+                  {lines.map((l) => (
+                    <div class="cx-row" data-same={same(l) ? '' : undefined}>
+                      <div class="cx-label">{label(l)}</div>
+                      {offers.map((o) => {
+                        const v = l.values[o.id] ?? { state: 'not_applicable', value: null };
+                        return <div class={'cx-cell' + (v.state !== 'known' ? ' cx-unknown' : '')}>{shown(v, l.comparable ? l.unit : null)}</div>;
+                      })}
+                      {addSlot && <div class="cx-cell cx-pad"></div>}
+                    </div>
+                  ))}
+                </div>
+                {specsAllSame && <p class="cx-same-note">{p.cmpSame}</p>}
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        <div class="cx-empty">
+          <span class="cx-empty-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 4v16M16 4v16M4 8h4M16 16h4" /></svg></span>
+          <h2>{p.cmpEmpty}</h2>
+          <p>{p.cmpEmptyText}</p>
+          <a class="btn btn-dark btn-small" href={home + '/catalogue'}>{c.continueShopping}</a>
+        </div>
+      )}
+    </div>
+  </section>
+</Site>
+
+<script>
+  import { writeCompare, type CompareItem } from '../../lib/compare';
+
+  const root = document.querySelector<HTMLElement>('[data-cx]');
+  if (root) {
+    // The page's products become this browser's comparison list (also after a "Remove").
+    const items = JSON.parse(root.dataset.items ?? '[]') as CompareItem[];
+    if (items.length) writeCompare(items);
+
+    // "Only the differences", remembered on this device.
+    const DIFF = 'kora.compare-diff';
+    const box = root.querySelector<HTMLInputElement>('[data-cx-diff]');
+    const setDiff = (on: boolean) => {
+      root.toggleAttribute('data-diff', on);
+      try { localStorage.setItem(DIFF, on ? '1' : '0'); } catch {}
+    };
+    if (box) {
+      try { box.checked = localStorage.getItem(DIFF) === '1'; } catch {}
+      setDiff(box.checked);
+      box.addEventListener('change', () => setDiff(box.checked));
+    }
+
+    // Tabs, like the product page: the orange line slides under the chosen tab.
+    const list = root.querySelector<HTMLElement>('[data-cx-tabs]');
+    const moveInk = () => {
+      const on = list?.querySelector<HTMLElement>('[aria-selected="true"]');
+      if (!list || !on) return;
+      list.style.setProperty('--ink-x', on.offsetLeft + 'px');
+      list.style.setProperty('--ink-w', on.offsetWidth + 'px');
+      list.classList.add('ink-ready');
+    };
+    list?.addEventListener('click', (e) => {
+      const tab = (e.target as HTMLElement).closest<HTMLElement>('[data-cx-tab]');
+      if (!tab) return;
+      list.querySelectorAll<HTMLElement>('[data-cx-tab]').forEach((t) => t.setAttribute('aria-selected', String(t === tab)));
+      root.querySelectorAll<HTMLElement>('.cx-panel').forEach((panel) => {
+        const on = panel.id === 'cx-panel-' + tab.dataset.cxTab;
+        if (on && panel.hidden) { panel.hidden = false; panel.classList.remove('panel-in'); void panel.offsetWidth; panel.classList.add('panel-in'); }
+        else if (!on) panel.hidden = true;
+      });
+      moveInk();
+    });
+    moveInk();
+    addEventListener('resize', moveInk);
+    document.fonts?.ready.then(moveInk);
+
+    // On a phone the products scroll sideways: the cards and the rows move together.
+    const scrollers = [...root.querySelectorAll<HTMLElement>('[data-cx-sync]')];
+    let lock = false;
+    scrollers.forEach((s) => s.addEventListener('scroll', () => {
+      if (lock) return;
+      lock = true;
+      scrollers.forEach((o) => { if (o !== s) o.scrollLeft = s.scrollLeft; });
+      requestAnimationFrame(() => (lock = false));
+    }, { passive: true }));
+
+    root.querySelector<HTMLButtonElement>('[data-cx-share]')?.addEventListener('click', async (e) => {
+      const b = e.currentTarget as HTMLButtonElement;
+      const label = b.querySelector('span');
+      try {
+        if (navigator.share) await navigator.share({ title: document.title, url: location.href });
+        else {
+          await navigator.clipboard.writeText(location.href);
+          if (label) {
+            const before = label.textContent;
+            label.textContent = b.dataset.done ?? '';
+            setTimeout(() => (label.textContent = before), 2000);
+          }
+        }
+      } catch {}
+    });
+
+    root.querySelector<HTMLButtonElement>('[data-cx-clear]')?.addEventListener('click', (e) => {
+      writeCompare([]);
+      location.href = (e.currentTarget as HTMLButtonElement).dataset.href ?? '/';
+    });
+  }
+</script>

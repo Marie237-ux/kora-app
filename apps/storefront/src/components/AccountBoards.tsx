@@ -27,6 +27,9 @@ export default function AccountBoards({ locale, api, onNote }: { locale: Locale;
   const [form, setForm] = useState({ title: '', kind: 'collection' as 'collection' | 'gift' });
   const [busy, setBusy] = useState('');
   const [renaming, setRenaming] = useState('');
+  const [inviting, setInviting] = useState(false);
+  const [invite, setInvite] = useState({ email: '', role: 'viewer' as 'viewer' | 'editor' });
+  const [link, setLink] = useState('');
 
   async function load() {
     try {
@@ -106,6 +109,36 @@ export default function AccountBoards({ locale, api, onNote }: { locale: Locale;
       setBusy('');
     }
   }
+  // A private link to the board (30 days, revocable), shared through the phone's share sheet or copied.
+  async function shareLink(b: Board) {
+    setBusy('share');
+    try {
+      const r = await api.request<{ data: { url: string; version?: number } }>('/api/v1/boards/' + b.id + '/share', { method: 'POST', headers: key(), body: JSON.stringify({ version: b.version, expires_in_days: 30, reviewed: true }) });
+      const parts = r.data.url.split('/');
+      const url = location.origin + home + '/inspirations/partage/' + parts[parts.length - 2] + '/' + parts[parts.length - 1];
+      replace({ id: b.id, version: r.data.version ?? b.version + 1, visibility: 'unlisted' });
+      if (navigator.share) await navigator.share({ title: b.title, url }).catch(() => {});
+      else await navigator.clipboard?.writeText(url);
+      onNote(t.linkCopied);
+    } catch {
+      onNote(t.failed);
+    } finally {
+      setBusy('');
+    }
+  }
+  async function sendInvite(b: Board) {
+    setBusy('invite');
+    try {
+      const r = await api.request<{ data: { url: string } }>('/api/v1/boards/' + b.id + '/invitations', { method: 'POST', headers: key(), body: JSON.stringify({ version: b.version, email: invite.email, role: invite.role, expires_in_days: 14 }) });
+      const token = r.data.url.split('/').pop() ?? '';
+      setLink(location.origin + home + '/inspirations/invitation/' + token);
+      replace({ id: b.id, version: b.version + 1 });
+    } catch {
+      onNote(t.failed);
+    } finally {
+      setBusy('');
+    }
+  }
   async function rename(b: Board, title: string) {
     setBusy('rename');
     try {
@@ -155,6 +188,8 @@ export default function AccountBoards({ locale, api, onNote }: { locale: Locale;
           <div className="ac-board-actions">
             {board.pins.length > 0 && <button type="button" className="btn btn-accent btn-small" onClick={() => toCart(board)} disabled={busy === 'cart'}>{busy === 'cart' && <i className="spin" />} {t.allToCart}</button>}
             {owner && !board.is_favorites && renaming !== board.id && <button type="button" className="btn btn-line btn-small" onClick={() => setRenaming(board.id)}>{t.rename}</button>}
+            {owner && !board.is_favorites && <button type="button" className="btn btn-line btn-small" onClick={() => shareLink(board)} disabled={busy === 'share'}>{t.shareLink}</button>}
+            {owner && !board.is_favorites && <button type="button" className="btn btn-line btn-small" onClick={() => { setInviting(true); setLink(''); }}>{t.invite}</button>}
           </div>
         </header>
         {owner && !board.is_favorites && (
@@ -192,6 +227,31 @@ export default function AccountBoards({ locale, api, onNote }: { locale: Locale;
               );
             })}
           </ul>
+        )}
+        {inviting && (
+          <AcModal title={t.invite} onClose={() => setInviting(false)}>
+            {link ? (
+              <div className="acm-form">
+                <p className="acm-sub">{t.inviteReady}</p>
+                <input className="ac-link-box" readOnly value={link} onFocus={(e) => e.currentTarget.select()} />
+                <button type="button" className="btn btn-accent ac-wide" onClick={() => { navigator.clipboard?.writeText(link); onNote(t.linkCopied); }}>{t.copy}</button>
+              </div>
+            ) : (
+              <form className="acm-form" onSubmit={(e) => { e.preventDefault(); sendInvite(board); }}>
+                <label className="ac-field"><span>{t.inviteEmail}</span><input type="email" required value={invite.email} onChange={(e) => setInvite({ ...invite, email: e.target.value })} /></label>
+                <div className="ac-kinds2" role="radiogroup">
+                  {(['viewer', 'editor'] as const).map((r) => (
+                    <label key={r} data-on={invite.role === r}>
+                      <input type="radio" name="role" checked={invite.role === r} onChange={() => setInvite({ ...invite, role: r })} />
+                      <strong>{r === 'viewer' ? t.roleViewer : t.roleEditor}</strong>
+                      <small>{r === 'viewer' ? t.roleViewerText : t.roleEditorText}</small>
+                    </label>
+                  ))}
+                </div>
+                <button type="submit" className="btn btn-accent ac-wide" disabled={busy === 'invite'}>{busy === 'invite' && <i className="spin" />} {t.inviteSend}</button>
+              </form>
+            )}
+          </AcModal>
         )}
         {owner && !board.is_favorites && <button type="button" className="ac-danger" onClick={() => archive(board)} disabled={busy === 'archive'}>{t.deleteBoard}</button>}
       </div>

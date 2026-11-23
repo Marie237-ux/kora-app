@@ -1,0 +1,48 @@
+---
+/**
+ * Courier check (spec §20): the courier's QR code opens this page with the mission reference and a token. The API
+ * says whether it is a KORA mission in progress and gives only the public identity (name, professional badge) —
+ * never personal papers. A wrong or expired code says so plainly.
+ */
+import Site from '../../layouts/Site.astro';
+import PageHero from '../../components/PageHero.astro';
+import { localeOf, api, safe } from '../../lib/server';
+import { cmsPage } from '../../lib/cms';
+import { pagesCopy } from '../../lib/pages-copy';
+const locale = localeOf(Astro.params.locale);
+if (!locale) return new Response(null, { status: 404 });
+const p = pagesCopy(locale);
+const home = '/' + locale;
+const reference = Astro.url.searchParams.get('reference') ?? '';
+const token = Astro.url.searchParams.get('token') ?? '';
+type Check = { data: { valid: boolean; mission_reference: string; public_name: string; badge: string; valid_until?: string | null } };
+const result = reference && token
+  ? (await safe(api(locale).request<Check>('/api/v1/courier-verifications?reference=' + encodeURIComponent(reference) + '&token=' + encodeURIComponent(token)), null as unknown as Check)).value?.data ?? null
+  : null;
+const page = await cmsPage(locale, 'aide');
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+---
+
+<Site locale={locale} title={p.vlTitle}>
+  <PageHero locale={locale} photo={page.photo} title={p.vlTitle} text={p.vlText} />
+  <section class="featured sheet pg-sheet">
+    <div class="wrap">
+      <div class={'kcard vl ' + (result?.valid ? 'ok' : 'bad')}>
+        <span class="oc-ico" aria-hidden="true">
+          {result?.valid
+            ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5 5 6v5.5c0 4.2 3 7.6 7 9 4-1.4 7-4.8 7-9V6l-7-2.5ZM9 12l2 2 4-4" /></svg>
+            : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18ZM12 7.5v5M12 16v.5" /></svg>}
+        </span>
+        <h2>{result?.valid ? p.vlOk : p.vlBad}</h2>
+        {result?.valid ? (
+          <dl>
+            <div><dt>{p.vlCourier}</dt><dd>{result.public_name}</dd></div>
+            <div><dt>{p.vlBadge}</dt><dd>{result.badge}</dd></div>
+            <div><dt>{p.vlMission}</dt><dd>{result.mission_reference}</dd></div>
+          </dl>
+        ) : <p>{p.vlBadText}</p>}
+        <a class="pg-tile-cta" href={home + '/help'}>{p.vlHelp} →</a>
+      </div>
+    </div>
+  </section>
+</Site>

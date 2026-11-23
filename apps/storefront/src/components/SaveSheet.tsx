@@ -38,7 +38,8 @@ export default function SaveSheet({ locale }: { locale: Locale }) {
   const [title, setTitle] = useState('');
   const favsRef = useRef(favs);
   favsRef.current = favs;
-  // Liked shops (hearts carrying data-like-shop): one tap likes or unlikes, no sheet; visitors get the sign-in sheet.
+  // Followed shops (« Suivre » buttons carrying data-like-shop): one tap follows or unfollows, no sheet; visitors get the
+  // sign-in sheet. The stories layer reloads after each change (kora:follow), since stories are only seen by followers.
   const [liked, setLiked] = useState<Set<string>>(new Set());
   const likedRef = useRef(liked);
   likedRef.current = liked;
@@ -98,7 +99,10 @@ export default function SaveSheet({ locale }: { locale: Locale }) {
         flip(!was);
         api
           .request<{ data: { liked: boolean } }>('/api/v1/shops/' + encodeURIComponent(shopBtn.dataset.likeShop ?? '') + '/like', { method: 'POST' })
-          .then((r) => flip(r.data.liked))
+          .then((r) => {
+            flip(r.data.liked);
+            dispatchEvent(new CustomEvent('kora:follow'));
+          })
           .catch((err) => {
             flip(was);
             if ((err as { status?: number }).status === 401) {

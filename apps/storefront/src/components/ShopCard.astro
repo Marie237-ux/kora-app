@@ -32,13 +32,14 @@ const c = copy(locale);
 const href = '/' + locale + '/shops/' + s.slug;
 ---
 
-<article class={'vendor shop-card ' + extra}>
+<article class={'vendor shop-card ' + extra} data-shop={s.slug} data-story-shop-card={s.slug}>
   <a class={'vendor-cover' + (s.cover ? ' has-photo' : '')} href={href} tabindex="-1" aria-hidden="true">
     {s.cover && <img src={s.cover} alt="" loading="lazy" decoding="async" />}
   </a>
   {s.on_sale_count > 0 && <span class="shop-deals-badge">{s.on_sale_count} {c.onSaleShort}</span>}
-  <button type="button" class="save-btn shop-like" data-like-shop={s.slug} data-like-id={s.id} data-save-name={s.name} aria-pressed="false" aria-label={c.likeShop + ' — ' + s.name}>
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.2s-7.4-4.5-9.1-9.2C1.7 7.6 4 4.4 7.3 4.4c2 0 3.6 1.1 4.7 2.8 1.1-1.7 2.7-2.8 4.7-2.8 3.3 0 5.6 3.2 4.4 6.6-1.7 4.7-9.1 9.2-9.1 9.2Z" /></svg>
+  <button type="button" class="follow-btn shop-follow" data-like-shop={s.slug} data-like-id={s.id} data-save-name={s.name} aria-pressed="false" aria-label={c.likeShop + ' — ' + s.name}>
+    <span class="fl-off"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>{c.follow}</span>
+    <span class="fl-on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5.5 12.5 4.2 4.2 8.8-9" /></svg>{c.followed}</span>
   </button>
   <div class="vendor-body">
     <span class="vendor-avatar" aria-hidden="true">

@@ -1,0 +1,85 @@
+---
+/**
+ * About (spec §7.16, trust pages): photo hero of the CMS page "a-propos", its editorial texts on the home page's
+ * warm sheet (a title on the left, the text on the right), KORA today in real numbers (published shops, products
+ * online, cities with shops — counted from the API, never written by hand), then the shops as on the home page.
+ */
+import Site from '../../layouts/Site.astro';
+import PageHero from '../../components/PageHero.astro';
+import ShopCard, { type ShopListing } from '../../components/ShopCard.astro';
+import Rail from '../../components/Rail.astro';
+import { localeOf, api, safe } from '../../lib/server';
+import { cmsPage } from '../../lib/cms';
+import { pagesCopy } from '../../lib/pages-copy';
+const locale = localeOf(Astro.params.locale);
+if (!locale) return new Response(null, { status: 404 });
+const p = pagesCopy(locale);
+const home = '/' + locale;
+const k = api(locale);
+const [page, shops, catalogue] = await Promise.all([
+  cmsPage(locale, 'a-propos', 'compte'),
+  safe(k.request<{ data: (ShopListing & { city?: string | null })[] }>('/api/v1/shops'), { data: [] as (ShopListing & { city?: string | null })[] }),
+  safe(k.request<{ meta: { total: number } }>('/api/v1/catalogue'), { meta: { total: 0 } }),
+]);
+const stories = page.blocks.filter((b) => b.type === 'editorial').map((b) => ({ title: page.tr(b.title), paragraphs: page.paragraphs(b) }));
+const shopList = shops.value.data;
+const numbers = [
+  { n: shopList.length, label: p.aboutShops },
+  { n: catalogue.value.meta.total, label: p.aboutProducts },
+  { n: new Set(shopList.map((s) => s.city).filter(Boolean)).size, label: p.aboutCities },
+].filter((x) => x.n > 0);
+const nf = new Intl.NumberFormat(locale === 'fr' ? 'fr-FR' : 'en-GB');
+---
+
+<Site locale={locale} title={p.aboutTitle} active="about">
+  <PageHero locale={locale} photo={page.photo} title={page.title || p.aboutTitle} text={page.text} />
+
+  {stories.length > 0 && (
+    <section class="featured sheet pg-sheet">
+      <div class="wrap">
+        <header class="featured-head">
+          <span class="kicker">{p.aboutKicker}</span>
+          <h2>{p.aboutHead}</h2>
+        </header>
+        <div class="pg-stories">
+          {stories.map((s, i) => (
+            <article class="pg-story">
+              <div class="pg-story-head"><span class="pg-num">{String(i + 1).padStart(2, '0')}</span><h3>{s.title}</h3></div>
+              <div class="pg-story-text">{s.paragraphs.map((t) => <p>{t}</p>)}</div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
+  {numbers.length > 0 && (
+    <section class="section pg-numbers-wrap">
+      <div class="wrap">
+        <header class="featured-head">
+          <span class="kicker">{p.aboutNumbers}</span>
+        </header>
+        <div class="pg-numbers">
+          {numbers.map((x) => <div class="kcard"><b>{nf.format(x.n)}</b><span>{x.label}</span></div>)}
+        </div>
+      </div>
+    </section>
+  )}
+
+  {shopList.length > 0 && (
+    <section class="section vendors">
+      <div class="wrap">
+        <header class="sec-head">
+          <div>
+            <h2>{p.aboutCta}</h2>
+            <p>{p.aboutCtaText}</p>
+          </div>
+          <a class="sec-link" href={home + '/shops'}>{p.aboutCta} →</a>
+        </header>
+        <div class="vendor-rail"><Rail locale={locale} label={p.aboutCta}>
+          {shopList.slice(0, 8).map((s) => <div role="listitem"><ShopCard shop={s} locale={locale} /></div>)}
+        </Rail></div>
+      </div>
+    </section>
+  )}
+</Site>

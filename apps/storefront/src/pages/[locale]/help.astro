@@ -1,0 +1,80 @@
+---
+/**
+ * Help & contact (spec §7.13, §26): photo hero of the CMS page "aide", the FAQ written in the back office on the
+ * home page's warm sheet, then the real ways to reach the team (WhatsApp number from the settings, KORA messages,
+ * request a product, phone and e-mail when they are set).
+ */
+import Site from '../../layouts/Site.astro';
+import PageHero from '../../components/PageHero.astro';
+import { localeOf, api, safe } from '../../lib/server';
+import { cmsPage } from '../../lib/cms';
+import { pagesCopy } from '../../lib/pages-copy';
+const locale = localeOf(Astro.params.locale);
+if (!locale) return new Response(null, { status: 404 });
+const p = pagesCopy(locale);
+const home = '/' + locale;
+const page = await cmsPage(locale, 'aide', 'compte');
+const faqs = page.blocks.filter((b) => b.type === 'faq').flatMap((b) => b.items ?? []).map((i) => ({ q: page.tr(i.q), a: page.tr(i.a) })).filter((i) => i.q);
+const contact = (await safe(api(locale).request<{ data: { whatsapp: string | null; phone: string | null; email: string | null } }>('/api/v1/content/contact'), { data: { whatsapp: null, phone: null, email: null } })).value.data;
+const half = Math.ceil(faqs.length / 2);
+const ico = {
+  wa: 'M4.5 19.5l1.2-3.6A8 8 0 1 1 8.4 18.6l-3.9.9Z',
+  msg: 'M4 5.5h16v10H9l-5 4v-14ZM8 10h8M8 13h5',
+  search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14ZM20.5 20.5 16 16M11 8v6M8 11h6',
+  phone: 'M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z',
+  mail: 'M3.5 6h17v12h-17zM3.5 6.5l8.5 6.5 8.5-6.5',
+};
+const tiles = [
+  contact.whatsapp && { href: contact.whatsapp, ext: true, icon: ico.wa, title: p.contactWhatsapp, text: p.contactWhatsappText, cta: p.write, tone: 'wa' },
+  { href: home + '/account#messages', ext: false, icon: ico.msg, title: p.contactMessages, text: p.contactMessagesText, cta: p.write, tone: '' },
+  { href: home + '/request-product', ext: false, icon: ico.search, title: p.contactRequest, text: p.contactRequestText, cta: p.open, tone: '' },
+  contact.phone && { href: 'tel:' + contact.phone.replace(/\s/g, ''), ext: false, icon: ico.phone, title: p.contactPhone, text: contact.phone, cta: p.call, tone: '' },
+  contact.email && { href: 'mailto:' + contact.email, ext: false, icon: ico.mail, title: p.contactEmail, text: contact.email, cta: p.write, tone: '' },
+].filter(Boolean) as { href: string; ext: boolean; icon: string; title: string; text: string; cta: string; tone: string }[];
+---
+
+<Site locale={locale} title={p.helpTitle} active="help">
+  <PageHero locale={locale} photo={page.photo} title={page.title || p.helpTitle} text={page.text || p.helpText} />
+
+  {faqs.length > 0 && (
+    <section class="featured sheet pg-sheet">
+      <div class="wrap">
+        <header class="featured-head">
+          <span class="kicker">{p.faqKicker}</span>
+          <h2>{p.faqTitle}</h2>
+        </header>
+        <div class="pg-faq">
+          {[faqs.slice(0, half), faqs.slice(half)].map((col) => (
+            <div>
+              {col.map((f) => (
+                <details class="pg-q">
+                  <summary><span>{f.q}</span><i aria-hidden="true" /></summary>
+                  <p>{f.a}</p>
+                </details>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
+  <section class="section pg-contact">
+    <div class="wrap">
+      <header class="featured-head">
+        <span class="kicker">{p.contactKicker}</span>
+        <h2>{p.contactTitle}</h2>
+      </header>
+      <div class="pg-tiles">
+        {tiles.map((t) => (
+          <a class={'kcard pg-tile ' + t.tone} href={t.href} target={t.ext ? '_blank' : undefined} rel={t.ext ? 'noopener' : undefined}>
+            <span class="pg-tile-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={t.icon} /></svg></span>
+            <strong>{t.title}</strong>
+            <p>{t.text}</p>
+            <span class="pg-tile-cta">{t.cta} →</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+</Site>

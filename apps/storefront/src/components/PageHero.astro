@@ -1,0 +1,28 @@
+---
+/**
+ * The product page's hero for the site's simple pages: the CMS photo full width (text on its plain left side),
+ * crumbs, title and line. Same look as the catalogue, checkout and account headers.
+ */
+import { copy, type Locale } from '../lib/copy';
+interface Props {
+  locale: Locale;
+  photo: string | null;
+  title: string;
+  text?: string;
+  crumb?: string;
+}
+const { locale, photo, title, text, crumb } = Astro.props;
+const c = copy(locale);
+---
+
+<section class={'cat-hero co-hero' + (photo ? ' has-photo' : '')}>
+  {photo && <img class="cat-photo" src={photo} alt="" decoding="async" fetchpriority="high" />}
+  <div class="wrap cat-hero-inner">
+    <div class="cat-hero-text">
+      <nav class="crumbs" aria-label={c.breadcrumb}><a href={'/' + locale}>{c.home}</a><span aria-hidden="true">/</span><span aria-current="page">{crumb ?? title}</span></nav>
+      <h1>{title}</h1>
+      {text && <p>{text}</p>}
+      <slot />
+    </div>
+  </div>
+</section>

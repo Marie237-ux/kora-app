@@ -1,0 +1,77 @@
+---
+/**
+ * Become a partner (spec §28): photo hero of the CMS page "partenaires", what KORA does for a shop (CMS texts),
+ * the real published partners only (or an honest invitation when there are none yet), then the application in
+ * three steps on the home page's warm sheet.
+ */
+import Site from '../../layouts/Site.astro';
+import PageHero from '../../components/PageHero.astro';
+import PartnerApply from '../../components/PartnerApply.tsx';
+import { localeOf, api, safe } from '../../lib/server';
+import { cmsPage } from '../../lib/cms';
+import { pagesCopy } from '../../lib/pages-copy';
+const locale = localeOf(Astro.params.locale);
+if (!locale) return new Response(null, { status: 404 });
+const p = pagesCopy(locale);
+const home = '/' + locale;
+const k = api(locale);
+type Partner = { name: string; slug: string; domain: string | null; presentation: string | null; advantages: string | null; logo_url: string | null; website: string | null; shop: { name: string; slug: string } | null };
+const [page, partners, aisles] = await Promise.all([
+  cmsPage(locale, 'partenaires', 'boutiques'),
+  safe(k.request<{ data: Partner[] }>('/api/v1/partners'), { data: [] as Partner[] }),
+  safe(k.categories(), { data: [] }),
+]);
+const intro = page.blocks.filter((b) => b.type === 'editorial').map((b) => ({ title: page.tr(b.title), paragraphs: page.paragraphs(b) }));
+const list = partners.value.data;
+---
+
+<Site locale={locale} title={p.partnersTitle} active="partners">
+  <PageHero locale={locale} photo={page.photo} title={page.title || p.partnersTitle} text={page.text} />
+
+  {intro.length > 0 && (
+    <section class="section pg-intro">
+      <div class="wrap">
+        {intro.map((s, i) => (
+          <article class="pg-story">
+            <div class="pg-story-head"><span class="pg-num">{String(i + 1).padStart(2, '0')}</span><h3>{s.title}</h3></div>
+            <div class="pg-story-text">{s.paragraphs.map((t) => <p>{t}</p>)}</div>
+          </article>
+        ))}
+      </div>
+    </section>
+  )}
+
+  <section class="section pg-partners">
+    <div class="wrap">
+      <header class="featured-head">
+        <span class="kicker">{p.partnersKicker}</span>
+        <h2>{list.length ? p.partnersList : p.partnersNone}</h2>
+        {!list.length && <p>{p.partnersNoneText}</p>}
+      </header>
+      {list.length > 0 && (
+        <div class="pg-plist">
+          {list.map((x) => (
+            <article class="kcard pg-partner">
+              <span class="pg-partner-logo">{x.logo_url ? <img src={x.logo_url} alt={x.name} loading="lazy" /> : x.name.charAt(0)}</span>
+              <strong>{x.name}</strong>
+              {x.domain && <small>{x.domain}</small>}
+              {x.presentation && <p>{x.presentation}</p>}
+              {x.shop && <a class="pg-tile-cta" href={home + '/shops/' + x.shop.slug}>{p.partnersSeeShop} →</a>}
+            </article>
+          ))}
+        </div>
+      )}
+    </div>
+  </section>
+
+  <section class="featured sheet pg-sheet" id="candidature">
+    <div class="wrap">
+      <header class="featured-head">
+        <span class="kicker">{p.applyKicker}</span>
+        <h2>{p.applyTitle}</h2>
+        <p>{p.applyText}</p>
+      </header>
+      <PartnerApply client:visible locale={locale} aisles={aisles.value.data.map((a) => ({ slug: a.slug, name: a.name }))} />
+    </div>
+  </section>
+</Site>

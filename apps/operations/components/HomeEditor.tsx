@@ -59,7 +59,7 @@ const empty: T = { fr: '', en: '' };
 export function HomeEditor({ locale, user, onDirtyChange }: { locale: Locale; user: User; onDirtyChange?: (d: boolean) => void }) {
   const w = words[locale];
   const api = createApi('', locale);
-  const [pageSlug, setPageSlug] = useState<'home' | 'catalogue' | 'product' | 'shops' | 'inspirations' | 'commande' | 'compte'>('home');
+  const [pageSlug, setPageSlug] = useState<'home' | 'catalogue' | 'product' | 'shops' | 'inspirations' | 'commande' | 'compte' | 'demande' | 'introuvable' | 'aide' | 'a-propos' | 'partenaires'>('home');
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [offers, setOffers] = useState<Offer[]>([]);
   const [live, setLive] = useState<number | null>(null);
@@ -132,7 +132,7 @@ export function HomeEditor({ locale, user, onDirtyChange }: { locale: Locale; us
       const draft = await api.request<{ data: { id: string } }>('/api/v1/operations/cms/page/' + pageSlug + '/drafts', {
         method: 'POST',
         headers: { 'Idempotency-Key': crypto.randomUUID() },
-        body: JSON.stringify({ title: pageSlug === 'home' ? { fr: 'Accueil', en: 'Home' } : pageSlug === 'product' ? { fr: 'Fiche produit', en: 'Product page' } : pageSlug === 'shops' ? { fr: 'Nos boutiques', en: 'Our shops' } : pageSlug === 'inspirations' ? { fr: 'Inspirations', en: 'Inspirations' } : pageSlug === 'commande' ? { fr: 'Commande', en: 'Checkout' } : pageSlug === 'compte' ? { fr: 'Compte', en: 'Account' } : { fr: 'Catalogue', en: 'Catalogue' }, content: { blocks } }),
+        body: JSON.stringify({ title: pageSlug === 'home' ? { fr: 'Accueil', en: 'Home' } : pageSlug === 'product' ? { fr: 'Fiche produit', en: 'Product page' } : pageSlug === 'shops' ? { fr: 'Nos boutiques', en: 'Our shops' } : pageSlug === 'inspirations' ? { fr: 'Inspirations', en: 'Inspirations' } : pageSlug === 'commande' ? { fr: 'Commande', en: 'Checkout' } : pageSlug === 'compte' ? { fr: 'Compte', en: 'Account' } : pageSlug === 'demande' ? { fr: 'Demander un produit', en: 'Request a product' } : pageSlug === 'introuvable' ? { fr: 'Page introuvable', en: 'Page not found' } : pageSlug === 'aide' ? { fr: 'Aide & contact', en: 'Help & contact' } : pageSlug === 'a-propos' ? { fr: 'À propos', en: 'About' } : pageSlug === 'partenaires' ? { fr: 'Devenir partenaire', en: 'Become a partner' } : { fr: 'Catalogue', en: 'Catalogue' }, content: { blocks } }),
       });
       setDraftId(draft.data.id);
       if (publish) {
@@ -183,7 +183,7 @@ export function HomeEditor({ locale, user, onDirtyChange }: { locale: Locale; us
           <h1 style={{ fontSize: '2.7rem' }}>{w.title}</h1>
           <label className="field" style={{ maxWidth: 320 }}>
             {locale === 'fr' ? 'Page' : 'Page'}
-            <select value={pageSlug} onChange={(e) => setPageSlug(e.target.value as 'home' | 'catalogue' | 'product' | 'shops' | 'inspirations' | 'commande' | 'compte')}>
+            <select value={pageSlug} onChange={(e) => setPageSlug(e.target.value as 'home' | 'catalogue' | 'product' | 'shops' | 'inspirations' | 'commande' | 'compte' | 'demande' | 'introuvable' | 'aide' | 'a-propos' | 'partenaires')}>
               <option value="home">{locale === 'fr' ? 'Accueil' : 'Home'}</option>
               <option value="catalogue">{locale === 'fr' ? 'Catalogue (image d’en-tête : bannière)' : 'Catalogue (header image: banner)'}</option>
               <option value="shops">{locale === 'fr' ? 'Nos boutiques (image d’en-tête : bannière)' : 'Our shops (header image: banner)'}</option>
@@ -191,6 +191,11 @@ export function HomeEditor({ locale, user, onDirtyChange }: { locale: Locale; us
               <option value="compte">{locale === 'fr' ? 'Compte et connexion (photo : bannière)' : 'Account and sign-in (photo: banner)'}</option>
               <option value="inspirations">{locale === 'fr' ? 'Inspirations (image d’en-tête : bannière)' : 'Inspirations (header image: banner)'}</option>
               <option value="product">{locale === 'fr' ? 'Fiche produit (image d’en-tête : bannière)' : 'Product page (header image: banner)'}</option>
+              <option value="demande">{locale === 'fr' ? 'Demander un produit (image d’en-tête : bannière)' : 'Request a product (header image: banner)'}</option>
+              <option value="aide">{locale === 'fr' ? 'Aide & contact (photo : bannière)' : 'Help & contact (photo: banner)'}</option>
+              <option value="a-propos">{locale === 'fr' ? 'À propos (photo : bannière)' : 'About (photo: banner)'}</option>
+              <option value="partenaires">{locale === 'fr' ? 'Devenir partenaire (photo : bannière)' : 'Become a partner (photo: banner)'}</option>
+              <option value="introuvable">{locale === 'fr' ? 'Page introuvable 404 (image d’en-tête : bannière)' : 'Page not found 404 (header image: banner)'}</option>
             </select>
           </label>
           <p>{w.intro}</p>

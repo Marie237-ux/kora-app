@@ -21,7 +21,7 @@ import AccountFavorites from './AccountFavorites';
 // delivery slot, documents and "Pay now". Addresses are cards, added or changed in a window, deleted after a
 // confirmation. Settings: profile, security (new password), notification switches, then signing out.
 
-type User = { name: string; email: string; locale: Locale; theme: 'light' | 'dark' | 'system'; mfa_enabled?: boolean; avatar?: string | null };
+type User = { name: string; email: string; locale: Locale; theme: 'light' | 'dark' | 'system'; mfa_enabled?: boolean; avatar?: string | null; staff?: boolean; permissions?: string[] };
 type OrderLine = { id: string; name: string; image: string | null; quantity: number; line_total: string; shop: { name: string } };
 type Order = {
   id: string; number: string; status: string; total: string; created_at: string; payable: boolean; preparation_status: string;
@@ -638,6 +638,17 @@ export default function Account({ locale }: { locale: Locale }) {
                 </div>
                 <button type="button" className="ac-text-btn ac-clear" onClick={clearHistory}>{t.clearHistory}</button>
               </section>
+              {/* Only when the management app has an address (not deployed on the online demo yet). */}
+              {user?.staff && import.meta.env.PUBLIC_OPERATIONS_URL && (
+                <section className="ac-set-card">
+                  <h3>{locale === 'fr' ? 'Équipe KORA' : 'KORA team'}</h3>
+                  <a className="ac-set-row" href={import.meta.env.PUBLIC_OPERATIONS_URL}>
+                    <span className="ac-set-ico">{sliders}</span>
+                    <span><strong>{locale === 'fr' ? 'Espace de gestion' : 'Management space'}</strong><small>{locale === 'fr' ? 'Votre compte a accès à la gestion KORA.' : 'Your account has access to KORA management.'}</small></span>
+                    {chevron}
+                  </a>
+                </section>
+              )}
               <section className="ac-set-card ac-set-out">
                 <button type="button" className="ac-out-btn" onClick={() => setOutOpen(true)} disabled={!user}>{exit}<span>{c.acLogout}</span></button>
               </section>
@@ -760,6 +771,7 @@ const lock = icon('M6.5 11h11v9h-11zM8.5 11V8a3.5 3.5 0 0 1 7 0v3');
 // Lucide "settings" icon (ISC licence).
 const gear = icon('M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z');
 const camera = icon('M4 8h3l1.5-2h7L17 8h3v11H4zM12 16.5a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z');
+const sliders = icon('M4 7h9M17 7h3M4 17h3M11 17h9M15 5v4M9 15v4');
 const store = icon('M4 9h16l-1.2-4.5H5.2L4 9ZM5 9v10.5h14V9M9.5 19.5V14h5v5.5');
 const boards = icon('M3.5 3.5h7.5v10H3.5zM13 3.5h7.5v6H13zM3.5 15.5h7.5v5H3.5zM13 11.5h7.5v9H13z');
 const wallet = icon('M4 7.5h15.5v11H4zM4 7.5l11.5-3v3M15.5 13h2');

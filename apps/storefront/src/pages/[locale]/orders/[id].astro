@@ -1,0 +1,28 @@
+---
+/**
+ * One order (spec §7.8–9): the checkout's photo hero, then the order on the home page's warm sheet. Also where the
+ * payment page sends the customer back (?transaction_id=…): the payment is checked before anything is shown.
+ * Private: never indexed.
+ */
+import Site from '../../../layouts/Site.astro';
+import PageHero from '../../../components/PageHero.astro';
+import OrderPage from '../../../components/OrderPage.tsx';
+import { localeOf } from '../../../lib/server';
+import { cmsPage } from '../../../lib/cms';
+import { copy } from '../../../lib/copy';
+const locale = localeOf(Astro.params.locale);
+const id = Astro.params.id ?? '';
+if (!locale || !/^[0-9a-f-]{36}$/.test(id)) return new Response(null, { status: 404 });
+const c = copy(locale);
+const page = await cmsPage(locale, 'commande');
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+---
+
+<Site locale={locale} title={c.acTitle}>
+  <PageHero locale={locale} photo={page.photo} title={locale === 'fr' ? 'Ma commande' : 'My order'} />
+  <section class="featured sheet pg-sheet">
+    <div class="wrap">
+      <OrderPage client:load locale={locale} id={id} />
+    </div>
+  </section>
+</Site>

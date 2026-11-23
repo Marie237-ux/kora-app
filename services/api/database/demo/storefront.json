@@ -3730,6 +3730,221 @@
         },
         "link": "/account"
       }
+    ],
+    "demande": [
+      {
+        "type": "banner",
+        "image_file": "images/compte-3.jpg",
+        "alt": {
+          "fr": "Une cliente souriante tient ses sacs de courses",
+          "en": "A smiling customer holding her shopping bags"
+        },
+        "text": {
+          "fr": "Demander un produit. L’équipe KORA le cherche pour vous.",
+          "en": "Request a product. The KORA team looks for it for you."
+        },
+        "link": "/request-product"
+      }
+    ],
+    "aide": [
+      {
+        "type": "banner",
+        "image_file": "images/aide-entete.jpg",
+        "alt": {
+          "fr": "Une conseillère KORA sourit au téléphone avec son casque",
+          "en": "A KORA adviser smiles on the phone with her headset"
+        },
+        "title": {
+          "fr": "Aide & contact",
+          "en": "Help & contact"
+        },
+        "text": {
+          "fr": "Une question sur une commande, une livraison ou un paiement ? Les réponses sont ici, et l’équipe KORA aussi.",
+          "en": "A question about an order, a delivery or a payment? The answers are here, and so is the KORA team."
+        },
+        "link": "/help"
+      },
+      {
+        "type": "faq",
+        "items": [
+          {
+            "q": {
+              "fr": "Comment passer une commande ?",
+              "en": "How do I place an order?"
+            },
+            "a": {
+              "fr": "Ajoutez les articles à votre panier, choisissez votre adresse, puis le jour et l’heure de livraison si vous êtes dans la même ville que la boutique. Vous payez ensuite sur la page de paiement sécurisée.",
+              "en": "Add items to your cart, choose your address, then the delivery day and time if you are in the shop’s city. You then pay on the secure payment page."
+            }
+          },
+          {
+            "q": {
+              "fr": "Quels moyens de paiement acceptez-vous ?",
+              "en": "Which payment methods do you accept?"
+            },
+            "a": {
+              "fr": "Orange Money, MTN Mobile Money et la carte bancaire, sur la page de paiement sécurisée. Rien n’est débité avant votre confirmation.",
+              "en": "Orange Money, MTN Mobile Money and bank cards, on the secure payment page. Nothing is charged before you confirm."
+            }
+          },
+          {
+            "q": {
+              "fr": "Livrez-vous partout au Cameroun ?",
+              "en": "Do you deliver everywhere in Cameroon?"
+            },
+            "a": {
+              "fr": "Oui. Dans la ville de la boutique, un livreur KORA vous livre au créneau choisi. Pour les autres villes, votre colis est expédié ; le délai et le prix sont affichés avant le paiement.",
+              "en": "Yes. In the shop’s city, a KORA courier delivers at the slot you choose. For other cities, your parcel is shipped; the delay and price are shown before payment."
+            }
+          },
+          {
+            "q": {
+              "fr": "Comment suivre ma commande ?",
+              "en": "How do I follow my order?"
+            },
+            "a": {
+              "fr": "Dans Mon compte, rubrique Mes commandes : chaque commande montre son état, ses articles et le créneau de livraison.",
+              "en": "In My account, under My orders: each order shows its status, items and delivery slot."
+            }
+          },
+          {
+            "q": {
+              "fr": "Puis-je modifier ma commande ?",
+              "en": "Can I change my order?"
+            },
+            "a": {
+              "fr": "Tant qu’elle n’est pas payée, oui : ouvrez-la dans Mon compte et choisissez « Modifier ma commande ». Ses articles reviennent dans votre panier.",
+              "en": "As long as it is not paid, yes: open it in My account and choose “Change my order”. Its items go back to your cart."
+            }
+          },
+          {
+            "q": {
+              "fr": "Un article est abîmé ou ne fonctionne pas : que faire ?",
+              "en": "An item is damaged or does not work: what should I do?"
+            },
+            "a": {
+              "fr": "Dans Mon compte, rubrique Achats & garanties, choisissez l’article puis « Signaler un problème ». Un conseiller suit votre demande jusqu’à sa résolution.",
+              "en": "In My account, under Purchases & warranty, choose the item then “Report a problem”. An adviser follows your request until it is solved."
+            }
+          },
+          {
+            "q": {
+              "fr": "Je ne trouve pas un produit",
+              "en": "I cannot find a product"
+            },
+            "a": {
+              "fr": "Utilisez « Demander un produit » : envoyez une photo et quelques mots, l’équipe KORA le cherche auprès des boutiques du Cameroun.",
+              "en": "Use “Request a product”: send a photo and a few words, the KORA team looks for it among Cameroon’s shops."
+            }
+          }
+        ]
+      }
+    ],
+    "a-propos": [
+      {
+        "type": "banner",
+        "image_file": "images/a-propos-entete.jpg",
+        "alt": {
+          "fr": "Un entrepreneur camerounais travaille sur son ordinateur",
+          "en": "A Cameroonian entrepreneur working on his laptop"
+        },
+        "title": {
+          "fr": "À propos de KORA",
+          "en": "About KORA"
+        },
+        "text": {
+          "fr": "Les boutiques du Cameroun, réunies en un seul endroit et livrées chez vous.",
+          "en": "Cameroon’s shops, gathered in one place and delivered to your door."
+        },
+        "link": "/about"
+      },
+      {
+        "type": "editorial",
+        "title": {
+          "fr": "Pourquoi KORA",
+          "en": "Why KORA"
+        },
+        "paragraphs": {
+          "fr": [
+            "Trouver le bon produit, au bon prix, dans une boutique de confiance prend souvent du temps : il faut se déplacer, comparer, négocier, puis rentrer avec ses achats.",
+            "KORA réunit les boutiques partenaires du Cameroun sur un même site. Chaque produit affiche le prix de la boutique, sa disponibilité, sa garantie et la manière dont il vous sera livré."
+          ],
+          "en": [
+            "Finding the right product, at the right price, in a shop you can trust often takes time: you travel, compare, bargain, then carry your purchases home.",
+            "KORA brings Cameroon’s partner shops together on one site. Every product shows the shop’s price, its availability, its warranty and how it will reach you."
+          ]
+        }
+      },
+      {
+        "type": "editorial",
+        "title": {
+          "fr": "Comment nous travaillons",
+          "en": "How we work"
+        },
+        "paragraphs": {
+          "fr": [
+            "Les boutiques sont vérifiées par l’équipe KORA avant d’apparaître sur le site. Les produits qu’elles proposent sont relus avant leur mise en ligne.",
+            "Dans la ville de la boutique, un livreur KORA vous livre au créneau que vous choisissez. Pour les autres villes, votre colis est expédié partout au Cameroun.",
+            "Et si un produit manque, vous pouvez le demander : l’équipe le cherche pour vous."
+          ],
+          "en": [
+            "Shops are checked by the KORA team before they appear on the site. The products they offer are reviewed before going online.",
+            "In the shop’s city, a KORA courier delivers at the slot you choose. For other cities, your parcel is shipped anywhere in Cameroon.",
+            "And if a product is missing, you can request it: the team looks for it for you."
+          ]
+        }
+      }
+    ],
+    "partenaires": [
+      {
+        "type": "banner",
+        "image_file": "images/partenaires-entete.jpg",
+        "alt": {
+          "fr": "Un commerçant souriant dans sa boutique",
+          "en": "A smiling shopkeeper in his shop"
+        },
+        "title": {
+          "fr": "Devenir partenaire",
+          "en": "Become a partner"
+        },
+        "text": {
+          "fr": "Vous tenez une boutique au Cameroun ? Vendez sur KORA : nous nous occupons de la mise en ligne, de la livraison et du paiement.",
+          "en": "You run a shop in Cameroon? Sell on KORA: we take care of listing, delivery and payment."
+        },
+        "link": "/partners"
+      },
+      {
+        "type": "editorial",
+        "title": {
+          "fr": "Ce que KORA fait pour votre boutique",
+          "en": "What KORA does for your shop"
+        },
+        "paragraphs": {
+          "fr": [
+            "Votre boutique a sa page, avec vos produits, vos prix et votre quartier. L’équipe KORA prépare les fiches avec vous et les vérifie avant leur mise en ligne.",
+            "Les clients paient en ligne ; nos livreurs récupèrent les commandes chez vous et les livrent dans votre ville, et les colis sont expédiés vers les autres villes."
+          ],
+          "en": [
+            "Your shop gets its own page, with your products, your prices and your district. The KORA team prepares the listings with you and checks them before they go online.",
+            "Customers pay online; our couriers collect the orders from you and deliver them in your city, and parcels are shipped to other cities."
+          ]
+        }
+      }
+    ],
+    "introuvable": [
+      {
+        "type": "banner",
+        "image_file": "images/introuvable-entete.jpg",
+        "alt": {
+          "fr": "Une cliente surprise regarde son téléphone, ses sacs à la main",
+          "en": "A surprised customer looks at her phone, bags in hand"
+        },
+        "text": {
+          "fr": "Page introuvable.",
+          "en": "Page not found."
+        },
+        "link": "/"
+      }
     ]
   },
   "zones": [
@@ -4107,5 +4322,50 @@
       "Bafoussam": 1000,
       "Kribi": 1000
     }
-  }
+  },
+  "stories": [
+    {
+      "shop": "akwa-style",
+      "image_file": "images/couverture-akwa-style.jpg",
+      "product": "baskets-retro-multicolores",
+      "caption": {
+        "fr": "Les baskets rétro sont arrivées en boutique.",
+        "en": "The retro sneakers just arrived in store."
+      }
+    },
+    {
+      "shop": "akwa-style",
+      "image_file": "images/tableau-rentree.jpg",
+      "product": "sac-a-dos-urbain-orange",
+      "caption": {
+        "fr": "Prêts pour la rentrée ?",
+        "en": "Ready for back to school?"
+      }
+    },
+    {
+      "shop": "bonapriso-tech",
+      "image_file": "images/couverture-bonapriso-tech.jpg",
+      "product": "casque-bluetooth-lilas",
+      "caption": {
+        "fr": "Nouveau : le casque lilas, autonomie 30 h.",
+        "en": "New: the lilac headphones, 30 h battery."
+      }
+    },
+    {
+      "shop": "deido-maison",
+      "image_file": "images/tableau-salon.jpg",
+      "caption": {
+        "fr": "Un salon tout neuf, livré dans la journée à Douala.",
+        "en": "A brand-new living room, delivered the same day in Douala."
+      }
+    },
+    {
+      "shop": "makepe-beaute",
+      "image_file": "images/couverture-makepe-beaute.jpg",
+      "caption": {
+        "fr": "Vos parfums préférés, en stock cette semaine.",
+        "en": "Your favourite perfumes, in stock this week."
+      }
+    }
+  ]
 }

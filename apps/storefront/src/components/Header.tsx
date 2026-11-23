@@ -119,6 +119,28 @@ export default function Header({ locale, links, utility = [], aisles = [], shops
       }
     }, quantity < 1 ? 0 : 400);
   }
+  // Share the cart: a revocable link (references and quantities only), through the share sheet or copied.
+  const [shared, setShared] = useState('');
+  async function shareCart() {
+    const current = cartRef.current;
+    if (!current) return;
+    try {
+      const r = await createApi('', locale).request<{ data: { url: string } }>('/api/v1/cart/shares', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': crypto.randomUUID() },
+        body: JSON.stringify({ version: current.version, line_ids: current.lines.map((l) => l.id), expires_in_days: 30 }),
+      });
+      const token = r.data.url.split('/').pop() ?? '';
+      const url = location.origin + home + '/panier-partage/' + token;
+      if (navigator.share) await navigator.share({ title: 'KORA', url }).catch(() => {});
+      else await navigator.clipboard?.writeText(url);
+      setShared(c.shareCartDone);
+      setTimeout(() => setShared(''), 2600);
+    } catch {
+      setShared(c.shareCartFailed);
+      setTimeout(() => setShared(''), 2600);
+    }
+  }
   function openSearch() {
     setMenu(false);
     setDrawer(false);
@@ -370,6 +392,10 @@ export default function Header({ locale, links, utility = [], aisles = [], shops
             <small className="muted">{c.deliveryLater}</small>
             <a className="btn btn-accent" href={home + '/commande'}>{c.checkout}</a>
             <button type="button" className="btn btn-line" onClick={() => setDrawer(false)}>{c.continueShopping}</button>
+            <button type="button" className="drawer-share" onClick={shareCart} disabled={busy}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 15V3M8 7l4-4 4 4M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" /></svg>
+              {shared || c.shareCart}
+            </button>
           </footer>
         )}
       </aside>

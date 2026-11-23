@@ -1,0 +1,41 @@
+---
+/**
+ * "Request a product" (spec §12.1): the product page's hero on the photo of the CMS page "demande" (back office →
+ * site pages), then the request in steps on the same grey area as the checkout.
+ */
+import Site from '../../layouts/Site.astro';
+import RequestProduct from '../../components/RequestProduct.tsx';
+import { copy } from '../../lib/copy';
+import { accountCopy } from '../../lib/account-copy';
+import { api, localeOf, safe } from '../../lib/server';
+const locale = localeOf(Astro.params.locale);
+if (!locale) return new Response(null, { status: 404 });
+const c = copy(locale);
+const t = accountCopy(locale);
+type CmsPage = { data: { page: { blocks: { type: string; media_id?: string; title?: Record<string, string>; text?: Record<string, string> }[] } | null; media: Record<string, string> } };
+const cms = (await safe(api(locale).request<CmsPage>('/api/v1/content/pages/demande'), { data: { page: null, media: {} } } as CmsPage)).value.data;
+const banner = cms.page?.blocks.find((b) => b.type === 'banner' && b.media_id && cms.media[b.media_id]);
+const photo = banner ? cms.media[banner.media_id!] : null;
+---
+
+<Site locale={locale} title={t.rqPageTitle} active="request">
+  <section class={'cat-hero co-hero' + (photo ? ' has-photo' : '')}>
+    {photo && <img class="cat-photo" src={photo} alt="" decoding="async" fetchpriority="high" />}
+    <div class="wrap cat-hero-inner">
+      <div class="cat-hero-text">
+        <nav class="crumbs" aria-label={c.breadcrumb}><a href={'/' + locale}>{c.home}</a><span aria-hidden="true">/</span><span aria-current="page">{t.rqPageTitle}</span></nav>
+        <h1>{t.rqPageTitle}</h1>
+        <p>{t.rqPageText}</p>
+      </div>
+    </div>
+  </section>
+  <section class="featured sheet pg-sheet rq-sheet">
+    <div class="wrap">
+      <header class="featured-head">
+        <span class="kicker">{t.rqKicker}</span>
+        <h2>{t.rqSheetTitle}</h2>
+      </header>
+      <RequestProduct client:load locale={locale} />
+    </div>
+  </section>
+</Site>

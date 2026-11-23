@@ -1,0 +1,38 @@
+---
+/**
+ * Business space (spec §7.15, §14): photo hero, how buying in bulk works in three numbered steps on the home page's
+ * warm sheet, then the member's business profile and quotes.
+ */
+import Site from '../../layouts/Site.astro';
+import PageHero from '../../components/PageHero.astro';
+import ProSpace from '../../components/ProSpace.tsx';
+import { localeOf } from '../../lib/server';
+import { cmsPage } from '../../lib/cms';
+import { pagesCopy } from '../../lib/pages-copy';
+const locale = localeOf(Astro.params.locale);
+if (!locale) return new Response(null, { status: 404 });
+const p = pagesCopy(locale);
+const page = await cmsPage(locale, 'pro', 'partenaires');
+---
+
+<Site locale={locale} title={p.proTitle} active="pro">
+  <PageHero locale={locale} photo={page.photo} title={page.title || p.proTitle} text={page.text || p.proText} />
+  <section class="section pg-intro">
+    <div class="wrap">
+      <header class="featured-head">
+        <span class="kicker">{p.proKicker}</span>
+        <h2>{p.proHowTitle}</h2>
+      </header>
+      <div class="pg-steps">
+        {p.proSteps.map(([title, text], i) => (
+          <article class="kcard pg-step"><span class="pg-num">{String(i + 1).padStart(2, '0')}</span><h3>{title}</h3><p>{text}</p></article>
+        ))}
+      </div>
+    </div>
+  </section>
+  <section class="featured sheet pg-sheet">
+    <div class="wrap">
+      <ProSpace client:load locale={locale} />
+    </div>
+  </section>
+</Site>

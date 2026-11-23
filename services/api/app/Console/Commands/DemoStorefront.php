@@ -234,13 +234,27 @@ final class DemoStorefront extends Command
                 $blocks[] = $block;
             }
             $cms = app(Cms::class);
-            $titles = ['home' => ['fr' => 'Accueil', 'en' => 'Home'], 'catalogue' => ['fr' => 'Catalogue', 'en' => 'Catalogue'], 'product' => ['fr' => 'Fiche produit', 'en' => 'Product page'], 'shops' => ['fr' => 'Nos boutiques', 'en' => 'Our shops'], 'inspirations' => ['fr' => 'Inspirations', 'en' => 'Inspirations'], 'commande' => ['fr' => 'Commande', 'en' => 'Checkout'], 'compte' => ['fr' => 'Compte', 'en' => 'Account']];
+            $titles = ['home' => ['fr' => 'Accueil', 'en' => 'Home'], 'catalogue' => ['fr' => 'Catalogue', 'en' => 'Catalogue'], 'product' => ['fr' => 'Fiche produit', 'en' => 'Product page'], 'shops' => ['fr' => 'Nos boutiques', 'en' => 'Our shops'], 'inspirations' => ['fr' => 'Inspirations', 'en' => 'Inspirations'], 'commande' => ['fr' => 'Commande', 'en' => 'Checkout'], 'compte' => ['fr' => 'Compte', 'en' => 'Account'], 'demande' => ['fr' => 'Demander un produit', 'en' => 'Request a product'], 'aide' => ['fr' => 'Aide & contact', 'en' => 'Help & contact'], 'a-propos' => ['fr' => 'À propos', 'en' => 'About'], 'partenaires' => ['fr' => 'Devenir partenaire', 'en' => 'Become a partner'], 'introuvable' => ['fr' => 'Page introuvable', 'en' => 'Page not found']];
             $draft = $cms->saveDraft('page', $pageSlug, ['title' => $titles[$pageSlug] ?? ['fr' => $pageSlug, 'en' => $pageSlug], 'content' => ['blocks' => $blocks]], $actor);
             $cms->publish($draft['id'], [], $actor);
         }
         // Delivery set-up of the demo, so a checkout gives a real (demo-flagged) price: weight of each product, shop
         // stock confirmed, one pick-up point per shop in the zone of its district, a published demo grid and slots.
         $this->demoDelivery($manifest, $actor->id, $now);
+        // Demo shop stories, published (kept 30 days on the demo instead of 24 hours so the demo always shows some).
+        foreach ($manifest['stories'] ?? [] as $st) {
+            if (! isset($shopIds[$st['shop']]) || ! is_file($base.'/'.$st['image_file'])) {
+                continue;
+            }
+            $asset = $media->upload(new UploadedFile($base.'/'.$st['image_file'], basename($st['image_file']), null, null, true), $st['caption'], $actor);
+            DB::table('media_assets')->where('id', $asset['id'])->update(['is_public' => true, 'rights_confirmed_at' => $now]);
+            DB::table('shop_stories')->insert([
+                'id' => (string) Str::uuid(), 'shop_id' => $shopIds[$st['shop']], 'media_id' => $asset['id'],
+                'caption' => json_encode($st['caption']), 'offer_id' => isset($st['product']) ? ($offers[$st['product']]['id'] ?? null) : null,
+                'status' => 'published', 'published_at' => $now, 'expires_at' => now()->addDays(30), 'created_by' => $actor->id,
+                'version' => 1, 'created_at' => $now, 'updated_at' => $now,
+            ]);
+        }
         if (! empty($manifest['boards'])) {
             // Inspirations: boards curated by the KORA team, published explicitly (public), with real demo products.
             $curator = User::firstOrCreate(['email' => 'selections@kora.local'], ['name' => 'Équipe KORA', 'password' => Str::random(40)]);

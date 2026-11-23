@@ -1,0 +1,41 @@
+---
+/**
+ * A board shared by a private link (spec §11): its products with today's prices, in the site's product cards.
+ * The link is revocable; the page is never indexed and shows no personal notes.
+ */
+import Site from '../../../../../layouts/Site.astro';
+import PageHero from '../../../../../components/PageHero.astro';
+import ProductCard from '../../../../../components/ProductCard.astro';
+import { localeOf, api, safe } from '../../../../../lib/server';
+import { cmsPage } from '../../../../../lib/cms';
+import { pagesCopy } from '../../../../../lib/pages-copy';
+const locale = localeOf(Astro.params.locale);
+const id = Astro.params.id ?? '';
+const token = Astro.params.token ?? '';
+if (!locale || !/^[0-9a-f-]{36}$/.test(id) || !/^[A-Za-z0-9_-]{16,128}$/.test(token)) return new Response(null, { status: 404 });
+const p = pagesCopy(locale);
+const home = '/' + locale;
+type Board = { data: { title: string; description: string | null; kind: string; pins: { id: string; offer: any }[] } };
+const board = (await safe(api(locale).request<Board>('/api/v1/boards/shared/' + id + '/' + token), null as unknown as Board)).value?.data ?? null;
+const page = await cmsPage(locale, 'inspirations');
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+Astro.response.headers.set('X-Robots-Tag', 'noindex');
+---
+
+<Site locale={locale} title={board?.title ?? p.bdShared}>
+  <PageHero locale={locale} photo={page.photo} title={board?.title ?? p.scExpired} text={board ? board.description || p.bdShared : p.scExpiredText} crumb={p.bdShared} />
+  <section class="featured sheet pg-sheet">
+    <div class="wrap">
+      {board && board.pins.some((x) => x.offer) ? (
+        <div class="cat-grid">
+          {board.pins.filter((x) => x.offer).map((x) => <ProductCard offer={x.offer} locale={locale} />)}
+        </div>
+      ) : (
+        <div class="ac-bempty ac-nobuy">
+          <h3>{p.scExpired}</h3>
+          <a class="btn btn-dark btn-small" href={home + '/inspirations'}>{locale === 'fr' ? 'Voir les inspirations' : 'See inspirations'}</a>
+        </div>
+      )}
+    </div>
+  </section>
+</Site>

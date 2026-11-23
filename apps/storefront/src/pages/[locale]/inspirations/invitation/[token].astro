@@ -1,0 +1,50 @@
+---
+/**
+ * Invitation to a board (spec §11): the board's name and the role offered, then "Join the board" (sign-in first if
+ * needed). Nobody is added without accepting. Never indexed.
+ */
+import Site from '../../../../layouts/Site.astro';
+import PageHero from '../../../../components/PageHero.astro';
+import LinkAction from '../../../../components/LinkAction.tsx';
+import { localeOf, api, safe } from '../../../../lib/server';
+import { cmsPage } from '../../../../lib/cms';
+import { pagesCopy } from '../../../../lib/pages-copy';
+const locale = localeOf(Astro.params.locale);
+const token = Astro.params.token ?? '';
+if (!locale || !/^[A-Za-z0-9_-]{16,128}$/.test(token)) return new Response(null, { status: 404 });
+const p = pagesCopy(locale);
+type Preview = { data: { board_title: string; role: string; expires_at: string } };
+const cookie = Astro.request.headers.get('cookie') ?? '';
+let preview: Preview['data'] | null = null;
+try {
+  const r = await fetch((import.meta.env.API_INTERNAL_URL || 'http://localhost:8000') + '/api/v1/board-invitations/' + token, { headers: { Accept: 'application/json', Cookie: cookie, 'X-Kora-Locale': locale } });
+  if (r.ok) preview = ((await r.json()) as Preview).data;
+} catch {}
+void api; void safe;
+const page = await cmsPage(locale, 'inspirations');
+const role = preview?.role === 'editor' ? (locale === 'fr' ? 'éditeur' : 'editor') : locale === 'fr' ? 'lecteur' : 'viewer';
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+---
+
+<Site locale={locale} title={p.invTitle}>
+  <PageHero locale={locale} photo={page.photo} title={p.invTitle} text={p.invText} />
+  <section class="featured sheet pg-sheet">
+    <div class="wrap">
+      <div class="kcard vl ok">
+        {preview ? (
+          <>
+            <h2>{preview.board_title}</h2>
+            <p>{locale === 'fr' ? 'Vous êtes invité comme ' + role + '.' : 'You are invited as ' + role + '.'}</p>
+            <LinkAction client:visible locale={locale} kind="invitation" token={token} />
+          </>
+        ) : (
+          <>
+            <h2>{p.invTitle}</h2>
+            <p>{locale === 'fr' ? 'Connectez-vous avec l’adresse invitée pour voir et accepter l’invitation.' : 'Sign in with the invited address to see and accept the invitation.'}</p>
+            <LinkAction client:visible locale={locale} kind="invitation" token={token} />
+          </>
+        )}
+      </div>
+    </div>
+  </section>
+</Site>

@@ -5,6 +5,9 @@ import Header from '../components/Header.tsx';
 import Fab from '../components/Fab.tsx';
 import SaveSheet from '../components/SaveSheet.tsx';
 import AuthSheet from '../components/AuthSheet.tsx';
+import StoryLayer from '../components/StoryLayer.tsx';
+import StoriesRail from '../components/StoriesRail.tsx';
+import CompareBar from '../components/CompareBar.tsx';
 import type { AuthMode } from '../components/Auth.tsx';
 import { copy, type Locale } from '../lib/copy';
 import { api, safe } from '../lib/server';
@@ -51,6 +54,8 @@ const utility = [
   { href: '/' + locale + '/help', label: c.helpContact, key: 'help' },
   { href: '/' + locale + '/request-product', label: c.request, key: 'request' },
   { href: '/' + locale + '/partners', label: c.partners, key: 'partners' },
+  { href: '/' + locale + '/pro', label: c.proSpace, key: 'pro' },
+  { href: '/' + locale + '/about', label: c.aboutKora, key: 'about' },
 ];
 const year = new Date().getFullYear();
 const aisles = (await safe(api(locale).categories(), { data: [] })).value.data.map((a) => ({ slug: a.slug, name: a.name }));
@@ -96,6 +101,9 @@ const shopMenu = (await safe(api(locale).shops(), { data: [] })).value.data.slic
     </main>
     {!bare && <Fab client:idle locale={locale} aisles={aisles} whatsapp={whatsapp} />}
     {!bare && <SaveSheet client:idle locale={locale} />}
+    {!bare && <StoryLayer client:idle locale={locale} />}
+    {!bare && !/\/(compare|commande)(\/|$)/.test(path) && <CompareBar client:idle locale={locale} />}
+    {!bare && <StoriesRail client:idle locale={locale} title={c.storiesTitle} up={c.storiesUp} down={c.storiesDown} close={c.close} empty={{ title: c.storiesEmpty, text: c.storiesEmptyText, shops: c.shops, ideas: c.inspirations }} />}
     {!bare && <AuthSheet client:load locale={locale} initial={auth} photo={authPhoto} google={google} />}
     {!bare && (<footer class="site-footer">
       <div class="wrap">
@@ -138,6 +146,8 @@ const shopMenu = (await safe(api(locale).shops(), { data: [] })).value.data.slic
               <h3>{c.footerCompany}</h3>
               <ul>
                 <li><a href={'/' + locale + '/partners'}>{c.partners}</a></li>
+                <li><a href={'/' + locale + '/pro'}>{c.proSpace}</a></li>
+                <li><a href={'/' + locale + '/about'}>{c.aboutKora}</a></li>
                 <li><a href={'/' + locale + '/shops'}>{c.ourShops}</a></li>
               </ul>
             </div>
